@@ -31,7 +31,10 @@ CREATE TABLE IF NOT EXISTS lumina.books (
   updated_at  TIMESTAMPTZ DEFAULT NOW()
 );
 ALTER TABLE lumina.books ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "books_own" ON lumina.books FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "books_select_own" ON lumina.books FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "books_insert_own" ON lumina.books FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "books_update_own" ON lumina.books FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "books_delete_own" ON lumina.books FOR DELETE USING (auth.uid() = user_id);
 
 -- ────────────────────────────────────────────────────────────
 -- LEARNING
@@ -46,7 +49,10 @@ CREATE TABLE IF NOT EXISTS lumina.learning (
   created_at    TIMESTAMPTZ DEFAULT NOW()
 );
 ALTER TABLE lumina.learning ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "learning_own" ON lumina.learning FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "learning_select_own" ON lumina.learning FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "learning_insert_own" ON lumina.learning FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "learning_update_own" ON lumina.learning FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "learning_delete_own" ON lumina.learning FOR DELETE USING (auth.uid() = user_id);
 
 -- ────────────────────────────────────────────────────────────
 -- MEMORY ALBUM
@@ -60,7 +66,10 @@ CREATE TABLE IF NOT EXISTS lumina.memory_album (
   created_at  TIMESTAMPTZ DEFAULT NOW()
 );
 ALTER TABLE lumina.memory_album ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "memory_own" ON lumina.memory_album FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "memory_select_own" ON lumina.memory_album FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "memory_insert_own" ON lumina.memory_album FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "memory_update_own" ON lumina.memory_album FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "memory_delete_own" ON lumina.memory_album FOR DELETE USING (auth.uid() = user_id);
 
 -- ────────────────────────────────────────────────────────────
 -- CALENDAR EVENTS
@@ -74,7 +83,10 @@ CREATE TABLE IF NOT EXISTS lumina.calendar_events (
   created_at  TIMESTAMPTZ DEFAULT NOW()
 );
 ALTER TABLE lumina.calendar_events ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "calendar_own" ON lumina.calendar_events FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "calendar_select_own" ON lumina.calendar_events FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "calendar_insert_own" ON lumina.calendar_events FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "calendar_update_own" ON lumina.calendar_events FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "calendar_delete_own" ON lumina.calendar_events FOR DELETE USING (auth.uid() = user_id);
 
 -- ────────────────────────────────────────────────────────────
 -- SUCCESS EXPERIENCES
@@ -89,7 +101,10 @@ CREATE TABLE IF NOT EXISTS lumina.success_experiences (
   created_at       TIMESTAMPTZ DEFAULT NOW()
 );
 ALTER TABLE lumina.success_experiences ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "success_own" ON lumina.success_experiences FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "success_select_own" ON lumina.success_experiences FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "success_insert_own" ON lumina.success_experiences FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "success_update_own" ON lumina.success_experiences FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "success_delete_own" ON lumina.success_experiences FOR DELETE USING (auth.uid() = user_id);
 
 -- ────────────────────────────────────────────────────────────
 -- REWARDS
@@ -103,7 +118,10 @@ CREATE TABLE IF NOT EXISTS lumina.rewards (
   created_at       TIMESTAMPTZ DEFAULT NOW()
 );
 ALTER TABLE lumina.rewards ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "rewards_own" ON lumina.rewards FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "rewards_select_own" ON lumina.rewards FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "rewards_insert_own" ON lumina.rewards FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "rewards_update_own" ON lumina.rewards FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "rewards_delete_own" ON lumina.rewards FOR DELETE USING (auth.uid() = user_id);
 
 -- ────────────────────────────────────────────────────────────
 -- TASKS (Kanban)
@@ -120,7 +138,10 @@ CREATE TABLE IF NOT EXISTS lumina.tasks (
   updated_at  TIMESTAMPTZ DEFAULT NOW()
 );
 ALTER TABLE lumina.tasks ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "tasks_own" ON lumina.tasks FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "tasks_select_own" ON lumina.tasks FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "tasks_insert_own" ON lumina.tasks FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "tasks_update_own" ON lumina.tasks FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "tasks_delete_own" ON lumina.tasks FOR DELETE USING (auth.uid() = user_id);
 
 -- ────────────────────────────────────────────────────────────
 -- PROJECTS
@@ -136,7 +157,10 @@ CREATE TABLE IF NOT EXISTS lumina.projects (
   created_at       TIMESTAMPTZ DEFAULT NOW()
 );
 ALTER TABLE lumina.projects ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "projects_own" ON lumina.projects FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "projects_select_own" ON lumina.projects FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "projects_insert_own" ON lumina.projects FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "projects_update_own" ON lumina.projects FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "projects_delete_own" ON lumina.projects FOR DELETE USING (auth.uid() = user_id);
 
 -- ────────────────────────────────────────────────────────────
 -- USEFUL LINKS
@@ -149,7 +173,10 @@ CREATE TABLE IF NOT EXISTS lumina.useful_links (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 ALTER TABLE lumina.useful_links ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "links_own" ON lumina.useful_links FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "links_select_own" ON lumina.useful_links FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "links_insert_own" ON lumina.useful_links FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "links_update_own" ON lumina.useful_links FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "links_delete_own" ON lumina.useful_links FOR DELETE USING (auth.uid() = user_id);
 
 -- ────────────────────────────────────────────────────────────
 -- SKILLS MD
@@ -161,7 +188,10 @@ CREATE TABLE IF NOT EXISTS lumina.skills_md (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 ALTER TABLE lumina.skills_md ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "skills_own" ON lumina.skills_md FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "skills_select_own" ON lumina.skills_md FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "skills_insert_own" ON lumina.skills_md FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "skills_update_own" ON lumina.skills_md FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "skills_delete_own" ON lumina.skills_md FOR DELETE USING (auth.uid() = user_id);
 
 -- ────────────────────────────────────────────────────────────
 -- DATE IDEAS
@@ -175,7 +205,10 @@ CREATE TABLE IF NOT EXISTS lumina.date_ideas (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 ALTER TABLE lumina.date_ideas ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "date_ideas_own" ON lumina.date_ideas FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "date_ideas_select_own" ON lumina.date_ideas FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "date_ideas_insert_own" ON lumina.date_ideas FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "date_ideas_update_own" ON lumina.date_ideas FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "date_ideas_delete_own" ON lumina.date_ideas FOR DELETE USING (auth.uid() = user_id);
 
 -- ────────────────────────────────────────────────────────────
 -- XP LOG
@@ -190,7 +223,10 @@ CREATE TABLE IF NOT EXISTS lumina.xp_log (
   date        TIMESTAMPTZ DEFAULT NOW()
 );
 ALTER TABLE lumina.xp_log ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "xp_own" ON lumina.xp_log FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "xp_select_own" ON lumina.xp_log FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "xp_insert_own" ON lumina.xp_log FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "xp_update_own" ON lumina.xp_log FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "xp_delete_own" ON lumina.xp_log FOR DELETE USING (auth.uid() = user_id);
 
 -- ────────────────────────────────────────────────────────────
 -- BADGES
@@ -219,7 +255,10 @@ CREATE TABLE IF NOT EXISTS lumina.user_badges (
   UNIQUE(user_id, badge_id)
 );
 ALTER TABLE lumina.user_badges ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "user_badges_own" ON lumina.user_badges FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "user_badges_select_own" ON lumina.user_badges FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "user_badges_insert_own" ON lumina.user_badges FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "user_badges_update_own" ON lumina.user_badges FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "user_badges_delete_own" ON lumina.user_badges FOR DELETE USING (auth.uid() = user_id);
 
 -- ────────────────────────────────────────────────────────────
 -- STORAGE BUCKETS

@@ -1,10 +1,12 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { supabase } from '$lib/supabase';
+  import { page } from '$app/stores';
+  import { createRepository } from '$lib/services/repository';
   import type { DateIdea } from '$lib/types';
 
   let ideas = $state<DateIdea[]>([]);
-  let userId = $state('');
+  const userId = $derived($page.data.user?.id ?? '');
+  const repo = $derived(createRepository(userId));
+  let initialized = $state(false);
   let showForm = $state(false);
   let newIdea = $state<DateIdea>({ idea_text: '', status: 'pending' });
   let randomPick = $state<DateIdea | null>(null);
@@ -27,35 +29,39 @@
     'Lista de pelis y series (con ruleta o selector aleatorio).'
   ];
 
-  onMount(async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    userId = user.id;
-    await loadIdeas();
-
-    // Seed built-in ideas if none exist
-    const { count } = await supabase.from('date_ideas').select('id', { count: 'exact', head: true }).eq('user_id', user.id);
-    if (count === 0) {
-      const toInsert = builtInIdeas.map(text => ({ idea_text: text, status: 'pending' as const, user_id: user.id }));
-      await supabase.from('date_ideas').insert(toInsert);
-      await loadIdeas();
+  $effect(() => {
+    if (userId && !initialized) {
+      initialized = true;
+      void initIdeas();
     }
   });
 
+  async function initIdeas() {
+    await loadIdeas();
+
+    const { count } = await repo.dateIdeas.count();
+    if (count === 0) {
+      const toInsert = builtInIdeas.map(text => ({ idea_text: text, status: 'pending' as const }));
+      await repo.dateIdeas.insertMany(toInsert);
+      await loadIdeas();
+    }
+  }
+
   async function loadIdeas() {
-    const { data } = await supabase.from('date_ideas').select('*').eq('user_id', userId).order('created_at', { ascending: true });
+    if (!userId) return;
+    const { data } = await repo.dateIdeas.list();
     ideas = data || [];
   }
 
   async function toggleStatus(idea: DateIdea) {
     const newStatus = idea.status === 'pending' ? 'done' : 'pending';
-    await supabase.from('date_ideas').update({ status: newStatus }).eq('id', idea.id!);
+    await repo.dateIdeas.updateStatus(idea.id!, newStatus);
     await loadIdeas();
   }
 
   async function addIdea() {
     saving = true;
-    await supabase.from('date_ideas').insert({ ...newIdea, user_id: userId });
+    await repo.dateIdeas.insert(newIdea);
     newIdea = { idea_text: '', status: 'pending' };
     showForm = false;
     await loadIdeas();
@@ -63,7 +69,7 @@
   }
 
   async function deleteIdea(id: string) {
-    await supabase.from('date_ideas').delete().eq('id', id);
+    await repo.dateIdeas.remove(id);
     await loadIdeas();
   }
 

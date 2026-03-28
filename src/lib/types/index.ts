@@ -42,7 +42,7 @@ export interface SuccessExperience {
   id?: string;
   user_id?: string;
   goal_description: string;
-  completed_date?: string;
+  completed_date?: string | null;
   done: boolean;
   reflection?: string;
   created_at?: string;

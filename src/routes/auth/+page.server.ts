@@ -1,5 +1,6 @@
 
 import { redirect, type Action } from '@sveltejs/kit';
+import { createRepository } from '$lib/services/repository';
 
 
 export const actions = {
@@ -7,7 +8,8 @@ export const actions = {
     const data = await request.formData();
     const email = data.get('email') as string;
     const password = data.get('password') as string;
-    const { error } = await locals.supabase.auth.signInWithPassword({ email, password });
+    const repo = createRepository(undefined, locals.supabase);
+    const { error } = await repo.auth.signInWithPassword(email, password);
     if (error) {
       return { success: false, error: error.message };
     }
@@ -17,7 +19,8 @@ export const actions = {
     const data = await request.formData();
     const email = data.get('email') as string;
     const password = data.get('password') as string;
-    const { error } = await locals.supabase.auth.signUp({ email, password });
+    const repo = createRepository(undefined, locals.supabase);
+    const { error } = await repo.auth.signUp(email, password);
     if (error) {
       return { success: false, error: error.message };
     }

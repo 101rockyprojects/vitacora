@@ -1,10 +1,12 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { supabase } from '$lib/supabase';
+  import { page } from '$app/stores';
+  import { createRepository } from '$lib/services/repository';
   import { awardXP, XP_VALUES } from '$lib/utils/xp';
   import type { Task, Project, UsefulLink, SkillsMd } from '$lib/types';
 
-  let userId = $state('');
+  const userId = $derived($page.data.user?.id ?? '');
+  const repo = $derived(createRepository(userId));
+  let initialized = $state(false);
   let activeTab = $state<'kanban' | 'projects' | 'links' | 'skills'>('kanban');
 
   // Kanban
@@ -39,19 +41,20 @@
     { id: 'to_review', label: 'Revisar', color: 'var(--accent-orange)' }
   ];
 
-  onMount(async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    userId = user.id;
-    await loadAll();
+  $effect(() => {
+    if (userId && !initialized) {
+      initialized = true;
+      void loadAll();
+    }
   });
 
   async function loadAll() {
+    if (!userId) return;
     const [t, p, l, s] = await Promise.all([
-      supabase.from('tasks').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
-      supabase.from('projects').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
-      supabase.from('useful_links').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
-      supabase.from('skills_md').select('*').eq('user_id', userId).maybeSingle()
+      repo.tasks.list(),
+      repo.projects.list(),
+      repo.links.list(),
+      repo.skillsMd.get()
     ]);
     tasks = t.data || [];
     projects = p.data || [];
@@ -69,12 +72,12 @@
   async function saveTask() {
     saving = true;
     if (editingTask?.id) {
-      await supabase.from('tasks').update({ ...taskForm, updated_at: new Date().toISOString() }).eq('id', editingTask.id);
+      await repo.tasks.update(editingTask.id, { ...taskForm, updated_at: new Date().toISOString() });
       if (taskForm.status === 'done' && editingTask.status !== 'done') {
         await awardXP(userId, 'work', 'task_done', XP_VALUES.task_done, editingTask.id);
       }
     } else {
-      await supabase.from('tasks').insert({ ...taskForm, user_id: userId });
+      await repo.tasks.insert(taskForm);
     }
     await loadAll();
     showTaskForm = false;
@@ -85,13 +88,13 @@
   async function moveTask(task: Task, sta: Task['status']) {
     if (task.status === sta) return;
     const wasDone = task.status === 'done';
-    await supabase.from('tasks').update({ status: sta, updated_at: new Date().toISOString() }).eq('id', task.id!);
+    await repo.tasks.update(task.id!, { status: sta, updated_at: new Date().toISOString() });
     if (sta === 'done' && !wasDone) await awardXP(userId, 'work', 'task_done', XP_VALUES.task_done, task.id);
     await loadAll();
   }
 
   async function deleteTask(id: string) {
-    await supabase.from('tasks').delete().eq('id', id);
+    await repo.tasks.remove(id);
     await loadAll();
   }
 
@@ -110,7 +113,7 @@
   // Projects
   async function saveProject() {
     saving = true;
-    await supabase.from('projects').insert({ ...projectForm, user_id: userId });
+    await repo.projects.insert(projectForm);
     projectForm = { name: '' };
     showProjectForm = false;
     await loadAll();
@@ -118,14 +121,14 @@
   }
 
   async function deleteProject(id: string) {
-    await supabase.from('projects').delete().eq('id', id);
+    await repo.projects.remove(id);
     await loadAll();
   }
 
   // Links
   async function saveLink() {
     saving = true;
-    await supabase.from('useful_links').insert({ ...linkForm, user_id: userId });
+    await repo.links.insert(linkForm);
     linkForm = { title: '', url: '' };
     showLinkForm = false;
     await loadAll();
@@ -133,7 +136,7 @@
   }
 
   async function deleteLink(id: string) {
-    await supabase.from('useful_links').delete().eq('id', id);
+    await repo.links.remove(id);
     await loadAll();
   }
 
@@ -141,9 +144,9 @@
   async function saveMd() {
     mdSaving = true;
     if (skillsMd?.id) {
-      await supabase.from('skills_md').update({ content: mdContent, updated_at: new Date().toISOString() }).eq('id', skillsMd.id);
+      await repo.skillsMd.update(skillsMd.id, { content: mdContent, updated_at: new Date().toISOString() });
     } else {
-      await supabase.from('skills_md').insert({ content: mdContent, user_id: userId });
+      await repo.skillsMd.insert({ content: mdContent });
     }
     mdEditing = false;
     await loadAll();

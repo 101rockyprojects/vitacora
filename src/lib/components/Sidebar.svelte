@@ -1,6 +1,6 @@
 <script lang="ts">
   import { page } from '$app/stores';
-  import { supabase } from '$lib/supabase';
+  import { createRepository } from '$lib/services/repository';
   import { goto } from '$app/navigation';
   import type { User } from '@supabase/supabase-js';
 
@@ -14,8 +14,10 @@
     { href: '/profile', label: 'Perfil & XP', icon: '◎' }
   ];
 
+  const repo = createRepository();
+
   async function signOut() {
-    await supabase.auth.signOut();
+    await repo.auth.signOut();
     goto('/auth');
   }
 

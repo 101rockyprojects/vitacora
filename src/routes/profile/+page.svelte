@@ -1,12 +1,14 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { supabase } from '$lib/supabase';
+  import { page } from '$app/stores';
+  import { createRepository } from '$lib/services/repository';
   import { levelFromXp, getAreaXP, AREAS, PREDEFINED_BADGES } from '$lib/utils/xp';
   import type { UserBadge } from '$lib/types';
   import html2canvas from 'html2canvas';
 
-  let userId = $state('');
-  let userEmail = $state('');
+  const userId = $derived($page.data.user?.id ?? '');
+  const userEmail = $derived($page.data.user?.email ?? '');
+  const repo = $derived(createRepository(userId));
+  let initialized = $state(false);
   let areaXP: Record<string, number> = $state({});
   let userBadges = $state<UserBadge[]>([]);
   let xpLog = $state<any[]>([]);
@@ -19,25 +21,24 @@
   // Stats for badge checking
   let stats = $state({ books_finished: 0, successes: 0, tasks_done: 0, projects: 0, memories: 0, learning: 0 });
 
-  onMount(async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    userId = user.id;
-    userEmail = user.email || '';
-    await loadAll();
+  $effect(() => {
+    if (userId && !initialized) {
+      initialized = true;
+      void loadAll();
+    }
   });
 
   async function loadAll() {
     const [xpRes, badgesRes, logRes, booksRes, successRes, tasksRes, projectsRes, memoriesRes, learnRes] = await Promise.all([
       Promise.resolve(await getAreaXP(userId)),
-      supabase.from('user_badges').select('*, badge:badges(*)').eq('user_id', userId),
-      supabase.from('xp_log').select('*').eq('user_id', userId).order('date', { ascending: false }).limit(20),
-      supabase.from('books').select('current_page,total_pages').eq('user_id', userId),
-      supabase.from('success_experiences').select('id').eq('user_id', userId).eq('done', true),
-      supabase.from('tasks').select('id').eq('user_id', userId).eq('status', 'done'),
-      supabase.from('projects').select('id').eq('user_id', userId),
-      supabase.from('memory_album').select('id').eq('user_id', userId),
-      supabase.from('learning').select('id').eq('user_id', userId)
+      repo.userBadges.list(),
+      repo.xp.listLogs(),
+      repo.books.listProgress(),
+      repo.successes.listDoneIds(),
+      repo.tasks.listDoneIds(),
+      repo.projects.listIds(),
+      repo.memories.listIds(),
+      repo.learning.listIds()
     ]);
 
     areaXP = xpRes;
@@ -63,16 +64,16 @@
     const earnedIds = userBadges.map(ub => ub.badge_id);
 
     // Ensure badges exist in DB
-    const { data: existingBadges } = await supabase.from('badges').select('*');
+    const { data: existingBadges } = await repo.badges.list();
     const existingNames = (existingBadges || []).map((b: any) => b.name);
 
     for (const badge of PREDEFINED_BADGES) {
       if (!existingNames.includes(badge.name)) {
-        await supabase.from('badges').insert(badge);
+        await repo.badges.insert(badge);
       }
     }
 
-    const { data: allBadges } = await supabase.from('badges').select('*');
+    const { data: allBadges } = await repo.badges.list();
     if (!allBadges) return;
 
     const globalLvl = levelFromXp(totalXP).level;
@@ -94,11 +95,11 @@
       }
 
       if (earned) {
-        await supabase.from('user_badges').insert({ user_id: userId, badge_id: badge.id });
+        await repo.userBadges.insert({ badge_id: badge.id });
       }
     }
 
-    const { data: updatedBadges } = await supabase.from('user_badges').select('*, badge:badges(*)').eq('user_id', userId);
+    const { data: updatedBadges } = await repo.userBadges.list();
     userBadges = updatedBadges || [];
   }
 

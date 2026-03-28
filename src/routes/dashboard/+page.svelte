@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { supabase } from '$lib/supabase';
+  import { page } from '$app/stores';
+  import { createRepository } from '$lib/services/repository';
   import { levelFromXp, getAreaXP, AREAS } from '$lib/utils/xp';
 
   let tasks: any[] = $state([]);
@@ -11,29 +11,34 @@
   let recentBooks = $derived(books.slice(0, 3));
   let todayTasks = $derived(tasks.filter(t => t.status !== 'done').slice(0, 5));
   let loading = $state(true);
-  let userId = $state('');
+  const userId = $derived($page.data.user?.id ?? '');
+  const repo = $derived(createRepository(userId));
+  let initialized = $state(false);
   let userBadgesCount = $state(0);
 
   const now = new Date();
   const greeting = now.getHours() < 12 ? 'Buenos días' : now.getHours() < 18 ? 'Buenas tardes' : 'Buenas noches';
 
-  onMount(async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    userId = user.id;
+  $effect(() => {
+    if (userId && !initialized) {
+      initialized = true;
+      void loadDashboard();
+    }
+  });
 
+  async function loadDashboard() {
     const [tasksRes, booksRes, badgesRes] = await Promise.all([
-      supabase.from('tasks').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
-      supabase.from('books').select('*').eq('user_id', user.id).order('updated_at', { ascending: false }),
-      supabase.from('user_badges').select('id').eq('user_id', user.id)
+      repo.tasks.list(),
+      repo.books.list(),
+      repo.userBadges.listIds()
     ]);
 
     tasks = tasksRes.data || [];
     books = booksRes.data || [];
     userBadgesCount = badgesRes.data?.length || 0;
-    areaXP = await getAreaXP(user.id);
+    areaXP = await getAreaXP(userId);
     loading = false;
-  });
+  }
 
   function bookProgress(book: any) {
     if (!book.total_pages) return 0;

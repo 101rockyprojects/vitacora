@@ -1,11 +1,13 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { supabase } from '$lib/supabase';
+  import { page } from '$app/stores';
+  import { createRepository } from '$lib/services/repository';
   import { awardXP, XP_VALUES } from '$lib/utils/xp';
   import type { Book, LearningItem, SuccessExperience, Reward, MemoryPhoto, CalendarEvent } from '$lib/types';
 
   // --- State ---
-  let userId = $state('');
+  const userId = $derived($page.data.user?.id ?? '');
+  const repo = $derived(createRepository(userId));
+  let initialized = $state(false);
   let activeTab = $state<'vision' | 'books' | 'learning' | 'memories' | 'calendar' | 'successes' | 'rewards'>('vision');
 
   // Books
@@ -53,21 +55,22 @@
     "1% better every day"
   ];
 
-  onMount(async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    userId = user.id;
-    await loadAll();
+  $effect(() => {
+    if (userId && !initialized) {
+      initialized = true;
+      void loadAll();
+    }
   });
 
   async function loadAll() {
+    if (!userId) return;
     const [b, l, m, c, s, r] = await Promise.all([
-      supabase.from('books').select('*').eq('user_id', userId).order('updated_at', { ascending: false }),
-      supabase.from('learning').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
-      supabase.from('memory_album').select('*').eq('user_id', userId).order('date', { ascending: false }),
-      supabase.from('calendar_events').select('*').eq('user_id', userId).order('event_date', { ascending: true }),
-      supabase.from('success_experiences').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
-      supabase.from('rewards').select('*').eq('user_id', userId).order('date_awarded', { ascending: false })
+      repo.books.list(),
+      repo.learning.list(),
+      repo.memories.list(),
+      repo.calendar.list(),
+      repo.successes.list(),
+      repo.rewards.list()
     ]);
     books = b.data || [];
     learning = l.data || [];
@@ -88,11 +91,11 @@
     const isFinished = bookForm.current_page >= bookForm.total_pages && bookForm.total_pages > 0;
     if (editingBook?.id) {
       const wasFinished = editingBook.current_page >= editingBook.total_pages;
-      await supabase.from('books').update({ ...bookForm, updated_at: new Date().toISOString() }).eq('id', editingBook.id);
+      await repo.books.update(editingBook.id, { ...bookForm, updated_at: new Date().toISOString() });
       if (isFinished && !wasFinished) await awardXP(userId, 'education', 'book_finished', XP_VALUES.book_finished, editingBook.id);
       else await awardXP(userId, 'education', 'book_page_update', XP_VALUES.book_page_update);
     } else {
-      const { data } = await supabase.from('books').insert({ ...bookForm, user_id: userId }).select().single();
+      const { data } = await repo.books.insert(bookForm);
       if (isFinished && data) await awardXP(userId, 'education', 'book_finished', XP_VALUES.book_finished, data.id);
     }
     await loadAll();
@@ -105,13 +108,13 @@
 
   async function deleteBook(id: string) {
     if (!confirm('¿Eliminar libro?')) return;
-    await supabase.from('books').delete().eq('id', id);
+    await repo.books.remove(id);
     await loadAll();
   }
 
   async function saveLearn() {
     saving = true;
-    await supabase.from('learning').insert({ ...learnForm, user_id: userId });
+    await repo.learning.insert(learnForm);
     await awardXP(userId, 'education', 'learning_added', XP_VALUES.learning_added);
     learnForm = { topic: '' };
     showLearnForm = false;
@@ -120,7 +123,7 @@
   }
 
   async function deleteLearn(id: string) {
-    await supabase.from('learning').delete().eq('id', id);
+    await repo.learning.remove(id);
     await loadAll();
   }
 
@@ -130,13 +133,13 @@
     if (memFile) {
       const ext = memFile.name.split('.').pop();
       const path = `${userId}/${Date.now()}.${ext}`;
-      const { data } = await supabase.storage.from('memories').upload(path, memFile);
+      const { data } = await repo.storage.uploadMemory(path, memFile);
       if (data) {
-        const { data: url } = supabase.storage.from('memories').getPublicUrl(path);
+        const { data: url } = repo.storage.getMemoryPublicUrl(path);
         photo_url = url.publicUrl;
       }
     }
-    await supabase.from('memory_album').insert({ ...memForm, photo_url, user_id: userId });
+    await repo.memories.insert({ ...memForm, photo_url });
     await awardXP(userId, 'social', 'memory_added', XP_VALUES.memory_added);
     memForm = { date: '', description: '' };
     memFile = null;
@@ -146,13 +149,13 @@
   }
 
   async function deleteMem(id: string) {
-    await supabase.from('memory_album').delete().eq('id', id);
+    await repo.memories.remove(id);
     await loadAll();
   }
 
   async function saveCal() {
     saving = true;
-    await supabase.from('calendar_events').insert({ ...calForm, user_id: userId });
+    await repo.calendar.insert(calForm);
     calForm = { event_name: '', event_date: '', type: 'event' };
     showCalForm = false;
     await loadAll();
@@ -160,13 +163,13 @@
   }
 
   async function deleteCal(id: string) {
-    await supabase.from('calendar_events').delete().eq('id', id);
+    await repo.calendar.remove(id);
     await loadAll();
   }
 
   async function saveSuccess() {
     saving = true;
-    const { data } = await supabase.from('success_experiences').insert({ ...successForm, user_id: userId }).select().single();
+    const { data } = await repo.successes.insert(successForm);
     if (successForm.done && data) await awardXP(userId, 'selfcare', 'success_experience', XP_VALUES.success_experience, data.id);
     successForm = { goal_description: '', done: false };
     showSuccessForm = false;
@@ -176,19 +179,19 @@
 
   async function toggleSuccess(s: SuccessExperience) {
     const done = !s.done;
-    await supabase.from('success_experiences').update({ done, completed_date: done ? new Date().toISOString() : null }).eq('id', s.id!);
+    await repo.successes.update(s.id!, { done, completed_date: done ? new Date().toISOString() : null });
     if (done) await awardXP(userId, 'selfcare', 'success_experience', XP_VALUES.success_experience, s.id);
     await loadAll();
   }
 
   async function deleteSuccess(id: string) {
-    await supabase.from('success_experiences').delete().eq('id', id);
+    await repo.successes.remove(id);
     await loadAll();
   }
 
   async function saveReward() {
     saving = true;
-    await supabase.from('rewards').insert({ ...rewardForm, user_id: userId });
+    await repo.rewards.insert(rewardForm);
     await awardXP(userId, 'selfcare', 'reward_earned', XP_VALUES.reward_earned);
     rewardForm = { achievement_name: '', reward_given: '', date_awarded: new Date().toISOString().split('T')[0] };
     showRewardForm = false;
@@ -197,7 +200,7 @@
   }
 
   async function deleteReward(id: string) {
-    await supabase.from('rewards').delete().eq('id', id);
+    await repo.rewards.remove(id);
     await loadAll();
   }
 

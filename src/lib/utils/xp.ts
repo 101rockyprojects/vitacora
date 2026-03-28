@@ -1,4 +1,4 @@
-import { supabase } from '$lib/supabase';
+import { createRepository } from '$lib/services/repository';
 
 export const XP_VALUES = {
   task_done: 10,
@@ -40,8 +40,9 @@ export async function awardXP(
   xpAmount: number,
   sourceId?: string
 ) {
-  const { error } = await supabase.from('xp_log').insert({
-    user_id: userId,
+  if (!userId) return false;
+  const repo = createRepository(userId);
+  const { error } = await repo.xp.insertLog({
     source_type: sourceType,
     source_id: sourceId,
     xp_gained: xpAmount,
@@ -53,10 +54,9 @@ export async function awardXP(
 }
 
 export async function getAreaXP(userId: string): Promise<Record<string, number>> {
-  const { data, error } = await supabase
-    .from('xp_log')
-    .select('area, xp_gained')
-    .eq('user_id', userId);
+  if (!userId) return {};
+  const repo = createRepository(userId);
+  const { data, error } = await repo.xp.listSummary();
   if (error || !data) return {};
   const totals: Record<string, number> = {};
   for (const row of data) {
