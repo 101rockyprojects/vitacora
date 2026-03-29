@@ -1,9 +1,9 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
 
   $effect(() => {
-    if ($page.data.session) goto('/dashboard');
+    if (page.data.session) goto('/dashboard');
     else goto('/auth');
   });
 </script>
