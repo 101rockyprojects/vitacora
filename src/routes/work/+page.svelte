@@ -1,10 +1,11 @@
 <script lang="ts">
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
   import { createRepository } from '$lib/services/repository';
   import { awardXP, XP_VALUES } from '$lib/utils/xp';
+  import { tick } from 'svelte';
   import type { Task, Project, UsefulLink, SkillsMd } from '$lib/types';
 
-  const userId = $derived($page.data.user?.id ?? '');
+  const userId = $derived(page.data.user?.id ?? '');
   const repo = $derived(createRepository(userId));
   let initialized = $state(false);
   let activeTab = $state<'kanban' | 'projects' | 'links' | 'skills'>('kanban');
@@ -27,10 +28,11 @@
   let linkForm = $state<UsefulLink>({ title: '', url: '' });
 
   // Skills MD
-  let skillsMd = $state<SkillsMd | null>(null);
+  let skills = $state<SkillsMd[]>([]);
+  let editingSkillId = $state<string | null>(null);
   let mdContent = $state('');
-  let mdEditing = $state(false);
   let mdSaving = $state(false);
+  let mdTextarea: HTMLTextAreaElement | null = $state(null);
 
   let saving = $state(false);
 
@@ -54,13 +56,12 @@
       repo.tasks.list(),
       repo.projects.list(),
       repo.links.list(),
-      repo.skillsMd.get()
+      repo.skillsMd.list()
     ]);
     tasks = t.data || [];
     projects = p.data || [];
     links = l.data || [];
-    skillsMd = s.data || null;
-    mdContent = skillsMd?.content || '# Skills\n\nEscribe tus habilidades aquí en Markdown...\n';
+    skills = s.data || [];
   }
 
   function staTasks(sta: Task['status']) {
@@ -94,6 +95,7 @@
   }
 
   async function deleteTask(id: string) {
+    if (!confirm('¿Eliminar tarea?')) return;
     await repo.tasks.remove(id);
     await loadAll();
   }
@@ -121,6 +123,7 @@
   }
 
   async function deleteProject(id: string) {
+    if (!confirm('¿Eliminar proyecto?')) return;
     await repo.projects.remove(id);
     await loadAll();
   }
@@ -136,35 +139,108 @@
   }
 
   async function deleteLink(id: string) {
+    if (!confirm('¿Eliminar link?')) return;
     await repo.links.remove(id);
     await loadAll();
   }
 
   // Skills MD
-  async function saveMd() {
+  $effect(() => {
+    if (!mdTextarea) return;
+    mdTextarea.style.height = 'auto';
+    mdTextarea.style.height = `${mdTextarea.scrollHeight}px`;
+  });
+
+  async function startEditSkill(skill: SkillsMd) {
+    editingSkillId = skill.id || null;
+    mdContent = skill.content || '';
+    await tick();
+    mdTextarea?.focus();
+  }
+
+  function cancelEditSkill() {
+    editingSkillId = null;
+    mdContent = '';
+  }
+
+  async function addSkill() {
     mdSaving = true;
-    if (skillsMd?.id) {
-      await repo.skillsMd.update(skillsMd.id, { content: mdContent, updated_at: new Date().toISOString() });
-    } else {
-      await repo.skillsMd.insert({ content: mdContent });
-    }
-    mdEditing = false;
+    const now = new Date().toISOString();
+    const initialContent = '# Skill\n\nEscribe tu skill aqui en Markdown...\n';
+    const { data } = await repo.skillsMd.insert({ content: initialContent, updated_at: now });
     await loadAll();
     mdSaving = false;
+    if (data?.id) {
+      await startEditSkill(data);
+    }
+  }
+
+  function formatTitle(str: string): string {
+    return str
+      .replace(/-/g, ' ')
+      .replace(/\b\w/g, c => c.toUpperCase());
+  }
+
+  function getSkillName(content: string, index: number): string {
+    if (!content) return `Skill ${index + 1}`;
+    // Search explicit name of skill --- name: Skill Name ---
+    const nameMatch = content.match(/^---[\s\S]*?name:\s*([^\n]+)[\s\S]*?---/);
+    if (nameMatch) {
+      return formatTitle(nameMatch[1].trim());
+    }
+    // Search first header # Title
+    const titleMatch = content.match(/^#\s+(.+)$/m);
+    if (titleMatch) {
+      return formatTitle(titleMatch[1].trim());
+    }
+    // Default fallback
+    return `Skill #${index + 1}`;
+  }
+
+  async function saveMd() {
+    if (!editingSkillId) return;
+    mdSaving = true;
+    await repo.skillsMd.update(editingSkillId, { content: mdContent, updated_at: new Date().toISOString() });
+    await loadAll();
+    mdSaving = false;
+    editingSkillId = null;
   }
 
   // Simple markdown-to-html for preview
   function renderMd(md: string): string {
     return md
+      .replace(/^[\u200B\u200C\u200D\u200E\u200F\uFEFF]/,"")
+      // Headers
       .replace(/^### (.+)$/gm, '<h3>$1</h3>')
       .replace(/^## (.+)$/gm, '<h2>$1</h2>')
       .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+      // Divider (---, ***, ___)
+      .replace(/^(---|\*\*\*|___)$/gm, '<hr/>')
+      // Bold / Italic
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.+?)\*/g, '<em>$1</em>')
+      // Code
       .replace(/`(.+?)`/g, '<code>$1</code>')
-      .replace(/^- (.+)$/gm, '<li>$1</li>')
-      .replace(/\n\n/g, '<br/><br/>')
-      .replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>');
+      // Links [text](url)
+      .replace(
+        /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
+        '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>'
+      )
+      // Lists
+      // - Numeric List
+      .replace(/^(\s*)(\d+)\.\s+(.+)$/gm, (_, spaces, num, content) => {
+        const indent = (spaces.length + 1) * (spaces.length > 0 ? 0.5 : 1);
+        return `<li style="margin-left:${indent}px">${num}. ${content}</li>`;
+      })
+      // - Bullet list
+      .replace(/^(\s*)- (.+)$/gm, (_, spaces, content) => {
+        const indent = (spaces.length + 1) * (spaces.length > 0 ? 0.5 : 1); // ajusta esto
+        return `<li style="margin-left:${indent}rem">${content}</li>`;
+      })
+      .replace(/(<li>.*<\/li>(?:\n<li>.*<\/li>)*)/g, '<ul>$1</ul>\n')
+      // Line breaks
+      .replace(/\n/g, '<br/>')
+      .replace(/\n\n/g, '');
   }
 
   const tabs = [
@@ -233,7 +309,7 @@
                     <div class="kcard-due">📅 {new Date(task.due_date).toLocaleDateString('es-ES')}</div>
                   {/if}
                   <div class="kcard-actions">
-                    <button class="btn btn-ghost" style="font-size:11px;padding:3px 6px;" onclick={() => editTask(task)}>✎ editar</button>
+                    <button class="btn btn-ghost" style="font-size:11px;padding:3px 6px;" onclick={() => editTask(task)}>Editar</button>
                     <select class="kcard-move" onchange={(e) => moveTask(task, (e.target as HTMLSelectElement).value as Task['status'])} value={task.status}>
                       {#each statuses as s}
                         <option value={s.id}>{s.label}</option>
@@ -313,19 +389,49 @@
       <div class="skills-header">
         <span class="section-title" style="font-size:18px;">skills.md</span>
         <div style="display:flex;gap:8px;">
-          {#if mdEditing}
-            <button class="btn btn-secondary" onclick={() => mdEditing = false}>Cancelar</button>
-            <button class="btn btn-primary" onclick={saveMd} disabled={mdSaving}>{mdSaving ? '...' : 'Guardar'}</button>
-          {:else}
-            <button class="btn btn-secondary" onclick={() => mdEditing = true}>✎ Editar</button>
-          {/if}
+          <button class="btn btn-primary" onclick={addSkill} disabled={mdSaving}>{mdSaving ? '...' : '+ Nueva skill'}</button>
         </div>
       </div>
-      {#if mdEditing}
-        <textarea class="md-editor" bind:value={mdContent} rows="24" placeholder="# Skills&#10;&#10;Escribe aquí en Markdown..."></textarea>
+
+      {#if skills.length === 0}
+        <div class="empty-state card">Aun no tienes skills. Agrega la primera.</div>
       {:else}
-        <div class="md-preview card">
-          {@html renderMd(mdContent)}
+        <div class="skills-grid">
+          {#each skills as skill, index (skill.id)}
+            {@const isEditing = editingSkillId === skill.id}
+            <div class="card skill-card">
+              <div class="skill-card-header">
+                <div class="skill-meta">
+                  <div class="skill-title">{getSkillName(skill.content, index)}</div>
+                  <div class="skill-updated">
+                    {skill.updated_at ? new Date(skill.updated_at).toLocaleString('es-ES') : ''}
+                  </div>
+                </div>
+                <div style="display:flex;gap:8px;">
+                  {#if isEditing}
+                    <button class="btn btn-secondary" onclick={cancelEditSkill}>Cancelar</button>
+                    <button class="btn btn-primary" onclick={saveMd} disabled={mdSaving}>{mdSaving ? '...' : 'Guardar'}</button>
+                  {:else}
+                    <button class="btn btn-secondary" onclick={() => startEditSkill(skill)}>Editar</button>
+                  {/if}
+                </div>
+              </div>
+
+              {#if isEditing}
+                <textarea
+                  class="md-editor skill-editor"
+                  bind:this={mdTextarea}
+                  bind:value={mdContent}
+                  rows="8"
+                  placeholder="# Skill&#10;&#10;Escribe aqui en Markdown..."
+                ></textarea>
+              {:else}
+                <div class="md-preview skill-preview">
+                  {@html renderMd(skill.content || '')}
+                </div>
+              {/if}
+            </div>
+          {/each}
         </div>
       {/if}
     </div>
@@ -574,6 +680,28 @@
     margin-bottom: 16px;
   }
 
+  .skills-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  @media (max-width: 900px) {
+    .skills-grid { grid-template-columns: 1fr; }
+  }
+
+  .skill-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+
+  .skill-meta { display: flex; flex-direction: column; gap: 2px; }
+  .skill-title { font-size: 13px; font-weight: 800; color: var(--text); font-family: var(--font-mono); }
+  .skill-updated { font-size: 11px; color: var(--text3); font-family: var(--font-mono); }
+
   .md-editor {
     width: 100%;
     background: var(--bg2);
@@ -594,12 +722,26 @@
     color: var(--text);
   }
 
+  .skill-preview {
+    max-height: 300px;
+    overflow: auto;
+  }
+
+  .skill-editor {
+    height: auto;
+    overflow: hidden;
+    resize: none;
+  }
+
   :global(.md-preview h1) { font-size: 22px; margin: 16px 0 8px; color: var(--accent-green); }
-  :global(.md-preview h2) { font-size: 18px; margin: 14px 0 6px; color: var(--text); }
-  :global(.md-preview h3) { font-size: 15px; margin: 12px 0 4px; color: var(--text2); }
-  :global(.md-preview code) { background: var(--bg3); padding: 2px 6px; border-radius: 4px; font-size: 12px; font-family: var(--font-mono); }
+  :global(.md-preview h2) { font-size: 18px; margin: 14px 0 6px; color: var(--accent-orange); }
+  :global(.md-preview h3) { font-size: 15px; margin: 12px 0 4px; color: var(--accent-purple); }
+  :global(.md-preview code) { background: var(--bg2); padding: 2px 6px; border-radius: 4px; font-size: 12px; font-family: var(--font-mono); }
   :global(.md-preview ul) { padding-left: 20px; }
   :global(.md-preview li) { margin: 4px 0; }
+  :global(.md-preview a) { color: var(--accent-yellow); font-weight: 600; font-style: italic; text-decoration: underline; }
+  :global(.md-preview hr) { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+  :global(.md-preview br) { display: block; content: ""; margin: 2px 0; }
 
   .empty-state {
     color: var(--text3);

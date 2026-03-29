@@ -68,9 +68,10 @@ export function createRepository(
     },
 
     skillsMd: {
-      get: () => client.from('skills_md').select('*').eq('user_id', uid()).maybeSingle(),
+      list: () =>
+        client.from('skills_md').select('*').eq('user_id', uid()).order('updated_at', { ascending: false }),
       insert: (payload: Omit<SkillsMd, 'id' | 'user_id'>) =>
-        client.from('skills_md').insert({ ...payload, user_id: uid() }),
+        client.from('skills_md').insert({ ...payload, user_id: uid() }).select().single(),
       update: (id: string, values: Partial<SkillsMd>) =>
         client.from('skills_md').update(values).eq('id', id)
     },
