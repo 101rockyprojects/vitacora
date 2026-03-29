@@ -1,10 +1,10 @@
 <script lang="ts">
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
   import { createRepository } from '$lib/services/repository';
   import type { DateIdea } from '$lib/types';
 
   let ideas = $state<DateIdea[]>([]);
-  const userId = $derived($page.data.user?.id ?? '');
+  const userId = $derived(page.data.user?.id ?? '');
   const repo = $derived(createRepository(userId));
   let initialized = $state(false);
   let showForm = $state(false);
@@ -69,6 +69,7 @@
   }
 
   async function deleteIdea(id: string) {
+    if (!confirm('¿Eliminar idea de cita?')) return;
     await repo.dateIdeas.remove(id);
     await loadIdeas();
   }

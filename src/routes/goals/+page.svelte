@@ -1,11 +1,11 @@
 <script lang="ts">
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
   import { createRepository } from '$lib/services/repository';
   import { awardXP, XP_VALUES } from '$lib/utils/xp';
   import type { Book, LearningItem, SuccessExperience, Reward, MemoryPhoto, CalendarEvent } from '$lib/types';
 
   // --- State ---
-  const userId = $derived($page.data.user?.id ?? '');
+  const userId = $derived(page.data.user?.id ?? '');
   const repo = $derived(createRepository(userId));
   let initialized = $state(false);
   let activeTab = $state<'vision' | 'books' | 'learning' | 'memories' | 'calendar' | 'successes' | 'rewards'>('vision');
@@ -123,6 +123,7 @@
   }
 
   async function deleteLearn(id: string) {
+    if (!confirm('¿Eliminar tema?')) return;
     await repo.learning.remove(id);
     await loadAll();
   }
@@ -149,6 +150,7 @@
   }
 
   async function deleteMem(id: string) {
+    if (!confirm('¿Eliminar recuerdo?')) return;
     await repo.memories.remove(id);
     await loadAll();
   }
@@ -163,6 +165,7 @@
   }
 
   async function deleteCal(id: string) {
+    if (!confirm('¿Eliminar evento?')) return;
     await repo.calendar.remove(id);
     await loadAll();
   }
@@ -185,6 +188,7 @@
   }
 
   async function deleteSuccess(id: string) {
+    if (!confirm('¿Eliminar logro?')) return;
     await repo.successes.remove(id);
     await loadAll();
   }
@@ -200,6 +204,7 @@
   }
 
   async function deleteReward(id: string) {
+    if (!confirm('¿Eliminar recompensa?')) return;
     await repo.rewards.remove(id);
     await loadAll();
   }

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
   import { createRepository } from '$lib/services/repository';
   import { goto } from '$app/navigation';
   import type { User } from '@supabase/supabase-js';
@@ -21,7 +21,7 @@
     goto('/auth');
   }
 
-  const currentPath = $derived($page.url.pathname);
+  const currentPath = $derived(page.url.pathname);
 </script>
 
 <aside class="sidebar">

@@ -1,12 +1,12 @@
 <script lang="ts">
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
   import { createRepository } from '$lib/services/repository';
   import { levelFromXp, getAreaXP, AREAS, PREDEFINED_BADGES } from '$lib/utils/xp';
   import type { UserBadge } from '$lib/types';
   import html2canvas from 'html2canvas';
 
-  const userId = $derived($page.data.user?.id ?? '');
-  const userEmail = $derived($page.data.user?.email ?? '');
+  const userId = $derived(page.data.user?.id ?? '');
+  const userEmail = $derived(page.data.user?.email ?? '');
   const repo = $derived(createRepository(userId));
   let initialized = $state(false);
   let areaXP: Record<string, number> = $state({});

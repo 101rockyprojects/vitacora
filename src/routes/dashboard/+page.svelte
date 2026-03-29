@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
   import { createRepository } from '$lib/services/repository';
   import { levelFromXp, getAreaXP, AREAS } from '$lib/utils/xp';
 
@@ -11,7 +11,7 @@
   let recentBooks = $derived(books.slice(0, 3));
   let todayTasks = $derived(tasks.filter(t => t.status !== 'done').slice(0, 5));
   let loading = $state(true);
-  const userId = $derived($page.data.user?.id ?? '');
+  const userId = $derived(page.data.user?.id ?? '');
   const repo = $derived(createRepository(userId));
   let initialized = $state(false);
   let userBadgesCount = $state(0);
@@ -168,7 +168,13 @@
           {#each recentBooks as book}
             {@const pct = bookProgress(book)}
             <div class="book-item">
-              <div class="book-item-cover">{book.cover_url ? '' : book.title[0]}</div>
+              <div class="book-item-cover">
+                {#if book.cover_url}
+                  <img src={book.cover_url} alt={book.title} />
+                {:else}
+                  <span>{book.title[0]}</span>
+                {/if}
+              </div>
               <div class="book-item-info">
                 <div class="book-item-title">{book.title}</div>
                 <div class="progress-track" style="margin-top:6px;">
@@ -407,7 +413,9 @@
     font-weight: 700;
     color: var(--accent-green);
     flex-shrink: 0;
+    overflow: hidden;
   }
+  .book-item-cover img { width: 100%; height: 100%; object-fit: cover; }
 
   .book-item-info { flex: 1; min-width: 0; }
 
