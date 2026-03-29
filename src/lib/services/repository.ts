@@ -172,7 +172,17 @@ export function createRepository(
 
     storage: {
       uploadMemory: (path: string, file: File) => client.storage.from('memories').upload(path, file),
-      getMemoryPublicUrl: (path: string) => client.storage.from('memories').getPublicUrl(path)
+      getMemorySignedUrl: async (path: string) => {
+        const { data, error } = await client.storage
+          .from('memories')
+          .createSignedUrl(path, 3600);
+        if (error || !data) {
+          console.error('Signed URL error:', error);
+          return null;
+        }
+        return data.signedUrl;
+      },
+      deleteMemory: (path: string) => client.storage.from('memories').remove([path])
     }
   };
 }

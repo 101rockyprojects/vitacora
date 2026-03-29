@@ -2,6 +2,8 @@
   import { page } from '$app/state';
   import { createRepository } from '$lib/services/repository';
   import { awardXP, XP_VALUES } from '$lib/utils/xp';
+  import { onDestroy, tick } from 'svelte';
+  import 'gridstack/dist/gridstack.min.css';
   import type { Book, LearningItem, SuccessExperience, Reward, MemoryPhoto, CalendarEvent } from '$lib/types';
 
   // --- State ---
@@ -22,11 +24,15 @@
   let learnForm = $state<LearningItem>({ topic: '' });
 
   // Memories
+  const memory_size_limit_kb = 999;
   let memories = $state<MemoryPhoto[]>([]);
   let showMemForm = $state(false);
   let memForm = $state<MemoryPhoto>({ date: '', description: '' });
-  let lightboxPhoto = $state<MemoryPhoto | null>(null);
   let memFile = $state<File | null>(null);
+  let memImageMode = $state<'file' | 'link'>('file');
+  let memImageLink = $state('');
+  let memGridEl = $state<HTMLElement | null>(null);
+  let memGrid = $state<any>(null);
 
   // Calendar
   let calEvents = $state<CalendarEvent[]>([]);
@@ -37,6 +43,14 @@
   let successes = $state<SuccessExperience[]>([]);
   let showSuccessForm = $state(false);
   let successForm = $state<SuccessExperience>({ goal_description: '', done: false });
+  let editingSuccessId = $state<string | null>(null);
+  const editingSuccess = $derived(editingSuccessId ? successes.find(s => s.id === editingSuccessId) ?? null : null);
+
+  $effect(() => {
+    if (editingSuccess?.done) {
+      successForm.done = true;
+    }
+  });
 
   // Rewards
   let rewards = $state<Reward[]>([]);
@@ -79,6 +93,115 @@
     successes = s.data || [];
     rewards = r.data || [];
   }
+
+  $effect(() => {
+    if (activeTab !== 'memories') {
+      if (memGrid) {
+        memGrid.destroy(false);
+        memGrid = null;
+      }
+      return;
+    }
+    if (typeof window === 'undefined' || !memGridEl) return;
+    memories.length;
+    void initMemGrid();
+  });
+
+  async function initMemGrid() {
+    if (!memGridEl) return;
+    await tick();
+    memGrid?.destroy(false);
+    const { GridStack } = await import('gridstack');
+    memGrid = GridStack.init(
+      {
+        column: 12,
+        cellHeight: 80,
+        margin: 10,
+        float: true,
+        animate: true,
+        draggable: { handle: '.mem-drag' },
+        resizable: { handles: 'se', autoHide: false },
+        alwaysShowResizeHandle: true
+      },
+      memGridEl as any
+    );
+  }
+
+  onDestroy(() => {
+    if (memGrid) {
+      memGrid.destroy(false);
+      memGrid = null;
+    }
+  });
+
+  function clamp(n: number, min: number, max: number): number {
+    return Math.max(min, Math.min(max, n));
+  }
+
+  function onMemoryImageLoad(memId: string, e: Event) {
+    if (!memGridEl || !memGrid) return;
+    const img = e.currentTarget as HTMLImageElement | null;
+    if (!img || !img.naturalWidth || !img.naturalHeight) return;
+
+    const ratio = img.naturalWidth / img.naturalHeight;
+    // Auto-size based on aspect ratio, but keep it reasonable.
+    let w = 4;
+    let h = 4;
+    if (ratio >= 1.35) { w = 6; h = 3; }
+    else if (ratio <= 0.8) { w = 3; h = 6; }
+
+    w = clamp(w, 3, 6);
+    h = clamp(h, 3, 6);
+
+    const el = memGridEl.querySelector(`[data-mem-id="${memId}"]`) as HTMLElement | null;
+    if (!el) return;
+    memGrid.update(el, { w, h });
+  }
+
+  function slugify(text: string): string {
+    return text.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]+/g, '');
+  }
+
+  function toIsoDateLocal(d: Date): string {
+    return d.toLocaleDateString('en-CA'); // YYYY-MM-DD local
+  }
+
+  function startOfWeekSunday(d: Date): Date {
+    const start = new Date(d);
+    start.setHours(0, 0, 0, 0);
+    start.setDate(start.getDate() - start.getDay());
+    return start;
+  }
+
+  const todayIso = $derived(toIsoDateLocal(new Date()));
+
+  const weekDays = $derived((() => {
+    const start = startOfWeekSunday(new Date());
+    const days: Array<{
+      iso: string;
+      date: Date;
+      weekday: string;
+      specialTitles: string[];
+      events: CalendarEvent[];
+    }> = [];
+
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(start);
+      date.setDate(start.getDate() + i);
+      const iso = toIsoDateLocal(date);
+      const dayEvents = calEvents.filter(e => e.event_date === iso);
+      const specialTitles = dayEvents.filter(e => e.type === 'special_day').map(e => e.event_name);
+      const events = dayEvents.filter(e => e.type !== 'special_day');
+      days.push({
+        iso,
+        date,
+        weekday: date.toLocaleDateString('es-ES', { weekday: 'long' }),
+        specialTitles,
+        events
+      });
+    }
+    return days;
+  })());
 
   function bookProgress(b: Book) {
     return b.total_pages ? Math.round((b.current_page / b.total_pages) * 100) : 0;
@@ -130,21 +253,38 @@
 
   async function saveMem() {
     saving = true;
-    let photo_url = '';
-    if (memFile) {
+    let photo_path = '';
+    const link = memImageLink.trim();
+    if (memImageMode === 'link' && link) {
+      photo_path = link; // URL directa
+    } else if (memImageMode === 'file' && memFile) {
       const ext = memFile.name.split('.').pop();
-      const path = `${userId}/${Date.now()}.${ext}`;
-      const { data } = await repo.storage.uploadMemory(path, memFile);
-      if (data) {
-        const { data: url } = repo.storage.getMemoryPublicUrl(path);
-        photo_url = url.publicUrl;
+      const fileSizeKb = memFile.size / 1024;
+      if (fileSizeKb > memory_size_limit_kb) {
+        alert('El archivo es demasiado grande. El tamaño máximo es de 999 KB.');
+        saving = false;
+        return;
       }
+      const path = `${userId}/${Date.now()}.${ext}`;
+      const { data, error } = await repo.storage.uploadMemory(path, memFile);
+      if (error || !data) {
+        alert('No se pudo subir la imagen. ¿Existe el bucket "memories" y sus policies?');
+        console.error('Upload error:', error?.message?.trim() || '');
+        saving = false;
+        return;
+      }
+      photo_path = path;
     }
-    await repo.memories.insert({ ...memForm, photo_url });
+
+    await repo.memories.insert({ ...memForm, photo_url: photo_path });
     await awardXP(userId, 'social', 'memory_added', XP_VALUES.memory_added);
+
     memForm = { date: '', description: '' };
     memFile = null;
+    memImageLink = '';
+    memImageMode = 'file';
     showMemForm = false;
+
     await loadAll();
     saving = false;
   }
@@ -152,6 +292,9 @@
   async function deleteMem(id: string) {
     if (!confirm('¿Eliminar recuerdo?')) return;
     await repo.memories.remove(id);
+    await repo.storage.getMemorySignedUrl(`${userId}/${id}`).then(url => {
+      if (url) repo.storage.deleteMemory(`${userId}/${id}`);
+    });
     await loadAll();
   }
 
@@ -172,19 +315,62 @@
 
   async function saveSuccess() {
     saving = true;
-    const { data } = await repo.successes.insert(successForm);
-    if (successForm.done && data) await awardXP(userId, 'selfcare', 'success_experience', XP_VALUES.success_experience, data.id);
+    const wasDone = editingSuccess?.done ?? false;
+    const wantsDone = !!successForm.done;
+
+    if (wantsDone && !wasDone) {
+      const ok = confirm('¿Marcar como completado? Esto no se podrá deshacer.');
+      if (!ok) { saving = false; return; }
+    }
+
+    if (editingSuccessId) {
+      await repo.successes.update(editingSuccessId, {
+        goal_description: successForm.goal_description,
+        reflection: successForm.reflection,
+        done: wasDone ? true : wantsDone,
+        completed_date: wasDone ? editingSuccess?.completed_date ?? new Date().toISOString() : (wantsDone ? new Date().toISOString() : null)
+      });
+      if (wantsDone && !wasDone) await awardXP(userId, 'selfcare', 'success_experience', XP_VALUES.success_experience, editingSuccessId);
+    } else {
+      const { data } = await repo.successes.insert({
+        ...successForm,
+        done: wantsDone,
+        completed_date: wantsDone ? new Date().toISOString() : null
+      });
+      if (wantsDone && data) await awardXP(userId, 'selfcare', 'success_experience', XP_VALUES.success_experience, data.id);
+    }
     successForm = { goal_description: '', done: false };
+    editingSuccessId = null;
     showSuccessForm = false;
     await loadAll();
     saving = false;
   }
 
   async function toggleSuccess(s: SuccessExperience) {
-    const done = !s.done;
-    await repo.successes.update(s.id!, { done, completed_date: done ? new Date().toISOString() : null });
-    if (done) await awardXP(userId, 'selfcare', 'success_experience', XP_VALUES.success_experience, s.id);
+    if (s.done) return;
+    const ok = confirm('¿Marcar como completado? Esto no se podrá deshacer.');
+    if (!ok) return;
+    await repo.successes.update(s.id!, { done: true, completed_date: new Date().toISOString() });
+    await awardXP(userId, 'selfcare', 'success_experience', XP_VALUES.success_experience, s.id);
     await loadAll();
+  }
+
+  function openNewSuccess() {
+    editingSuccessId = null;
+    successForm = { goal_description: '', done: false };
+    showSuccessForm = true;
+  }
+
+  function openEditSuccess(s: SuccessExperience) {
+    editingSuccessId = s.id || null;
+    successForm = { ...s, done: !!s.done };
+    showSuccessForm = true;
+  }
+
+  function closeSuccessForm() {
+    showSuccessForm = false;
+    editingSuccessId = null;
+    successForm = { goal_description: '', done: false };
   }
 
   async function deleteSuccess(id: string) {
@@ -332,27 +518,51 @@
   {:else if activeTab === 'memories'}
     <div class="fade-in">
       <div class="tab-actions">
-        <button class="btn btn-primary" onclick={() => { memForm = { date: new Date().toISOString().split('T')[0], description: '' }; showMemForm = true; }}>+ Agregar recuerdo</button>
+        <button class="btn btn-primary" onclick={() => {
+          memForm = { date: new Date().toISOString().split('T')[0], description: '' };
+          memFile = null;
+          memImageLink = '';
+          memImageMode = 'file';
+          showMemForm = true;
+        }}>+ Agregar recuerdo</button>
       </div>
-      <div class="memory-gallery">
-        {#each memories as mem}
-          <div class="mem-card" onclick={() => lightboxPhoto = mem} role="button" tabindex="0" onkeydown={(e) => e.key === 'Enter' && (lightboxPhoto = mem)}>
-            {#if mem.photo_url}
-              <img src={mem.photo_url} alt={mem.description} class="mem-photo" />
-            {:else}
-              <div class="mem-placeholder">📷</div>
-            {/if}
-            <div class="mem-info">
-              <div class="mem-date">{new Date(mem.date).toLocaleDateString('es-ES')}</div>
-              <div class="mem-desc">{mem.description}</div>
+      {#if memories.length === 0}
+        <div class="empty-state card">Crea tu álbum de recuerdos 📸</div>
+      {:else}
+        <div class="grid-stack memory-grid" bind:this={memGridEl}>
+          {#each memories as mem (mem.id)}
+            <div
+              class="grid-stack-item"
+              data-mem-id={mem.id}
+              data-gs-w="4"
+              data-gs-h="4"
+              data-gs-min-w="4"
+              data-gs-min-h="4"
+              data-gs-max-w="6"
+              data-gs-max-h="6"
+            >
+              <div class="grid-stack-item-content">
+                <div class="mem-card">
+                  <button type="button" class="mem-drag" aria-label="Drag">::</button>
+                  {#if mem.photo_url}
+                    <img src={mem.photo_url} alt={mem.description} class="mem-photo" onload={(e) => onMemoryImageLoad(mem.id!, e)} />
+                  {:else}
+                    <div class="mem-placeholder">📷</div>
+                  {/if}
+                  <div class="mem-info">
+                    <div class="mem-date">{new Date(mem.date).toLocaleDateString('es-ES')}</div>
+                    <div class="mem-desc">{mem.description}</div>
+                  </div>
+                  {#if mem.photo_url}
+                    <a class="mem-open" href={mem.photo_url} target="_blank" rel="noreferrer">ver</a>
+                  {/if}
+                  <button class="mem-delete btn btn-ghost" onclick={() => deleteMem(mem.id!)}>✕</button>
+                </div>
+              </div>
             </div>
-            <button class="mem-delete btn btn-ghost" onclick={(e) => {e.stopPropagation();deleteMem(mem.id!);}}>✕</button>
-          </div>
-        {/each}
-        {#if memories.length === 0}
-          <div class="empty-state card" style="grid-column:1/-1">Crea tu álbum de recuerdos 📸</div>
-        {/if}
-      </div>
+          {/each}
+        </div>
+      {/if}
     </div>
 
   <!-- CALENDAR -->
@@ -361,9 +571,43 @@
       <div class="tab-actions">
         <button class="btn btn-primary" onclick={() => { calForm = { event_name: '', event_date: '', type: 'event' }; showCalForm = true; }}>+ Agregar evento</button>
       </div>
-      <div class="cal-list">
+      <!-- WEEK PLANNER -->
+      <div class="week-title">Semana actual</div>
+      <div class="week-section week-grid">
+        {#each weekDays as d (d.iso)}
+          {@const isToday = d.iso === todayIso}
+          {@const isSpecial = d.specialTitles.length > 0}
+          <div class="week-col">
+            <div class="week-header" class:current={isToday} class:special={!isToday && isSpecial}>
+              <div class="week-header-top">
+                <div class="week-day">{d.weekday}</div>
+                <div class="week-date">{d.date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</div>
+              </div>
+              {#if isSpecial}
+                <div class="week-special">{d.specialTitles.join(' · ')}</div>
+              {/if}
+            </div>
+
+            <div class="week-body">
+              {#if d.events.length === 0}
+                <div class="week-empty">{isSpecial ? 'Sin eventos' : '—'}</div>
+              {:else}
+                <div class="week-list">
+                  {#each d.events as ev (ev.id)}
+                    <a class="week-event" href={`#event-${slugify(ev.event_name)}`}>{ev.event_name}</a>
+                  {/each}
+                </div>
+              {/if}
+            </div>
+          </div>
+        {/each}
+      </div>
+
+      <!-- LIST OF EVENTS -->
+      <div class="week-section cal-list">
+        <div class="week-title">Eventos</div>
         {#each calEvents as ev}
-          <div class="cal-card card">
+          <div class="cal-card card" id="event-{slugify(ev.event_name)}">
             <div class="cal-dot" style="background:{ev.type === 'special_day' ? 'var(--accent-yellow)' : 'var(--accent-green)'}"></div>
             <div class="cal-info">
               <div class="cal-name">{ev.event_name}</div>
@@ -383,12 +627,12 @@
   {:else if activeTab === 'successes'}
     <div class="fade-in">
       <div class="tab-actions">
-        <button class="btn btn-primary" onclick={() => { successForm = { goal_description: '', done: false }; showSuccessForm = true; }}>+ Nueva meta</button>
+        <button class="btn btn-primary" onclick={openNewSuccess}>+ Nueva meta</button>
       </div>
       <div class="success-list">
         {#each successes as s}
           <div class="success-card card" class:done={s.done}>
-            <button class="success-check" class:checked={s.done} onclick={() => toggleSuccess(s)}>
+            <button class="success-check" class:checked={s.done} onclick={() => toggleSuccess(s)} disabled={s.done} aria-label="Marcar como completado">
               {s.done ? '✓' : ''}
             </button>
             <div class="success-info">
@@ -400,6 +644,7 @@
                 <div class="success-date">Completado: {new Date(s.completed_date).toLocaleDateString('es-ES')}</div>
               {/if}
             </div>
+            <button class="btn btn-secondary" onclick={() => openEditSuccess(s)}>Editar</button>
             <button class="btn btn-ghost" onclick={() => deleteSuccess(s.id!)}>✕</button>
           </div>
         {/each}
@@ -490,8 +735,30 @@
       <div class="form-group"><label>Fecha</label><input type="date" bind:value={memForm.date} /></div>
       <div class="form-group"><label>Descripción</label><textarea bind:value={memForm.description} rows="2"></textarea></div>
       <div class="form-group">
-        <label>Foto</label>
-        <input type="file" accept="image/*" onchange={(e) => { const t = e.target as HTMLInputElement; memFile = t.files?.[0] || null; }} style="background:var(--bg3);padding:8px;" />
+        <label>Imagen</label>
+        <div class="mem-upload-toggle">
+          <button type="button" class="toggle-pill" class:active={memImageMode === 'file'} onclick={() => { memImageMode = 'file'; memImageLink = ''; }}>Archivo</button>
+          <button type="button" class="toggle-pill" class:active={memImageMode === 'link'} onclick={() => { memImageMode = 'link'; memFile = null; }}>Link</button>
+        </div>
+
+        {#if memImageMode === 'file'}
+          <input
+            id="mem-file"
+            class="file-input"
+            type="file"
+            accept="image/*"
+            onchange={(e) => { const t = e.target as HTMLInputElement; memFile = t.files?.[0] || null; }}
+          />
+          <div class="file-row">
+            <label class="file-btn" for="mem-file">Elegir imagen</label>
+            <div class="file-name">{memFile?.name || 'Ningun archivo seleccionado'}</div>
+            {#if memFile}
+              <button type="button" class="btn btn-ghost" style="font-size:12px;" onclick={() => memFile = null}>Quitar</button>
+            {/if}
+          </div>
+        {:else}
+          <input bind:value={memImageLink} placeholder="https://..." />
+        {/if}
       </div>
       <div class="form-actions">
         <button class="btn btn-secondary" onclick={() => showMemForm = false}>Cancelar</button>
@@ -529,19 +796,24 @@
 {#if showSuccessForm}
   <div class="modal-backdrop" onclick={(e) => {
         if (e.target === e.currentTarget) {
-          showSuccessForm = false
+          closeSuccessForm()
         }
       }}>
     <div class="modal">
-      <h3>Nueva meta / logro</h3>
+      <h3>{editingSuccessId ? 'Editar meta / logro' : 'Nueva meta / logro'}</h3>
       <div class="form-group"><label>Descripción de la meta</label><textarea bind:value={successForm.goal_description} rows="2" placeholder="¿Qué quieres lograr?"></textarea></div>
-      <div class="form-group"><label>Reflexión</label><textarea bind:value={successForm.reflection} rows="2" placeholder="¿Qué aprendiste?"></textarea></div>
+      <div class="form-group"><label>Reflexión</label><textarea bind:value={successForm.reflection} rows="8" placeholder="¿Qué aprendiste?"></textarea></div>
       <div class="form-group" style="display:flex;align-items:center;gap:8px;">
-        <input type="checkbox" bind:checked={successForm.done} id="done-check" style="width:auto;" />
-        <label for="done-check" style="text-transform:none;font-size:14px;color:var(--text);">Ya completada</label>
+        <input type="checkbox" bind:checked={successForm.done} id="done-check" style="width:auto;" disabled={!!editingSuccess?.done} />
+        <label for="done-check" style="text-transform:none;font-size:14px;color:var(--text);">Marcar como completada</label>
       </div>
+      {#if editingSuccess?.done}
+        <div style="color:var(--text3);font-size:12px;font-family:var(--font-mono);margin-top:-15px;">
+          Ya esta completada y no se puede desmarcar.
+        </div>
+      {/if}
       <div class="form-actions">
-        <button class="btn btn-secondary" onclick={() => showSuccessForm = false}>Cancelar</button>
+        <button class="btn btn-secondary" onclick={closeSuccessForm}>Cancelar</button>
         <button class="btn btn-primary" onclick={saveSuccess} disabled={saving}>{saving ? '...' : 'Guardar'}</button>
       </div>
     </div>
@@ -562,21 +834,6 @@
       <div class="form-actions">
         <button class="btn btn-secondary" onclick={() => showRewardForm = false}>Cancelar</button>
         <button class="btn btn-primary" onclick={saveReward} disabled={saving}>{saving ? '...' : 'Guardar'}</button>
-      </div>
-    </div>
-  </div>
-{/if}
-
-<!-- Lightbox -->
-{#if lightboxPhoto}
-  <div class="modal-backdrop" onclick={() => lightboxPhoto = null} role="button" tabindex="0" onkeydown={(e) => e.key === 'Escape' && (lightboxPhoto = null)}>
-    <div class="lightbox">
-      {#if lightboxPhoto.photo_url}
-        <img src={lightboxPhoto.photo_url} alt={lightboxPhoto.description} />
-      {/if}
-      <div class="lightbox-info">
-        <div class="lightbox-date">{new Date(lightboxPhoto.date).toLocaleDateString('es-ES', { year:'numeric', month:'long', day:'numeric' })}</div>
-        <div class="lightbox-desc">{lightboxPhoto.description}</div>
       </div>
     </div>
   </div>
@@ -744,10 +1001,8 @@
   .learn-thumb { width: 80px; height: 60px; object-fit: cover; border-radius: 6px; flex-shrink: 0; }
 
   /* Memories */
-  .memory-gallery {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 14px;
+  .memory-grid {
+    width: 100%;
   }
 
   .mem-card {
@@ -755,17 +1010,66 @@
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
     overflow: hidden;
-    cursor: pointer;
+    cursor: default;
     position: relative;
     transition: transform var(--transition);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
   }
 
   .mem-card:hover { transform: scale(1.02); }
 
-  .mem-photo { width: 100%; height: 140px; object-fit: cover; display: block; }
+  .mem-open {
+    position: absolute;
+    left: 6px;
+    bottom: 6px;
+    z-index: 20;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: white;
+    background: rgba(0,0,0,0.55);
+    border: 1px solid rgba(51,61,87,0.85);
+    border-radius: 8px;
+    padding: 4px 8px;
+    line-height: 1;
+    opacity: 0;
+    transition: opacity var(--transition), transform var(--transition);
+  }
+
+  .mem-card:hover .mem-open { opacity: 1; transform: translateY(-1px); }
+
+  :global(.memory-grid .grid-stack-item-content) {
+    overflow: visible;
+    position: relative;
+  }
+
+  :global(.memory-grid .grid-stack-item > .ui-resizable-handle) {
+    z-index: 30;
+    opacity: 0;
+    transition: opacity var(--transition);
+  }
+
+  :global(.memory-grid .grid-stack-item:hover > .ui-resizable-handle) {
+    opacity: 1;
+  }
+
+  :global(.memory-grid .grid-stack-item > .ui-resizable-se) {
+    right: 6px;
+    bottom: 6px;
+    width: 22px;
+    height: 22px;
+    border-radius: 8px;
+    background-color: rgba(0,0,0,0.55);
+    border: 1px solid rgba(115,231,189,0.35);
+    background-size: 14px 14px;
+  }
+
+  .mem-photo { width: 100%; flex: 1; min-height: 140px; object-fit: cover; display: block; }
   .mem-placeholder {
     width: 100%;
-    height: 140px;
+    flex: 1;
+    min-height: 140px;
     background: var(--bg3);
     display: flex;
     align-items: center;
@@ -776,6 +1080,79 @@
   .mem-info { padding: 10px; }
   .mem-date { font-size: 11px; color: var(--text3); font-family: var(--font-mono); margin-bottom: 3px; }
   .mem-desc { font-size: 13px; color: var(--text); }
+
+  .mem-upload-toggle {
+    display: inline-flex;
+    gap: 6px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 4px;
+    margin-bottom: 10px;
+  }
+
+  .toggle-pill {
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text3);
+    transition: all var(--transition);
+    font-family: var(--font-mono);
+  }
+
+  .toggle-pill.active {
+    background: rgba(115,231,189,0.18);
+    color: var(--text);
+    border: 1px solid rgba(115,231,189,0.35);
+  }
+
+  .file-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
+  }
+
+  .file-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .file-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(115,231,189,0.35);
+    background: rgba(115,231,189,0.12);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 700;
+    transition: all var(--transition);
+    cursor: pointer;
+  }
+
+  .file-btn:hover { transform: translateY(-1px); background: rgba(115,231,189,0.18); }
+
+  .file-name {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text3);
+    flex: 1;
+    min-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 
   .mem-delete {
     position: absolute;
@@ -795,9 +1172,31 @@
     padding: 0;
   }
 
-  .mem-card:hover .mem-delete { opacity: 1; }
+  .mem-drag {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    background: rgba(0,0,0,0.55);
+    color: white;
+    border-radius: 8px;
+    padding: 2px 6px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1;
+    opacity: 0;
+    transition: opacity var(--transition);
+    cursor: grab;
+    user-select: none;
+  }
 
+  .mem-drag:active { cursor: grabbing; }
+  .mem-card:hover .mem-drag { opacity: 1; }
+
+  .mem-card:hover .mem-delete { opacity: 1; }
+  
   /* Calendar */
+  .week-section { margin-top: 16px; }
+
   .cal-list { display: flex; flex-direction: column; gap: 10px; }
 
   .cal-card {
@@ -805,11 +1204,115 @@
     align-items: center;
     gap: 14px;
   }
+  .cal-card:target {
+    outline: 2px solid var(--accent-green);
+    outline-offset: 2px;
+  }
 
   .cal-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
   .cal-info { flex: 1; }
   .cal-name { font-weight: 700; font-size: 15px; }
   .cal-date { font-size: 13px; color: var(--text2); text-transform: capitalize; margin: 3px 0; }
+
+  .week-title {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 12px;
+  }
+
+  .week-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  @media (max-width: 1000px) {
+    .week-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+
+  @media (max-width: 560px) {
+    .week-grid { grid-template-columns: 1fr; }
+  }
+
+  .week-col {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: rgba(0,0,0,0.15);
+  }
+
+  .week-header {
+    padding: 10px 10px 8px;
+    background: var(--bg3);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .week-header.current {
+    background: var(--accent-green);
+    border-bottom-color: var(--accent-green);
+  }
+
+  .week-header.current .week-day {
+    color: var(--bg3);
+  }
+
+  .week-header.current .week-date {
+    color: var(--surface2);
+  }
+
+  .week-header.special {
+    background: rgba(235,213,127,0.14);
+    border-bottom-color: rgba(235,213,127,0.35);
+  }
+
+  .week-header-top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .week-day {
+    font-weight: 800;
+    font-size: 12px;
+    color: var(--text);
+    text-transform: capitalize;
+  }
+
+  .week-date {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text3);
+    white-space: nowrap;
+  }
+
+  .week-special {
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--text2);
+    font-style: italic;
+    line-height: 1.4;
+  }
+
+  .week-body { padding: 10px; }
+  .week-empty { color: var(--text3); font-size: 12px; font-family: var(--font-mono); }
+  .week-list { display: flex; flex-direction: column; gap: 6px; }
+  .week-event {
+    font-size: 12px;
+    color: var(--bg2);
+    font-weight: 600;
+    padding: 6px 8px;
+    border-radius: 8px;
+    border: 1px solid rgba(51,61,87,0.7);
+    background: var(--accent-blue);
+  }
+  .week-event:hover {
+    font-size: 12px;
+    background: var(--accent-green);
+  }
 
   /* Successes */
   .success-list { display: flex; flex-direction: column; gap: 12px; }
@@ -844,10 +1347,16 @@
     border-color: var(--accent-green);
     color: #0a1a0f;
   }
+  .success-check:disabled {
+    cursor: default;
+    background: var(--surface);
+    border-color: var(--accent-green);
+    color: var(--accent-green);
+  }
 
   .success-info { flex: 1; }
-  .success-goal { font-weight: 600; font-size: 15px; }
-  .success-reflection { font-size: 13px; color: var(--text2); font-style: italic; margin-top: 4px; }
+  .success-goal { font-weight: 600; font-size: 20px; line-height: normal; }
+  .success-reflection { font-size: 13px; color: var(--text2); max-width: 80%; margin-top: 4px; }
   .success-date { font-size: 11px; color: var(--text3); font-family: var(--font-mono); margin-top: 4px; }
 
   /* Rewards */
@@ -868,22 +1377,6 @@
   .reward-name { font-weight: 700; font-size: 15px; }
   .reward-given { font-size: 13px; color: var(--text2); margin: 4px 0; }
   .reward-date { font-size: 11px; color: var(--text3); font-family: var(--font-mono); }
-
-  /* Lightbox */
-  .lightbox {
-    max-width: 800px;
-    width: 100%;
-    background: var(--bg2);
-    border-radius: var(--radius-lg);
-    overflow: hidden;
-    border: 1px solid var(--border);
-  }
-
-  .lightbox img { width: 100%; max-height: 60vh; object-fit: contain; display: block; }
-
-  .lightbox-info { padding: 16px 20px; }
-  .lightbox-date { font-family: var(--font-mono); font-size: 12px; color: var(--text3); margin-bottom: 6px; }
-  .lightbox-desc { font-size: 15px; color: var(--text); }
 
   .empty-state {
     color: var(--text3);
