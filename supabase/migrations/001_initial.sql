@@ -282,3 +282,20 @@ INSERT INTO lumina.badges (name, description, icon, condition_type, condition_va
   ('Memorias', 'Agrega 10 fotos al álbum', '📸', 'memories', 10),
   ('Aprendiz', 'Registra 5 temas de aprendizaje', '🧠', 'learning', 5)
 ON CONFLICT (name) DO NOTHING;
+
+
+-- BUCKET POLICIES
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'memories') THEN
+        PERFORM storage.create_bucket('memories', false); -- false = no público
+    END IF;
+END $$;
+
+CREATE POLICY "Give users access to own folder 1ohtrhb_0" ON storage.objects FOR SELECT TO authenticated USING (bucket_id = 'memories' AND (select auth.uid()::text) = (storage.foldername(name))[1]);
+
+CREATE POLICY "Give users access to own folder 1ohtrhb_1" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'memories' AND (select auth.uid()::text) = (storage.foldername(name))[1]);
+
+CREATE POLICY "Give users access to own folder 1ohtrhb_2" ON storage.objects FOR UPDATE TO authenticated USING (bucket_id = 'memories' AND (select auth.uid()::text) = (storage.foldername(name))[1]);
+
+CREATE POLICY "Give users access to own folder 1ohtrhb_3" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'memories' AND (select auth.uid()::text) = (storage.foldername(name))[1]);
