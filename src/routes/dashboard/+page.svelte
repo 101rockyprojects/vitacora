@@ -208,7 +208,7 @@
       </div>
     </div>
 
-    <div class="card" style="grid-column: span 2;">
+    <div class="card week-card">
       <WeekPlanner events={calEvents} showEventList={false} />
     </div>
   </div>
@@ -456,6 +456,10 @@
     min-height: 180px;
   }
 
+  .week-card {
+    grid-column: span 2;
+  }
+
   .motive-glyph {
     font-size: 32px;
     color: var(--accent-green);
@@ -504,8 +508,7 @@
   @media (max-width: 700px) {
     .dash-header { flex-direction: column; align-items: flex-start; gap: 12px; }
     .dash-global-xp { width: 100%; justify-content: space-between; }
-    .stats-row { grid-template-columns: repeat(2, 1fr); }
-    .dash-grid { grid-template-columns: 1fr; }
+    .week-card { grid-column: span 1; }
   }
 
   @media (max-width: 900px) {
