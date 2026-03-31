@@ -175,7 +175,7 @@ export function createRepository(
       getMemorySignedUrl: async (path: string) => {
         const { data, error } = await client.storage
           .from('memories')
-          .createSignedUrl(path, 3600);
+          .createSignedUrl(path, 157784760); // 5 years in seconds
         if (error || !data) {
           console.error('Signed URL error:', error);
           return null;
