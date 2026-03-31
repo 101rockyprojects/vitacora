@@ -88,6 +88,18 @@ input::placeholder, textarea::placeholder { color: var(--text3); }
   cursor: pointer;
   border: 1px solid transparent;
 }
+.small-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 8px 8px;
+  border-radius: var(--radius);
+  font-weight: 600;
+  font-size: 14px;
+  transition: all var(--transition);
+  cursor: pointer;
+  border: 1px solid transparent;
+}
 .btn-primary {
   background: var(--accent-green);
   color: #0a1a0f;

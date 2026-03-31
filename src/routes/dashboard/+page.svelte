@@ -1,10 +1,13 @@
 <script lang="ts">
   import { page } from '$app/state';
   import { createRepository } from '$lib/services/repository';
+  import WeekPlanner from '$lib/components/WeekPlanner.svelte';
+  import type { Book, CalendarEvent, Task } from '$lib/types';
   import { levelFromXp, getAreaXP, AREAS } from '$lib/utils/xp';
 
-  let tasks: any[] = $state([]);
-  let books: any[] = $state([]);
+  let tasks = $state<Task[]>([]);
+  let books = $state<Book[]>([]);
+  let calEvents = $state<CalendarEvent[]>([]);
   let areaXP: Record<string, number> = $state({});
   let totalXP = $derived(Object.values(areaXP).reduce((a, b) => a + b, 0));
   let globalLevel = $derived(levelFromXp(totalXP));
@@ -27,14 +30,16 @@
   });
 
   async function loadDashboard() {
-    const [tasksRes, booksRes, badgesRes] = await Promise.all([
+    const [tasksRes, booksRes, badgesRes, calRes] = await Promise.all([
       repo.tasks.list(),
       repo.books.list(),
-      repo.userBadges.listIds()
+      repo.userBadges.listIds(),
+      repo.calendar.list()
     ]);
 
     tasks = tasksRes.data || [];
     books = booksRes.data || [];
+    calEvents = calRes.data || [];
     userBadgesCount = badgesRes.data?.length || 0;
     areaXP = await getAreaXP(userId);
     loading = false;
@@ -44,6 +49,7 @@
     if (!book.total_pages) return 0;
     return Math.round((book.current_page / book.total_pages) * 100);
   }
+
 </script>
 
 <div class="dashboard fade-in">
@@ -160,7 +166,7 @@
 
     <!-- Books in progress -->
     <div class="card">
-      <h3 class="card-title">Lecturas <a href="/goals" class="card-link">ver todas →</a></h3>
+      <h3 class="card-title">Lecturas <a href="/goals?tab=books" class="card-link">Ver todas →</a></h3>
       {#if recentBooks.length === 0}
         <div class="empty-state">Agrega libros en Visión & Metas</div>
       {:else}
@@ -198,7 +204,12 @@
         <a href="/goals" class="motive-link">Visión →</a>
         <a href="/work" class="motive-link">Kanban →</a>
         <a href="/partner" class="motive-link">Partner →</a>
+        <a href="/goals?tab=calendar" class="motive-link">Calendario →</a>
       </div>
+    </div>
+
+    <div class="card" style="grid-column: span 2;">
+      <WeekPlanner events={calEvents} showEventList={false} />
     </div>
   </div>
 </div>
@@ -488,6 +499,13 @@
     height: 40px;
     background: var(--bg3);
     border-radius: 8px;
+  }
+
+  @media (max-width: 700px) {
+    .dash-header { flex-direction: column; align-items: flex-start; gap: 12px; }
+    .dash-global-xp { width: 100%; justify-content: space-between; }
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+    .dash-grid { grid-template-columns: 1fr; }
   }
 
   @media (max-width: 900px) {

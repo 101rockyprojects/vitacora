@@ -56,6 +56,8 @@ export function createRepository(
       listIds: () => client.from('projects').select('id').eq('user_id', uid()),
       insert: (project: Omit<Project, 'id' | 'user_id'>) =>
         client.from('projects').insert({ ...project, user_id: uid() }),
+      update: (id: string, values: Partial<Project>) =>
+        client.from('projects').update(values).eq('id', id),
       remove: (id: string) => client.from('projects').delete().eq('id', id)
     },
 
@@ -64,6 +66,29 @@ export function createRepository(
         client.from('useful_links').select('*').eq('user_id', uid()).order('created_at', { ascending: false }),
       insert: (link: Omit<UsefulLink, 'id' | 'user_id'>) =>
         client.from('useful_links').insert({ ...link, user_id: uid() }),
+      update: (id: string, values: Partial<UsefulLink>) =>
+        client.from('useful_links').update(values).eq('id', id),
+      getVisionBoard: () =>
+        client
+          .from('useful_links')
+          .select('*')
+          .eq('user_id', uid())
+          .in('link_type', ['vision_board_image', 'vision_board_canva'])
+          .order('created_at', { ascending: false })
+          .limit(1),
+      saveVisionBoard: async (url: string, linkType: 'vision_board_image' | 'vision_board_canva') => {
+        await client
+          .from('useful_links')
+          .delete()
+          .eq('user_id', uid())
+          .in('link_type', ['vision_board_image', 'vision_board_canva']);
+        return client.from('useful_links').insert({
+          user_id: uid(),
+          title: 'Vision Board Link',
+          url,
+          link_type: linkType
+        });
+      },
       remove: (id: string) => client.from('useful_links').delete().eq('id', id)
     },
 
@@ -94,6 +119,8 @@ export function createRepository(
       listIds: () => client.from('learning').select('id').eq('user_id', uid()),
       insert: (item: Omit<LearningItem, 'id' | 'user_id'>) =>
         client.from('learning').insert({ ...item, user_id: uid() }),
+      update: (id: string, values: Partial<LearningItem>) =>
+        client.from('learning').update(values).eq('id', id),
       remove: (id: string) => client.from('learning').delete().eq('id', id)
     },
 
@@ -131,6 +158,8 @@ export function createRepository(
         client.from('rewards').select('*').eq('user_id', uid()).order('date_awarded', { ascending: false }),
       insert: (item: Omit<Reward, 'id' | 'user_id'>) =>
         client.from('rewards').insert({ ...item, user_id: uid() }),
+      update: (id: string, values: Partial<Reward>) =>
+        client.from('rewards').update(values).eq('id', id),
       remove: (id: string) => client.from('rewards').delete().eq('id', id)
     },
 

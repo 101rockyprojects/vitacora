@@ -91,7 +91,7 @@
       <h2 class="section-title">♡ Partner</h2>
       <div class="section-subtitle">Ideas para hacer juntos</div>
     </div>
-    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+    <div style="display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;">
       <button class="btn btn-primary" onclick={pickRandom}>✦ Sorpréndeme</button>
       <button class="btn btn-secondary" onclick={() => showForm = true}>+ Nueva idea</button>
     </div>

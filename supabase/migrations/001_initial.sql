@@ -170,6 +170,7 @@ CREATE TABLE IF NOT EXISTS lumina.useful_links (
   user_id    UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   title      TEXT NOT NULL,
   url        TEXT NOT NULL,
+  link_type  TEXT NOT NULL DEFAULT 'general' CHECK (link_type IN ('general', 'vision_board_image', 'vision_board_canva')),
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 ALTER TABLE lumina.useful_links ENABLE ROW LEVEL SECURITY;

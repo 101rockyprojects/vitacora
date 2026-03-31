@@ -85,6 +85,7 @@ export interface UsefulLink {
   user_id?: string;
   title: string;
   url: string;
+  link_type?: 'general' | 'vision_board_image' | 'vision_board_canva';
   created_at?: string;
 }
 

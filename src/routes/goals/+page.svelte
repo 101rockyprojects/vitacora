@@ -1,16 +1,31 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
   import { page } from '$app/state';
   import { createRepository } from '$lib/services/repository';
+  import Toast from '$lib/components/Toast.svelte';
+  import WeekPlanner from '$lib/components/WeekPlanner.svelte';
   import { awardXP, XP_VALUES } from '$lib/utils/xp';
   import { onDestroy, tick } from 'svelte';
   import 'gridstack/dist/gridstack.min.css';
-  import type { Book, LearningItem, SuccessExperience, Reward, MemoryPhoto, CalendarEvent } from '$lib/types';
+  import type { Book, LearningItem, SuccessExperience, Reward, MemoryPhoto, CalendarEvent, UsefulLink } from '$lib/types';
 
   // --- State ---
+  const GOALS_TABS = ['vision', 'books', 'learning', 'memories', 'calendar', 'successes', 'rewards'] as const;
+  type GoalsTab = typeof GOALS_TABS[number];
+
   const userId = $derived(page.data.user?.id ?? '');
   const repo = $derived(createRepository(userId));
   let initialized = $state(false);
-  let activeTab = $state<'vision' | 'books' | 'learning' | 'memories' | 'calendar' | 'successes' | 'rewards'>('vision');
+  const url = new URL(window.location.href);
+  const current = url.searchParams.get('tab');
+  const defaultTab = GOALS_TABS.includes(current as GoalsTab) ? (current as GoalsTab) : 'vision';
+  let activeTab = $state<GoalsTab>(defaultTab);
+  let visionBoardLink = $state<UsefulLink | null>(null);
+  let showVisionLinkForm = $state(false);
+  let visionLinkMode = $state<'image' | 'canva'>('image');
+  let visionLinkInput = $state('');
+  let visionToast = $state(false);
+  let visionToastTimer: ReturnType<typeof setTimeout> | null = $state(null);
 
   // Books
   let books = $state<Book[]>([]);
@@ -21,6 +36,7 @@
   // Learning
   let learning = $state<LearningItem[]>([]);
   let showLearnForm = $state(false);
+  let editingLearnId = $state<string | null>(null);
   let learnForm = $state<LearningItem>({ topic: '' });
 
   // Memories
@@ -55,18 +71,19 @@
   // Rewards
   let rewards = $state<Reward[]>([]);
   let showRewardForm = $state(false);
+  let editingRewardId = $state<string | null>(null);
   let rewardForm = $state<Reward>({ achievement_name: '', reward_given: '', date_awarded: new Date().toISOString().split('T')[0] });
 
   let saving = $state(false);
 
   const motivationalPhrases = [
-    "¿cuánto más podríamos avanzar si no tuviéramos que cargar con nuestros miedos a cuestas?",
-    "No se trata de por qué peleo sino por quién",
-    "DO not waste your potential",
-    "¡commit yourself!",
+    "1% better every day",
     "YOU WILL NOT FAIL IF IT IS WORTH IT",
-    "Cuando miro a la cima de la montaña, en mi mente ya he fracasado es entonces que comienzo a escalar",
-    "1% better every day"
+    "DO NOT WASTE YOUR POTENTIAL",
+    "¡Commit yourself!",
+    "No se trata de por qué peleo sino por quién",
+    "¿Cuánto más podríamos avanzar si no tuviéramos que cargar con nuestros miedos a cuestas?",
+    "Cuando miro a la cima de la montaña, en mi mente ya he fracasado... es entonces que comienzo a escalar",
   ];
 
   $effect(() => {
@@ -76,15 +93,39 @@
     }
   });
 
+  function switchTab(tabId: GoalsTab) {
+    if (GOALS_TABS.includes(activeTab)) {
+      activeTab = tabId as typeof activeTab;
+      const next = new URL(window.location.href);
+      next.searchParams.set('tab', activeTab);
+      window.history.replaceState(window.history.state, '', next);
+    } else {
+      activeTab = 'vision';
+    }
+  }
+
+  $effect(() => {
+    if (typeof window === 'undefined') return;
+
+    const url = new URL(window.location.href);
+    const current = url.searchParams.get('tab');
+
+    if (current === activeTab) return;
+
+    url.searchParams.set('tab', activeTab);
+    window.history.replaceState(window.history.state, '', url);
+  });
+
   async function loadAll() {
     if (!userId) return;
-    const [b, l, m, c, s, r] = await Promise.all([
+    const [b, l, m, c, s, r, vb] = await Promise.all([
       repo.books.list(),
       repo.learning.list(),
       repo.memories.list(),
       repo.calendar.list(),
       repo.successes.list(),
-      repo.rewards.list()
+      repo.rewards.list(),
+      repo.links.getVisionBoard()
     ]);
     books = b.data || [];
     learning = l.data || [];
@@ -92,6 +133,10 @@
     calEvents = c.data || [];
     successes = s.data || [];
     rewards = r.data || [];
+    visionBoardLink = vb.data?.[0] || null;
+    if (visionBoardLink?.link_type === 'vision_board_canva') visionLinkMode = 'canva';
+    if (visionBoardLink?.link_type === 'vision_board_image') visionLinkMode = 'image';
+    visionLinkInput = visionBoardLink?.url || '';
   }
 
   $effect(() => {
@@ -125,6 +170,9 @@
       },
       memGridEl as any
     );
+    if (window.innerWidth <= 640) {
+      memGrid.column(1, 'moveScale');
+    }
   }
 
   onDestroy(() => {
@@ -132,7 +180,39 @@
       memGrid.destroy(false);
       memGrid = null;
     }
+    if (visionToastTimer) {
+      clearTimeout(visionToastTimer);
+      visionToastTimer = null;
+    }
   });
+
+  async function saveVisionBoardLink() {
+    const url = visionLinkInput.trim();
+    if (!url) {
+      alert('Agrega un enlace válido.');
+      return;
+    }
+    if (!/^https?:\/\//i.test(url)) {
+      alert('El enlace debe iniciar con http:// o https://');
+      return;
+    }
+
+    const linkType = visionLinkMode === 'canva' ? 'vision_board_canva' : 'vision_board_image';
+    const { error } = await repo.links.saveVisionBoard(url, linkType);
+    if (error) {
+      alert('No se pudo guardar el Vision Board Link.');
+      return;
+    }
+
+    await loadAll();
+    showVisionLinkForm = false;
+    visionToast = true;
+    if (visionToastTimer) clearTimeout(visionToastTimer);
+    visionToastTimer = setTimeout(() => {
+      visionToast = false;
+      visionToastTimer = null;
+    }, 3800);
+  }
 
   function clamp(n: number, min: number, max: number): number {
     return Math.max(min, Math.min(max, n));
@@ -157,51 +237,6 @@
     if (!el) return;
     memGrid.update(el, { w, h });
   }
-
-  function slugify(text: string): string {
-    return text.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]+/g, '');
-  }
-
-  function toIsoDateLocal(d: Date): string {
-    return d.toLocaleDateString('en-CA'); // YYYY-MM-DD local
-  }
-
-  function startOfWeekSunday(d: Date): Date {
-    const start = new Date(d);
-    start.setHours(0, 0, 0, 0);
-    start.setDate(start.getDate() - start.getDay());
-    return start;
-  }
-
-  const todayIso = $derived(toIsoDateLocal(new Date()));
-
-  const weekDays = $derived((() => {
-    const start = startOfWeekSunday(new Date());
-    const days: Array<{
-      iso: string;
-      date: Date;
-      weekday: string;
-      specialTitles: string[];
-      events: CalendarEvent[];
-    }> = [];
-
-    for (let i = 0; i < 7; i++) {
-      const date = new Date(start);
-      date.setDate(start.getDate() + i);
-      const iso = toIsoDateLocal(date);
-      const dayEvents = calEvents.filter(e => e.event_date === iso);
-      const specialTitles = dayEvents.filter(e => e.type === 'special_day').map(e => e.event_name);
-      const events = dayEvents.filter(e => e.type !== 'special_day');
-      days.push({
-        iso,
-        date,
-        weekday: date.toLocaleDateString('es-ES', { weekday: 'long' }),
-        specialTitles,
-        events
-      });
-    }
-    return days;
-  })());
 
   function bookProgress(b: Book) {
     return b.total_pages ? Math.round((b.current_page / b.total_pages) * 100) : 0;
@@ -237,9 +272,14 @@
 
   async function saveLearn() {
     saving = true;
-    await repo.learning.insert(learnForm);
-    await awardXP(userId, 'education', 'learning_added', XP_VALUES.learning_added);
+    if (editingLearnId) {
+      await repo.learning.update(editingLearnId, learnForm);
+    } else {
+      await repo.learning.insert(learnForm);
+      await awardXP(userId, 'education', 'learning_added', XP_VALUES.learning_added);
+    }
     learnForm = { topic: '' };
+    editingLearnId = null;
     showLearnForm = false;
     await loadAll();
     saving = false;
@@ -249,6 +289,12 @@
     if (!confirm('¿Eliminar tema?')) return;
     await repo.learning.remove(id);
     await loadAll();
+  }
+
+  function editLearn(item: LearningItem) {
+    editingLearnId = item.id || null;
+    learnForm = { ...item };
+    showLearnForm = true;
   }
 
   async function saveMem() {
@@ -381,9 +427,14 @@
 
   async function saveReward() {
     saving = true;
-    await repo.rewards.insert(rewardForm);
-    await awardXP(userId, 'selfcare', 'reward_earned', XP_VALUES.reward_earned);
+    if (editingRewardId) {
+      await repo.rewards.update(editingRewardId, rewardForm);
+    } else {
+      await repo.rewards.insert(rewardForm);
+      await awardXP(userId, 'selfcare', 'reward_earned', XP_VALUES.reward_earned);
+    }
     rewardForm = { achievement_name: '', reward_given: '', date_awarded: new Date().toISOString().split('T')[0] };
+    editingRewardId = null;
     showRewardForm = false;
     await loadAll();
     saving = false;
@@ -393,6 +444,12 @@
     if (!confirm('¿Eliminar recompensa?')) return;
     await repo.rewards.remove(id);
     await loadAll();
+  }
+
+  function editReward(item: Reward) {
+    editingRewardId = item.id || null;
+    rewardForm = { ...item };
+    showRewardForm = true;
   }
 
   const tabs = [
@@ -417,7 +474,7 @@
   <!-- Tabs -->
   <div class="tabs-bar">
     {#each tabs as tab}
-      <button class="tab-btn" class:active={activeTab === tab.id} onclick={() => activeTab = tab.id as typeof activeTab}>
+      <button class="tab-btn" class:active={activeTab === tab.id} onclick={() => switchTab(tab.id)}>
         <span>{tab.icon}</span> {tab.label}
       </button>
     {/each}
@@ -427,10 +484,55 @@
   {#if activeTab === 'vision'}
     <div class="vision-section fade-in">
       <div class="vision-board-placeholder card">
-        <div class="vb-inner">
-          <span class="vb-icon">🖼️</span>
-          <p>Tu Vision Board</p>
+        <div class="vb-topbar">
+          <div class="vb-label">Vision Board</div>
+          <button class="btn btn-secondary" onclick={() => showVisionLinkForm = !showVisionLinkForm}>
+            {showVisionLinkForm ? 'Cerrar' : 'Configurar enlace'}
+          </button>
         </div>
+
+        {#if showVisionLinkForm}
+          <div class="vb-link-form">
+            <div class="vb-link-types">
+              <button type="button" class="toggle-pill" class:active={visionLinkMode === 'image'} onclick={() => visionLinkMode = 'image'}>
+                Imagen
+              </button>
+              <button type="button" class="toggle-pill" class:active={visionLinkMode === 'canva'} onclick={() => visionLinkMode = 'canva'}>
+                Canva embed
+              </button>
+            </div>
+            <input
+              class="vb-link-input"
+              bind:value={visionLinkInput}
+              placeholder={visionLinkMode === 'canva' ? 'https://www.canva.com/design/...' : 'https://...'}
+            />
+            <div class="vb-link-actions">
+              <button class="btn btn-primary" onclick={saveVisionBoardLink}>Guardar</button>
+            </div>
+          </div>
+        {/if}
+
+        {#if visionBoardLink?.url}
+          {#if visionBoardLink.link_type === 'vision_board_canva'}
+            <div class="vb-embed-shell">
+              <iframe
+                loading="lazy"
+                style="position: absolute; width: 100%; height: 100%; top: 0; left: 0; border: none; padding: 0;margin: 0;"
+                src={visionBoardLink.url + '?embed'}
+                allowfullscreen="allowfullscreen"
+                allow="fullscreen"
+                title="Vision Board Canva"
+              ></iframe>
+            </div>
+          {:else}
+            <img class="vb-image" src={visionBoardLink.url} alt="Vision Board" />
+          {/if}
+        {:else}
+          <div class="vb-inner">
+            <span class="vb-icon">🖼️</span>
+            <p>Tu Vision Board</p>
+          </div>
+        {/if}
       </div>
 
       <div class="phrases-grid">
@@ -473,8 +575,8 @@
               {/if}
             </div>
             <div class="card-actions">
-              <button class="btn btn-ghost" onclick={() => editBook(book)}>✎</button>
-              <button class="btn btn-ghost" onclick={() => deleteBook(book.id!)}>✕</button>
+              <button class="small-btn btn-ghost" onclick={() => editBook(book)}>🖉</button>
+              <button class="small-btn btn-ghost" onclick={() => deleteBook(book.id!)}>✕</button>
             </div>
           </div>
         {/each}
@@ -488,7 +590,7 @@
   {:else if activeTab === 'learning'}
     <div class="fade-in">
       <div class="tab-actions">
-        <button class="btn btn-primary" onclick={() => { learnForm = { topic: '' }; showLearnForm = true; }}>+ Agregar tema</button>
+        <button class="btn btn-primary" onclick={() => { editingLearnId = null; learnForm = { topic: '' }; showLearnForm = true; }}>+ Agregar tema</button>
       </div>
       <div class="learn-list">
         {#each learning as item}
@@ -505,7 +607,10 @@
             {#if item.image_url}
               <img src={item.image_url} alt="screenshot" class="learn-thumb" />
             {/if}
-            <button class="btn btn-ghost" onclick={() => deleteLearn(item.id!)}>✕</button>
+            <div class="card-actions-inline">
+              <button class="small-btn btn-secondary" onclick={() => editLearn(item)}>🖉</button>
+              <button class="small-btn btn-ghost" onclick={() => deleteLearn(item.id!)}>✕</button>
+            </div>
           </div>
         {/each}
         {#if learning.length === 0}
@@ -532,7 +637,7 @@
         <div class="grid-stack memory-grid" bind:this={memGridEl}>
           {#each memories as mem (mem.id)}
             <div
-              class="grid-stack-item"
+              class="grid-stack-item mem-drag" aria-label="Drag"
               data-mem-id={mem.id}
               data-gs-w="4"
               data-gs-h="4"
@@ -543,7 +648,6 @@
             >
               <div class="grid-stack-item-content">
                 <div class="mem-card">
-                  <button type="button" class="mem-drag" aria-label="Drag">::</button>
                   {#if mem.photo_url}
                     <img src={mem.photo_url} alt={mem.description} class="mem-photo" onload={(e) => onMemoryImageLoad(mem.id!, e)} />
                   {:else}
@@ -553,9 +657,6 @@
                     <div class="mem-date">{new Date(mem.date).toLocaleDateString('es-ES')}</div>
                     <div class="mem-desc">{mem.description}</div>
                   </div>
-                  {#if mem.photo_url}
-                    <a class="mem-open" href={mem.photo_url} target="_blank" rel="noreferrer">ver</a>
-                  {/if}
                   <button class="mem-delete btn btn-ghost" onclick={() => deleteMem(mem.id!)}>✕</button>
                 </div>
               </div>
@@ -571,56 +672,7 @@
       <div class="tab-actions">
         <button class="btn btn-primary" onclick={() => { calForm = { event_name: '', event_date: '', type: 'event' }; showCalForm = true; }}>+ Agregar evento</button>
       </div>
-      <!-- WEEK PLANNER -->
-      <div class="week-title">Semana actual</div>
-      <div class="week-section week-grid">
-        {#each weekDays as d (d.iso)}
-          {@const isToday = d.iso === todayIso}
-          {@const isSpecial = d.specialTitles.length > 0}
-          <div class="week-col">
-            <div class="week-header" class:current={isToday} class:special={!isToday && isSpecial}>
-              <div class="week-header-top">
-                <div class="week-day">{d.weekday}</div>
-                <div class="week-date">{d.date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</div>
-              </div>
-              {#if isSpecial}
-                <div class="week-special">{d.specialTitles.join(' · ')}</div>
-              {/if}
-            </div>
-
-            <div class="week-body">
-              {#if d.events.length === 0}
-                <div class="week-empty">{isSpecial ? 'Sin eventos' : '—'}</div>
-              {:else}
-                <div class="week-list">
-                  {#each d.events as ev (ev.id)}
-                    <a class="week-event" href={`#event-${slugify(ev.event_name)}`}>{ev.event_name}</a>
-                  {/each}
-                </div>
-              {/if}
-            </div>
-          </div>
-        {/each}
-      </div>
-
-      <!-- LIST OF EVENTS -->
-      <div class="week-section cal-list">
-        <div class="week-title">Eventos</div>
-        {#each calEvents as ev}
-          <div class="cal-card card" id="event-{slugify(ev.event_name)}">
-            <div class="cal-dot" style="background:{ev.type === 'special_day' ? 'var(--accent-yellow)' : 'var(--accent-green)'}"></div>
-            <div class="cal-info">
-              <div class="cal-name">{ev.event_name}</div>
-              <div class="cal-date">{new Date(ev.event_date).toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
-              <span class="tag" style="background:var(--bg3);color:var(--text3)">{ev.type === 'special_day' ? '⭐ Día especial' : '📅 Evento'}</span>
-            </div>
-            <button class="btn btn-ghost" onclick={() => deleteCal(ev.id!)}>✕</button>
-          </div>
-        {/each}
-        {#if calEvents.length === 0}
-          <div class="empty-state card">Agrega tus fechas importantes 📅</div>
-        {/if}
-      </div>
+      <WeekPlanner events={calEvents} />
     </div>
 
   <!-- SUCCESSES -->
@@ -644,8 +696,8 @@
                 <div class="success-date">Completado: {new Date(s.completed_date).toLocaleDateString('es-ES')}</div>
               {/if}
             </div>
-            <button class="btn btn-secondary" onclick={() => openEditSuccess(s)}>Editar</button>
-            <button class="btn btn-ghost" onclick={() => deleteSuccess(s.id!)}>✕</button>
+            <button class="small-btn btn-ghost" onclick={() => openEditSuccess(s)}>🖉</button>
+            <button class="small-btn btn-ghost" onclick={() => deleteSuccess(s.id!)}>✕</button>
           </div>
         {/each}
         {#if successes.length === 0}
@@ -658,7 +710,7 @@
   {:else if activeTab === 'rewards'}
     <div class="fade-in">
       <div class="tab-actions">
-        <button class="btn btn-primary" onclick={() => { rewardForm = { achievement_name: '', reward_given: '', date_awarded: new Date().toISOString().split('T')[0] }; showRewardForm = true; }}>+ Agregar recompensa</button>
+        <button class="btn btn-primary" onclick={() => { editingRewardId = null; rewardForm = { achievement_name: '', reward_given: '', date_awarded: new Date().toISOString().split('T')[0] }; showRewardForm = true; }}>+ Agregar recompensa</button>
       </div>
       <div class="rewards-grid">
         {#each rewards as r}
@@ -669,7 +721,10 @@
               <div class="reward-given">{r.reward_given}</div>
               <div class="reward-date">{new Date(r.date_awarded).toLocaleDateString('es-ES')}</div>
             </div>
-            <button class="btn btn-ghost" onclick={() => deleteReward(r.id!)}>✕</button>
+            <div class="card-actions-inline">
+              <button class="small-btn btn-secondary" onclick={() => editReward(r)}>🖉</button>
+              <button class="small-btn btn-ghost" onclick={() => deleteReward(r.id!)}>✕</button>
+            </div>
           </div>
         {/each}
         {#if rewards.length === 0}
@@ -711,7 +766,7 @@
         }
       }}>
     <div class="modal">
-      <h3>Nuevo tema de aprendizaje</h3>
+      <h3>{editingLearnId ? 'Editar tema de aprendizaje' : 'Nuevo tema de aprendizaje'}</h3>
       <div class="form-group"><label>Tema</label><input bind:value={learnForm.topic} placeholder="Ej: Diseño de APIs REST" /></div>
       <div class="form-group"><label>Enlace de recurso</label><input bind:value={learnForm.resource_link} placeholder="https://..." /></div>
       <div class="form-group"><label>URL imagen/captura</label><input bind:value={learnForm.image_url} placeholder="https://..." /></div>
@@ -827,7 +882,7 @@
         }
       }}>
     <div class="modal">
-      <h3>Nueva recompensa</h3>
+      <h3>{editingRewardId ? 'Editar recompensa' : 'Nueva recompensa'}</h3>
       <div class="form-group"><label>Logro</label><input bind:value={rewardForm.achievement_name} placeholder="¿Qué lograste?" /></div>
       <div class="form-group"><label>Recompensa</label><input bind:value={rewardForm.reward_given} placeholder="¿Cómo te premiaste?" /></div>
       <div class="form-group"><label>Fecha</label><input type="date" bind:value={rewardForm.date_awarded} /></div>
@@ -838,6 +893,8 @@
     </div>
   </div>
 {/if}
+
+<Toast visible={visionToast} message="Se agregó el Vision Board Link. Puedes verlo en Work/Links útiles" />
 
 <style>
   .goals-page { max-width: 1100px; }
@@ -880,6 +937,24 @@
     margin-bottom: 28px;
     border: 2px dashed var(--border);
     background: var(--bg3);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .vb-topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .vb-label {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
   }
 
   .vb-inner {
@@ -895,6 +970,58 @@
   }
 
   .vb-icon { font-size: 40px; }
+
+  .vb-link-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .vb-link-types {
+    display: inline-flex;
+    gap: 6px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 4px;
+    width: fit-content;
+  }
+
+  .vb-link-input {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg2);
+    color: var(--text);
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+
+  .vb-link-actions {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .vb-image {
+    width: 100%;
+    height: 100%;
+    min-height: 220px;
+    border-radius: 10px;
+    object-fit: cover;
+  }
+
+  .vb-embed-shell {
+    position: relative;
+    width: 100%;
+    height: 0;
+    padding-top: 100%;
+    padding-bottom: 0;
+    box-shadow: 0 2px 8px 0 rgba(63, 69, 81, 0.16);
+    margin-top: 1.6em;
+    margin-bottom: 0.9em;
+    overflow: hidden;
+    border-radius: 8px;
+    will-change: transform;
+  }
 
   .phrases-grid {
     display: flex;
@@ -979,11 +1106,9 @@
     right: 10px;
     display: flex;
     gap: 4px;
-    opacity: 0;
+    opacity: 1;
     transition: opacity var(--transition);
   }
-
-  .book-card:hover .card-actions { opacity: 1; }
 
   /* Learning */
   .learn-list { display: flex; flex-direction: column; gap: 12px; }
@@ -999,10 +1124,15 @@
   .learn-link { font-size: 13px; color: var(--accent-green); display: inline-block; margin-bottom: 4px; }
   .learn-notes { font-size: 13px; color: var(--text2); }
   .learn-thumb { width: 80px; height: 60px; object-fit: cover; border-radius: 6px; flex-shrink: 0; }
+  .card-actions-inline { display: flex; align-items: center; gap: 8px; }
 
   /* Memories */
   .memory-grid {
     width: 100%;
+    border-radius: var(--radius-lg);
+    background: var(--bg2);
+    min-height: 300px;
+    --gs-border-swap: 0;
   }
 
   .mem-card {
@@ -1010,7 +1140,6 @@
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
     overflow: hidden;
-    cursor: default;
     position: relative;
     transition: transform var(--transition);
     height: 100%;
@@ -1079,7 +1208,7 @@
 
   .mem-info { padding: 10px; }
   .mem-date { font-size: 11px; color: var(--text3); font-family: var(--font-mono); margin-bottom: 3px; }
-  .mem-desc { font-size: 13px; color: var(--text); }
+  .mem-desc { font-size: 12px; line-height: 1.4; font-style: monospace; color: var(--text); }
 
   .mem-upload-toggle {
     display: inline-flex;
@@ -1173,147 +1302,14 @@
   }
 
   .mem-drag {
-    position: absolute;
-    top: 6px;
-    left: 6px;
-    background: rgba(0,0,0,0.55);
-    color: white;
-    border-radius: 8px;
-    padding: 2px 6px;
-    font-family: var(--font-mono);
-    font-size: 12px;
-    line-height: 1;
-    opacity: 0;
-    transition: opacity var(--transition);
     cursor: grab;
     user-select: none;
   }
 
   .mem-drag:active { cursor: grabbing; }
-  .mem-card:hover .mem-drag { opacity: 1; }
 
   .mem-card:hover .mem-delete { opacity: 1; }
   
-  /* Calendar */
-  .week-section { margin-top: 16px; }
-
-  .cal-list { display: flex; flex-direction: column; gap: 10px; }
-
-  .cal-card {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-  }
-  .cal-card:target {
-    outline: 2px solid var(--accent-green);
-    outline-offset: 2px;
-  }
-
-  .cal-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-  .cal-info { flex: 1; }
-  .cal-name { font-weight: 700; font-size: 15px; }
-  .cal-date { font-size: 13px; color: var(--text2); text-transform: capitalize; margin: 3px 0; }
-
-  .week-title {
-    font-family: var(--font-mono);
-    font-size: 12px;
-    color: var(--text3);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin-bottom: 12px;
-  }
-
-  .week-grid {
-    display: grid;
-    grid-template-columns: repeat(7, minmax(0, 1fr));
-    gap: 10px;
-  }
-
-  @media (max-width: 1000px) {
-    .week-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  }
-
-  @media (max-width: 560px) {
-    .week-grid { grid-template-columns: 1fr; }
-  }
-
-  .week-col {
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    overflow: hidden;
-    background: rgba(0,0,0,0.15);
-  }
-
-  .week-header {
-    padding: 10px 10px 8px;
-    background: var(--bg3);
-    border-bottom: 1px solid var(--border);
-  }
-
-  .week-header.current {
-    background: var(--accent-green);
-    border-bottom-color: var(--accent-green);
-  }
-
-  .week-header.current .week-day {
-    color: var(--bg3);
-  }
-
-  .week-header.current .week-date {
-    color: var(--surface2);
-  }
-
-  .week-header.special {
-    background: rgba(235,213,127,0.14);
-    border-bottom-color: rgba(235,213,127,0.35);
-  }
-
-  .week-header-top {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 8px;
-  }
-
-  .week-day {
-    font-weight: 800;
-    font-size: 12px;
-    color: var(--text);
-    text-transform: capitalize;
-  }
-
-  .week-date {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    color: var(--text3);
-    white-space: nowrap;
-  }
-
-  .week-special {
-    margin-top: 6px;
-    font-size: 12px;
-    color: var(--text2);
-    font-style: italic;
-    line-height: 1.4;
-  }
-
-  .week-body { padding: 10px; }
-  .week-empty { color: var(--text3); font-size: 12px; font-family: var(--font-mono); }
-  .week-list { display: flex; flex-direction: column; gap: 6px; }
-  .week-event {
-    font-size: 12px;
-    color: var(--bg2);
-    font-weight: 600;
-    padding: 6px 8px;
-    border-radius: 8px;
-    border: 1px solid rgba(51,61,87,0.7);
-    background: var(--accent-blue);
-  }
-  .week-event:hover {
-    font-size: 12px;
-    background: var(--accent-green);
-  }
-
   /* Successes */
   .success-list { display: flex; flex-direction: column; gap: 12px; }
 
@@ -1356,7 +1352,7 @@
 
   .success-info { flex: 1; }
   .success-goal { font-weight: 600; font-size: 20px; line-height: normal; }
-  .success-reflection { font-size: 13px; color: var(--text2); max-width: 80%; margin-top: 4px; }
+  .success-reflection { font-size: 13px; color: var(--text2); max-width: 90%; text-wrap: pretty; margin-top: 4px; }
   .success-date { font-size: 11px; color: var(--text3); font-family: var(--font-mono); margin-top: 4px; }
 
   /* Rewards */
@@ -1384,5 +1380,55 @@
     text-align: center;
     padding: 32px;
     font-family: var(--font-mono);
+  }
+
+  @media (max-width: 640px) {
+    .learn-card {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+
+    .learn-topic { font-size: 14px; }
+    .learn-notes { font-size: 12px; }
+    .learn-thumb {
+      width: 100%;
+      height: auto;
+      max-height: 220px;
+      object-fit: cover;
+    }
+
+    .success-card {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 10px;
+      align-items: start;
+    }
+    .success-goal { font-size: 16px; }
+    .success-reflection { font-size: 12px; max-width: 100%; }
+
+    .reward-card {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 10px;
+      align-items: start;
+    }
+    .reward-name { font-size: 14px; }
+    .reward-given { font-size: 12px; }
+
+    .memory-grid {
+      width: 100%;
+      margin: 0;
+    }
+    .mem-photo {
+      width: 100%;
+      min-height: 190px;
+      max-height: 45vh;
+      object-fit: cover;
+    }
+    .mem-card {
+      width: 100%;
+      border-radius: 10px;
+    }
   }
 </style>

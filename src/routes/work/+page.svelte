@@ -5,10 +5,13 @@
   import { tick } from 'svelte';
   import type { Task, Project, UsefulLink, SkillsMd } from '$lib/types';
 
+  const WORK_TABS = ['kanban', 'projects', 'links', 'skills'] as const;
+  type WorkTab = typeof WORK_TABS[number];
+
   const userId = $derived(page.data.user?.id ?? '');
   const repo = $derived(createRepository(userId));
   let initialized = $state(false);
-  let activeTab = $state<'kanban' | 'projects' | 'links' | 'skills'>('kanban');
+  let activeTab = $state<WorkTab>('kanban');
 
   // Kanban
   let tasks = $state<Task[]>([]);
@@ -20,11 +23,13 @@
   // Projects
   let projects = $state<Project[]>([]);
   let showProjectForm = $state(false);
+  let editingProjectId = $state<string | null>(null);
   let projectForm = $state<Project>({ name: '' });
 
   // Useful links
   let links = $state<UsefulLink[]>([]);
   let showLinkForm = $state(false);
+  let editingLinkId = $state<string | null>(null);
   let linkForm = $state<UsefulLink>({ title: '', url: '' });
 
   // Skills MD
@@ -48,6 +53,25 @@
       initialized = true;
       void loadAll();
     }
+  });
+
+  function toWorkTab(raw: string | null): WorkTab {
+    if (raw && WORK_TABS.includes(raw as WorkTab)) return raw as WorkTab;
+    return 'kanban';
+  }
+
+  $effect(() => {
+    const urlTab = toWorkTab(page.url.searchParams.get('tab'));
+    if (urlTab !== activeTab) activeTab = urlTab;
+  });
+
+  $effect(() => {
+    if (typeof window === 'undefined') return;
+    const current = page.url.searchParams.get('tab');
+    if (current === activeTab) return;
+    const next = new URL(window.location.href);
+    next.searchParams.set('tab', activeTab);
+    window.history.replaceState(window.history.state, '', next);
   });
 
   async function loadAll() {
@@ -115,8 +139,10 @@
   // Projects
   async function saveProject() {
     saving = true;
-    await repo.projects.insert(projectForm);
+    if (editingProjectId) await repo.projects.update(editingProjectId, projectForm);
+    else await repo.projects.insert(projectForm);
     projectForm = { name: '' };
+    editingProjectId = null;
     showProjectForm = false;
     await loadAll();
     saving = false;
@@ -131,8 +157,10 @@
   // Links
   async function saveLink() {
     saving = true;
-    await repo.links.insert(linkForm);
+    if (editingLinkId) await repo.links.update(editingLinkId, linkForm);
+    else await repo.links.insert(linkForm);
     linkForm = { title: '', url: '' };
+    editingLinkId = null;
     showLinkForm = false;
     await loadAll();
     saving = false;
@@ -142,6 +170,18 @@
     if (!confirm('¿Eliminar link?')) return;
     await repo.links.remove(id);
     await loadAll();
+  }
+
+  function editProject(project: Project) {
+    editingProjectId = project.id || null;
+    projectForm = { ...project };
+    showProjectForm = true;
+  }
+
+  function editLink(link: UsefulLink) {
+    editingLinkId = link.id || null;
+    linkForm = { ...link };
+    showLinkForm = true;
   }
 
   // Skills MD
@@ -329,14 +369,17 @@
   {:else if activeTab === 'projects'}
     <div class="fade-in">
       <div class="tab-actions">
-        <button class="btn btn-primary" onclick={() => { projectForm = { name: '' }; showProjectForm = true; }}>+ Nuevo proyecto</button>
+        <button class="btn btn-primary" onclick={() => { editingProjectId = null; projectForm = { name: '' }; showProjectForm = true; }}>+ Nuevo proyecto</button>
       </div>
       <div class="projects-grid">
         {#each projects as p}
           <div class="project-card card">
             <div class="project-header">
               <div class="project-name">{p.name}</div>
-              <button class="btn btn-ghost" style="font-size:11px;" onclick={() => deleteProject(p.id!)}>✕</button>
+              <div style="display:flex;gap:6px;">
+                <button class="small-btn btn-secondary" style="font-size:11px;" onclick={() => editProject(p)}>🖉</button>
+                <button class="small-btn btn-ghost" style="font-size:11px;" onclick={() => deleteProject(p.id!)}>✕</button>
+              </div>
             </div>
             {#if p.description}
               <div class="project-desc">{p.description}</div>
@@ -364,7 +407,7 @@
   {:else if activeTab === 'links'}
     <div class="fade-in">
       <div class="tab-actions">
-        <button class="btn btn-primary" onclick={() => { linkForm = { title: '', url: '' }; showLinkForm = true; }}>+ Agregar link</button>
+        <button class="btn btn-primary" onclick={() => { editingLinkId = null; linkForm = { title: '', url: '' }; showLinkForm = true; }}>+ Agregar link</button>
       </div>
       <div class="links-list">
         {#each links as l}
@@ -374,7 +417,10 @@
               <a href={l.url} target="_blank" class="link-title">{l.title}</a>
               <div class="link-url">{l.url}</div>
             </div>
-            <button class="btn btn-ghost" onclick={() => deleteLink(l.id!)}>✕</button>
+            <div style="display:flex;gap:6px;">
+              <button class="small-btn btn-secondary" onclick={() => editLink(l)}>🖉</button>
+              <button class="small-btn btn-ghost" onclick={() => deleteLink(l.id!)}>✕</button>
+            </div>
           </div>
         {/each}
         {#if links.length === 0}
@@ -482,7 +528,7 @@
         }
       }}>
     <div class="modal">
-      <h3>Nuevo proyecto</h3>
+      <h3>{editingProjectId ? 'Editar proyecto' : 'Nuevo proyecto'}</h3>
       <div class="form-group"><label>Nombre</label><input bind:value={projectForm.name} placeholder="Nombre del proyecto" /></div>
       <div class="form-group"><label>Descripción</label><textarea bind:value={projectForm.description} rows="3"></textarea></div>
       <div class="form-group"><label>GitHub</label><input bind:value={projectForm.github_link} placeholder="https://github.com/..." /></div>
@@ -503,7 +549,7 @@
         }
       }}>
     <div class="modal">
-      <h3>Nuevo link útil</h3>
+      <h3>{editingLinkId ? 'Editar link útil' : 'Nuevo link útil'}</h3>
       <div class="form-group"><label>Título</label><input bind:value={linkForm.title} placeholder="Nombre del recurso" /></div>
       <div class="form-group"><label>URL</label><input bind:value={linkForm.url} placeholder="https://..." /></div>
       <div class="form-actions">
@@ -729,7 +775,6 @@
 
   .skill-editor {
     height: auto;
-    overflow: hidden;
     resize: none;
   }
 
@@ -757,5 +802,42 @@
 
   @media (max-width: 600px) {
     .kanban-board { grid-template-columns: 1fr; }
+
+    .projects-grid {
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    .project-name {
+      font-size: 14px;
+      line-height: 1.3;
+      word-break: break-word;
+    }
+
+    .project-desc {
+      font-size: 12px;
+      line-height: 1.45;
+      word-break: break-word;
+    }
+
+    .links-list { gap: 12px; }
+
+    .link-item {
+      align-items: flex-start;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .link-title {
+      font-size: 13px;
+      word-break: break-word;
+    }
+
+    .link-url {
+      font-size: 11px;
+      line-height: 1.4;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
   }
 </style>
