@@ -11,7 +11,10 @@
   const userId = $derived(page.data.user?.id ?? '');
   const repo = $derived(createRepository(userId));
   let initialized = $state(false);
-  let activeTab = $state<WorkTab>('kanban');
+  const url = new URL(window.location.href);
+  const current = url.searchParams.get('tab');
+  const defaultTab = WORK_TABS.includes(current as WorkTab) ? (current as WorkTab) : 'kanban';
+  let activeTab = $state<WorkTab>(defaultTab);
 
   // Kanban
   let tasks = $state<Task[]>([]);
@@ -55,14 +58,27 @@
     }
   });
 
-  function toWorkTab(raw: string | null): WorkTab {
-    if (raw && WORK_TABS.includes(raw as WorkTab)) return raw as WorkTab;
-    return 'kanban';
+  function switchTab(tabId: WorkTab) {
+    if (WORK_TABS.includes(activeTab)) {
+      activeTab = tabId as typeof activeTab;
+      const next = new URL(window.location.href);
+      next.searchParams.set('tab', activeTab);
+      window.history.replaceState(window.history.state, '', next);
+    } else {
+      activeTab = 'kanban';
+    }
   }
 
   $effect(() => {
-    const urlTab = toWorkTab(page.url.searchParams.get('tab'));
-    if (urlTab !== activeTab) activeTab = urlTab;
+    if (typeof window === 'undefined') return;
+
+    const url = new URL(window.location.href);
+    const current = url.searchParams.get('tab');
+
+    if (current === activeTab) return;
+
+    url.searchParams.set('tab', activeTab);
+    window.history.replaceState(window.history.state, '', url);
   });
 
   $effect(() => {
@@ -301,7 +317,7 @@
 
   <div class="tabs-bar">
     {#each tabs as tab}
-      <button class="tab-btn" class:active={activeTab === tab.id} onclick={() => activeTab = tab.id as typeof activeTab}>
+      <button class="tab-btn" class:active={activeTab === tab.id} onclick={() => switchTab(tab.id)}>
         <span>{tab.icon}</span> {tab.label}
       </button>
     {/each}
