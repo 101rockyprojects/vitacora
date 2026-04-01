@@ -1,5 +1,6 @@
 <script lang="ts">
   import { page } from '$app/state';
+  import { browser } from '$app/environment';
   import { createRepository } from '$lib/services/repository';
   import { awardXP, XP_VALUES } from '$lib/utils/xp';
   import { tick } from 'svelte';
@@ -11,7 +12,10 @@
   const userId = $derived(page.data.user?.id ?? '');
   const repo = $derived(createRepository(userId));
   let initialized = $state(false);
-  const url = new URL(window.location.href);
+  let url = new URL(page.url.href);
+  if (browser) {
+    url = new URL(window.location.href);
+  }
   const current = url.searchParams.get('tab');
   const defaultTab = WORK_TABS.includes(current as WorkTab) ? (current as WorkTab) : 'kanban';
   let activeTab = $state<WorkTab>(defaultTab);
