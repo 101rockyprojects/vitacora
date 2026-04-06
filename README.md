@@ -1,4 +1,4 @@
-# ◈ Lumina — Personal Productivity Dashboard
+# ◈ VitaCora — Personal Productivity Dashboard
 
 A personal productivity dashboard built with SvelteKit 5 (runes) + Supabase. Track goals, books, kanban tasks, partner date ideas, and earn XP as you progress.
 
@@ -20,7 +20,7 @@ A personal productivity dashboard built with SvelteKit 5 (runes) + Supabase. Tra
 
 ```bash
 git clone <your-repo>
-cd lumina
+cd vitacora
 npm install
 ```
 

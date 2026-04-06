@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
   import { page } from '$app/state';
+  import { browser } from '$app/environment';
   import { createRepository } from '$lib/services/repository';
   import Toast from '$lib/components/Toast.svelte';
   import WeekPlanner from '$lib/components/WeekPlanner.svelte';
@@ -16,7 +16,10 @@
   const userId = $derived(page.data.user?.id ?? '');
   const repo = $derived(createRepository(userId));
   let initialized = $state(false);
-  const url = new URL(window.location.href);
+  let url = new URL(page.url.href);
+  if (browser) {
+    url = new URL(window.location.href);
+  }
   const current = url.searchParams.get('tab');
   const defaultTab = GOALS_TABS.includes(current as GoalsTab) ? (current as GoalsTab) : 'vision';
   let activeTab = $state<GoalsTab>(defaultTab);

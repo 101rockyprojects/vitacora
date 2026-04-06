@@ -58,7 +58,7 @@
 <aside class="sidebar" class:closed={isMobile && !isOpen}>
   <div class="sidebar-logo">
     <span class="logo-icon">◈</span>
-    <span class="logo-text">lumina</span>
+    <span class="logo-text">VitaCora</span>
   </div>
 
   <nav class="sidebar-nav">

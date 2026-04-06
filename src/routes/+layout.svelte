@@ -29,12 +29,12 @@
   const documentTitle = $derived(isTabHidden ? '¡PLUS ULTRA!' : routeMeta.title);
 
   function getRouteMeta(pathname: string): { title: string; description: string } {
-    const base = 'Lumina';
+    const base = 'VitaCora';
     const normalized = pathname.replace(/\/+$/, '') || '/';
 
     const known: Record<string, { label: string; description: string }> = {
       '/': { label: 'Home', description: 'Redirecting to your session.' },
-      '/auth': { label: 'Auth', description: 'Sign in to Lumina.' },
+      '/auth': { label: 'Auth', description: 'Sign in to VitaCora.' },
       '/dashboard': { label: 'Dashboard', description: 'Your overview and progress.' },
       '/goals': { label: 'Goals', description: 'Vision, habits, and growth.' },
       '/work': { label: 'Work', description: 'Kanban, projects, links, and skills.' },
@@ -44,7 +44,7 @@
 
     const entry = known[normalized] ?? {
       label: normalized.split('/').filter(Boolean)[0]?.replace(/[-_]/g, ' ') ?? 'Page',
-      description: 'Lumina.'
+      description: 'Vitacora.'
     };
 
     const pretty = entry.label.charAt(0).toUpperCase() + entry.label.slice(1);

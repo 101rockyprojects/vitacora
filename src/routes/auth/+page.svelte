@@ -14,7 +14,7 @@
   <div class="auth-card fade-in">
     <div class="auth-logo">
       <span class="logo-glyph">◈</span>
-      <h1>Lumina</h1>
+      <h1>VitaCora</h1>
     </div>
     <p class="auth-tagline">Tu espacio de crecimiento personal</p>
 

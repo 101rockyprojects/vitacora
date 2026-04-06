@@ -137,7 +137,7 @@
       
       const dataUrl = canvas.toDataURL('image/png');
       const link = document.createElement('a');
-      link.download = 'lumina-progress.png';
+      link.download = 'vitacora-progress.png';
       link.href = dataUrl;
       link.click();
     } catch (e) {

@@ -1,17 +1,17 @@
 -- ============================================================
--- Lumina — Full Supabase Migration
+-- Vitacora — Full Supabase Migration
 -- Run this in Supabase SQL Editor (or use supabase db push)
 -- ============================================================
 
-CREATE SCHEMA IF NOT EXISTS lumina;
+CREATE SCHEMA IF NOT EXISTS vitacora;
 
-GRANT USAGE ON SCHEMA lumina TO anon, authenticated, service_role;
-GRANT ALL ON ALL TABLES IN SCHEMA lumina TO anon, authenticated, service_role;
-GRANT ALL ON ALL ROUTINES IN SCHEMA lumina TO anon, authenticated, service_role;
-GRANT ALL ON ALL SEQUENCES IN SCHEMA lumina TO anon, authenticated, service_role;
-ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA lumina GRANT ALL ON TABLES TO anon, authenticated, service_role;
-ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA lumina GRANT ALL ON ROUTINES TO anon, authenticated, service_role;
-ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA lumina GRANT ALL ON SEQUENCES TO anon, authenticated, service_role;
+GRANT USAGE ON SCHEMA vitacora TO anon, authenticated, service_role;
+GRANT ALL ON ALL TABLES IN SCHEMA vitacora TO anon, authenticated, service_role;
+GRANT ALL ON ALL ROUTINES IN SCHEMA vitacora TO anon, authenticated, service_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA vitacora TO anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA vitacora GRANT ALL ON TABLES TO anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA vitacora GRANT ALL ON ROUTINES TO anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA vitacora GRANT ALL ON SEQUENCES TO anon, authenticated, service_role;
 
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -19,7 +19,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- ────────────────────────────────────────────────────────────
 -- BOOKS
 -- ────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS lumina.books (
+CREATE TABLE IF NOT EXISTS vitacora.books (
   id          UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   user_id     UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   title       TEXT NOT NULL,
@@ -30,16 +30,16 @@ CREATE TABLE IF NOT EXISTS lumina.books (
   created_at  TIMESTAMPTZ DEFAULT NOW(),
   updated_at  TIMESTAMPTZ DEFAULT NOW()
 );
-ALTER TABLE lumina.books ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "books_select_own" ON lumina.books FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "books_insert_own" ON lumina.books FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "books_update_own" ON lumina.books FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "books_delete_own" ON lumina.books FOR DELETE USING (auth.uid() = user_id);
+ALTER TABLE vitacora.books ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "books_select_own" ON vitacora.books FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "books_insert_own" ON vitacora.books FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "books_update_own" ON vitacora.books FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "books_delete_own" ON vitacora.books FOR DELETE USING (auth.uid() = user_id);
 
 -- ────────────────────────────────────────────────────────────
 -- LEARNING
 -- ────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS lumina.learning (
+CREATE TABLE IF NOT EXISTS vitacora.learning (
   id            UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   user_id       UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   topic         TEXT NOT NULL,
@@ -48,16 +48,16 @@ CREATE TABLE IF NOT EXISTS lumina.learning (
   image_url     TEXT,
   created_at    TIMESTAMPTZ DEFAULT NOW()
 );
-ALTER TABLE lumina.learning ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "learning_select_own" ON lumina.learning FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "learning_insert_own" ON lumina.learning FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "learning_update_own" ON lumina.learning FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "learning_delete_own" ON lumina.learning FOR DELETE USING (auth.uid() = user_id);
+ALTER TABLE vitacora.learning ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "learning_select_own" ON vitacora.learning FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "learning_insert_own" ON vitacora.learning FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "learning_update_own" ON vitacora.learning FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "learning_delete_own" ON vitacora.learning FOR DELETE USING (auth.uid() = user_id);
 
 -- ────────────────────────────────────────────────────────────
 -- MEMORY ALBUM
 -- ────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS lumina.memory_album (
+CREATE TABLE IF NOT EXISTS vitacora.memory_album (
   id          UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   user_id     UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   date        DATE NOT NULL,
@@ -65,16 +65,16 @@ CREATE TABLE IF NOT EXISTS lumina.memory_album (
   description TEXT NOT NULL,
   created_at  TIMESTAMPTZ DEFAULT NOW()
 );
-ALTER TABLE lumina.memory_album ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "memory_select_own" ON lumina.memory_album FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "memory_insert_own" ON lumina.memory_album FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "memory_update_own" ON lumina.memory_album FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "memory_delete_own" ON lumina.memory_album FOR DELETE USING (auth.uid() = user_id);
+ALTER TABLE vitacora.memory_album ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "memory_select_own" ON vitacora.memory_album FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "memory_insert_own" ON vitacora.memory_album FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "memory_update_own" ON vitacora.memory_album FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "memory_delete_own" ON vitacora.memory_album FOR DELETE USING (auth.uid() = user_id);
 
 -- ────────────────────────────────────────────────────────────
 -- CALENDAR EVENTS
 -- ────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS lumina.calendar_events (
+CREATE TABLE IF NOT EXISTS vitacora.calendar_events (
   id          UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   user_id     UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   event_name  TEXT NOT NULL,
@@ -82,16 +82,16 @@ CREATE TABLE IF NOT EXISTS lumina.calendar_events (
   type        TEXT DEFAULT 'event' CHECK (type IN ('special_day','event')),
   created_at  TIMESTAMPTZ DEFAULT NOW()
 );
-ALTER TABLE lumina.calendar_events ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "calendar_select_own" ON lumina.calendar_events FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "calendar_insert_own" ON lumina.calendar_events FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "calendar_update_own" ON lumina.calendar_events FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "calendar_delete_own" ON lumina.calendar_events FOR DELETE USING (auth.uid() = user_id);
+ALTER TABLE vitacora.calendar_events ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "calendar_select_own" ON vitacora.calendar_events FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "calendar_insert_own" ON vitacora.calendar_events FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "calendar_update_own" ON vitacora.calendar_events FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "calendar_delete_own" ON vitacora.calendar_events FOR DELETE USING (auth.uid() = user_id);
 
 -- ────────────────────────────────────────────────────────────
 -- SUCCESS EXPERIENCES
 -- ────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS lumina.success_experiences (
+CREATE TABLE IF NOT EXISTS vitacora.success_experiences (
   id               UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   user_id          UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   goal_description TEXT NOT NULL,
@@ -100,16 +100,16 @@ CREATE TABLE IF NOT EXISTS lumina.success_experiences (
   reflection       TEXT,
   created_at       TIMESTAMPTZ DEFAULT NOW()
 );
-ALTER TABLE lumina.success_experiences ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "success_select_own" ON lumina.success_experiences FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "success_insert_own" ON lumina.success_experiences FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "success_update_own" ON lumina.success_experiences FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "success_delete_own" ON lumina.success_experiences FOR DELETE USING (auth.uid() = user_id);
+ALTER TABLE vitacora.success_experiences ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "success_select_own" ON vitacora.success_experiences FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "success_insert_own" ON vitacora.success_experiences FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "success_update_own" ON vitacora.success_experiences FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "success_delete_own" ON vitacora.success_experiences FOR DELETE USING (auth.uid() = user_id);
 
 -- ────────────────────────────────────────────────────────────
 -- REWARDS
 -- ────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS lumina.rewards (
+CREATE TABLE IF NOT EXISTS vitacora.rewards (
   id               UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   user_id          UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   achievement_name TEXT NOT NULL,
@@ -117,16 +117,16 @@ CREATE TABLE IF NOT EXISTS lumina.rewards (
   date_awarded     DATE NOT NULL,
   created_at       TIMESTAMPTZ DEFAULT NOW()
 );
-ALTER TABLE lumina.rewards ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "rewards_select_own" ON lumina.rewards FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "rewards_insert_own" ON lumina.rewards FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "rewards_update_own" ON lumina.rewards FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "rewards_delete_own" ON lumina.rewards FOR DELETE USING (auth.uid() = user_id);
+ALTER TABLE vitacora.rewards ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "rewards_select_own" ON vitacora.rewards FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "rewards_insert_own" ON vitacora.rewards FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "rewards_update_own" ON vitacora.rewards FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "rewards_delete_own" ON vitacora.rewards FOR DELETE USING (auth.uid() = user_id);
 
 -- ────────────────────────────────────────────────────────────
 -- TASKS (Kanban)
 -- ────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS lumina.tasks (
+CREATE TABLE IF NOT EXISTS vitacora.tasks (
   id          UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   user_id     UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   title       TEXT NOT NULL,
@@ -137,16 +137,16 @@ CREATE TABLE IF NOT EXISTS lumina.tasks (
   created_at  TIMESTAMPTZ DEFAULT NOW(),
   updated_at  TIMESTAMPTZ DEFAULT NOW()
 );
-ALTER TABLE lumina.tasks ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "tasks_select_own" ON lumina.tasks FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "tasks_insert_own" ON lumina.tasks FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "tasks_update_own" ON lumina.tasks FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "tasks_delete_own" ON lumina.tasks FOR DELETE USING (auth.uid() = user_id);
+ALTER TABLE vitacora.tasks ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "tasks_select_own" ON vitacora.tasks FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "tasks_insert_own" ON vitacora.tasks FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "tasks_update_own" ON vitacora.tasks FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "tasks_delete_own" ON vitacora.tasks FOR DELETE USING (auth.uid() = user_id);
 
 -- ────────────────────────────────────────────────────────────
 -- PROJECTS
 -- ────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS lumina.projects (
+CREATE TABLE IF NOT EXISTS vitacora.projects (
   id               UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   user_id          UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   name             TEXT NOT NULL,
@@ -156,16 +156,16 @@ CREATE TABLE IF NOT EXISTS lumina.projects (
   deploy_link      TEXT,
   created_at       TIMESTAMPTZ DEFAULT NOW()
 );
-ALTER TABLE lumina.projects ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "projects_select_own" ON lumina.projects FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "projects_insert_own" ON lumina.projects FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "projects_update_own" ON lumina.projects FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "projects_delete_own" ON lumina.projects FOR DELETE USING (auth.uid() = user_id);
+ALTER TABLE vitacora.projects ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "projects_select_own" ON vitacora.projects FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "projects_insert_own" ON vitacora.projects FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "projects_update_own" ON vitacora.projects FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "projects_delete_own" ON vitacora.projects FOR DELETE USING (auth.uid() = user_id);
 
 -- ────────────────────────────────────────────────────────────
 -- USEFUL LINKS
 -- ────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS lumina.useful_links (
+CREATE TABLE IF NOT EXISTS vitacora.useful_links (
   id         UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   user_id    UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   title      TEXT NOT NULL,
@@ -173,31 +173,31 @@ CREATE TABLE IF NOT EXISTS lumina.useful_links (
   link_type  TEXT NOT NULL DEFAULT 'general' CHECK (link_type IN ('general', 'vision_board_image', 'vision_board_canva')),
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
-ALTER TABLE lumina.useful_links ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "links_select_own" ON lumina.useful_links FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "links_insert_own" ON lumina.useful_links FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "links_update_own" ON lumina.useful_links FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "links_delete_own" ON lumina.useful_links FOR DELETE USING (auth.uid() = user_id);
+ALTER TABLE vitacora.useful_links ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "links_select_own" ON vitacora.useful_links FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "links_insert_own" ON vitacora.useful_links FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "links_update_own" ON vitacora.useful_links FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "links_delete_own" ON vitacora.useful_links FOR DELETE USING (auth.uid() = user_id);
 
 -- ────────────────────────────────────────────────────────────
 -- SKILLS MD
 -- ────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS lumina.skills_md (
+CREATE TABLE IF NOT EXISTS vitacora.skills_md (
   id         UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   user_id    UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   content    TEXT DEFAULT '',
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
-ALTER TABLE lumina.skills_md ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "skills_select_own" ON lumina.skills_md FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "skills_insert_own" ON lumina.skills_md FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "skills_update_own" ON lumina.skills_md FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "skills_delete_own" ON lumina.skills_md FOR DELETE USING (auth.uid() = user_id);
+ALTER TABLE vitacora.skills_md ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "skills_select_own" ON vitacora.skills_md FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "skills_insert_own" ON vitacora.skills_md FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "skills_update_own" ON vitacora.skills_md FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "skills_delete_own" ON vitacora.skills_md FOR DELETE USING (auth.uid() = user_id);
 
 -- ────────────────────────────────────────────────────────────
 -- DATE IDEAS
 -- ────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS lumina.date_ideas (
+CREATE TABLE IF NOT EXISTS vitacora.date_ideas (
   id         UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   user_id    UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   idea_text  TEXT NOT NULL,
@@ -205,16 +205,16 @@ CREATE TABLE IF NOT EXISTS lumina.date_ideas (
   link       TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
-ALTER TABLE lumina.date_ideas ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "date_ideas_select_own" ON lumina.date_ideas FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "date_ideas_insert_own" ON lumina.date_ideas FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "date_ideas_update_own" ON lumina.date_ideas FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "date_ideas_delete_own" ON lumina.date_ideas FOR DELETE USING (auth.uid() = user_id);
+ALTER TABLE vitacora.date_ideas ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "date_ideas_select_own" ON vitacora.date_ideas FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "date_ideas_insert_own" ON vitacora.date_ideas FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "date_ideas_update_own" ON vitacora.date_ideas FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "date_ideas_delete_own" ON vitacora.date_ideas FOR DELETE USING (auth.uid() = user_id);
 
 -- ────────────────────────────────────────────────────────────
 -- XP LOG
 -- ────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS lumina.xp_log (
+CREATE TABLE IF NOT EXISTS vitacora.xp_log (
   id          UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   user_id     UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   source_type TEXT NOT NULL,
@@ -223,16 +223,16 @@ CREATE TABLE IF NOT EXISTS lumina.xp_log (
   area        TEXT NOT NULL DEFAULT 'general',
   date        TIMESTAMPTZ DEFAULT NOW()
 );
-ALTER TABLE lumina.xp_log ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "xp_select_own" ON lumina.xp_log FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "xp_insert_own" ON lumina.xp_log FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "xp_update_own" ON lumina.xp_log FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "xp_delete_own" ON lumina.xp_log FOR DELETE USING (auth.uid() = user_id);
+ALTER TABLE vitacora.xp_log ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "xp_select_own" ON vitacora.xp_log FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "xp_insert_own" ON vitacora.xp_log FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "xp_update_own" ON vitacora.xp_log FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "xp_delete_own" ON vitacora.xp_log FOR DELETE USING (auth.uid() = user_id);
 
 -- ────────────────────────────────────────────────────────────
 -- BADGES
 -- ────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS lumina.badges (
+CREATE TABLE IF NOT EXISTS vitacora.badges (
   id              UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   name            TEXT NOT NULL UNIQUE,
   description     TEXT NOT NULL,
@@ -241,25 +241,25 @@ CREATE TABLE IF NOT EXISTS lumina.badges (
   condition_value INTEGER NOT NULL DEFAULT 1
 );
 -- Badges are public readable (no RLS needed for reads)
-ALTER TABLE lumina.badges ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "badges_read" ON lumina.badges FOR SELECT USING (true);
-CREATE POLICY "badges_insert" ON lumina.badges FOR INSERT WITH CHECK (true);
+ALTER TABLE vitacora.badges ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "badges_read" ON vitacora.badges FOR SELECT USING (true);
+CREATE POLICY "badges_insert" ON vitacora.badges FOR INSERT WITH CHECK (true);
 
 -- ────────────────────────────────────────────────────────────
 -- USER BADGES
 -- ────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS lumina.user_badges (
+CREATE TABLE IF NOT EXISTS vitacora.user_badges (
   id         UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   user_id    UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-  badge_id   UUID REFERENCES lumina.badges(id) ON DELETE CASCADE NOT NULL,
+  badge_id   UUID REFERENCES vitacora.badges(id) ON DELETE CASCADE NOT NULL,
   awarded_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(user_id, badge_id)
 );
-ALTER TABLE lumina.user_badges ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "user_badges_select_own" ON lumina.user_badges FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "user_badges_insert_own" ON lumina.user_badges FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "user_badges_update_own" ON lumina.user_badges FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "user_badges_delete_own" ON lumina.user_badges FOR DELETE USING (auth.uid() = user_id);
+ALTER TABLE vitacora.user_badges ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "user_badges_select_own" ON vitacora.user_badges FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "user_badges_insert_own" ON vitacora.user_badges FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "user_badges_update_own" ON vitacora.user_badges FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "user_badges_delete_own" ON vitacora.user_badges FOR DELETE USING (auth.uid() = user_id);
 
 -- ────────────────────────────────────────────────────────────
 -- STORAGE BUCKETS
@@ -273,7 +273,7 @@ CREATE POLICY "user_badges_delete_own" ON lumina.user_badges FOR DELETE USING (a
 -- ────────────────────────────────────────────────────────────
 -- SEED: Predefined badges (optional, app also auto-seeds)
 -- ────────────────────────────────────────────────────────────
-INSERT INTO lumina.badges (name, description, icon, condition_type, condition_value) VALUES
+INSERT INTO vitacora.badges (name, description, icon, condition_type, condition_value) VALUES
   ('Primera Lectura', 'Termina tu primer libro', '📖', 'books_finished', 1),
   ('Lector Dedicado', 'Termina 5 libros', '📚', 'books_finished', 5),
   ('Primer Logro', 'Completa tu primera meta', '🏆', 'successes', 1),
