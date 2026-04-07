@@ -9,9 +9,9 @@
 
   const nav = [
     { href: '/dashboard', label: 'Dashboard', icon: '◈' },
-    { href: '/goals', label: 'Visión & Metas', icon: '✦' },
-    { href: '/work', label: 'Trabajo', icon: '⬡' },
-    { href: '/partner', label: 'Partner', icon: '♡' },
+    { href: '/goals', label: 'Visión & Metas', icon: '⊶' },
+    { href: '/work', label: 'Trabajo', icon: '⌘' },
+    { href: '/partner', label: 'Partner', icon: '🎔' },
     { href: '/profile', label: 'Perfil & XP', icon: '◎' }
   ];
 
@@ -79,7 +79,7 @@
     {#if user}
       <div class="user-info">
         <div class="user-avatar">{user.email?.[0].toUpperCase()}</div>
-        <div class="user-email">{user.email}</div>
+        <div class="user-email">{user.email?.replace(/@.*/, '')}</div>
       </div>
     {/if}
     <button class="sign-out-btn" onclick={signOut}>
@@ -229,7 +229,7 @@
 
   .user-email {
     font-size: 12px;
-    color: var(--text3);
+    color: var(--text2);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
