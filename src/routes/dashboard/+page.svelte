@@ -56,7 +56,7 @@
   <!-- Header -->
   <div class="dash-header">
     <div>
-      <h1 class="dash-greeting">{greeting} ✦</h1>
+      <h1 class="dash-greeting">{greeting} ⊶</h1>
       <p class="dash-date">{now.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
     </div>
     <div class="dash-global-xp">
@@ -196,7 +196,7 @@
 
     <!-- Quick motivational -->
     <div class="card motive-card">
-      <div class="motive-glyph">✦</div>
+      <div class="motive-glyph">⊶</div>
       <blockquote class="motive-quote">
         "1% better every day"
       </blockquote>
