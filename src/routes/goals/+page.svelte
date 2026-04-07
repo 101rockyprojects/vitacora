@@ -356,12 +356,6 @@
     saving = false;
   }
 
-  async function deleteCal(id: string) {
-    if (!confirm('¿Eliminar evento?')) return;
-    await repo.calendar.remove(id);
-    await loadAll();
-  }
-
   async function saveSuccess() {
     saving = true;
     const wasDone = editingSuccess?.done ?? false;
@@ -456,7 +450,7 @@
   }
 
   const tabs = [
-    { id: 'vision', label: 'Visión', icon: '✦' },
+    { id: 'vision', label: 'Visión', icon: '⊶' },
     { id: 'books', label: 'Libros', icon: '📚' },
     { id: 'learning', label: 'Aprendizaje', icon: '🧠' },
     { id: 'memories', label: 'Memorias', icon: '📸' },
@@ -578,7 +572,7 @@
               {/if}
             </div>
             <div class="card-actions">
-              <button class="small-btn btn-ghost" onclick={() => editBook(book)}>🖉</button>
+              <button class="small-btn btn-ghost" onclick={() => editBook(book)}>🖋</button>
               <button class="small-btn btn-ghost" onclick={() => deleteBook(book.id!)}>✕</button>
             </div>
           </div>
@@ -611,7 +605,7 @@
               <img src={item.image_url} alt="screenshot" class="learn-thumb" />
             {/if}
             <div class="card-actions-inline">
-              <button class="small-btn btn-secondary" onclick={() => editLearn(item)}>🖉</button>
+              <button class="small-btn btn-secondary" onclick={() => editLearn(item)}>🖋</button>
               <button class="small-btn btn-ghost" onclick={() => deleteLearn(item.id!)}>✕</button>
             </div>
           </div>
@@ -699,7 +693,7 @@
                 <div class="success-date">Completado: {new Date(s.completed_date).toLocaleDateString('es-ES')}</div>
               {/if}
             </div>
-            <button class="small-btn btn-ghost" onclick={() => openEditSuccess(s)}>🖉</button>
+            <button class="small-btn btn-ghost" onclick={() => openEditSuccess(s)}>🖋</button>
             <button class="small-btn btn-ghost" onclick={() => deleteSuccess(s.id!)}>✕</button>
           </div>
         {/each}
@@ -725,7 +719,7 @@
               <div class="reward-date">{new Date(r.date_awarded).toLocaleDateString('es-ES')}</div>
             </div>
             <div class="card-actions-inline">
-              <button class="small-btn btn-secondary" onclick={() => editReward(r)}>🖉</button>
+              <button class="small-btn btn-secondary" onclick={() => editReward(r)}>🖋</button>
               <button class="small-btn btn-ghost" onclick={() => deleteReward(r.id!)}>✕</button>
             </div>
           </div>
