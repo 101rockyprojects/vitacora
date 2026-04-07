@@ -3,7 +3,7 @@
   import { browser } from '$app/environment';
   import { createRepository } from '$lib/services/repository';
   import { awardXP, XP_VALUES } from '$lib/utils/xp';
-  import { tick } from 'svelte';
+  import { tick, untrack } from 'svelte';
   import type { Task, Project, UsefulLink, SkillsMd } from '$lib/types';
 
   const WORK_TABS = ['kanban', 'projects', 'links', 'skills'] as const;
@@ -26,6 +26,24 @@
   let editingTask = $state<Task | null>(null);
   let taskForm = $state<Task>({ title: '', status: 'to_do' });
   let draggedTask = $state<Task | null>(null);
+  let selectedTags = $state<string[]>(page.data.selectedTags ?? []);
+  let expandedTaskDescKeys = $state<string[]>([]);
+
+  const selectedTagSet = $derived(new Set(selectedTags));
+  const expandedTaskDescSet = $derived(new Set(expandedTaskDescKeys));
+  const tagCounts = $derived((() => {
+    const counts = new Map<string, number>();
+    for (const task of tasks) {
+      for (const tag of task.tags ?? []) {
+        const normalized = tag.trim();
+        if (!normalized) continue;
+        counts.set(normalized, (counts.get(normalized) ?? 0) + 1);
+      }
+    }
+    return [...counts.entries()]
+      .map(([tag, count]) => ({ tag, count }))
+      .sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag, 'es', { sensitivity: 'base' }));
+  })());
 
   // Projects
   let projects = $state<Project[]>([]);
@@ -108,8 +126,61 @@
     skills = s.data || [];
   }
 
+  $effect(() => {
+    if (typeof window === 'undefined') return;
+    const urlTags = page.url.searchParams.getAll('tag').map((t) => t.trim()).filter(Boolean);
+    const unique = [...new Set(urlTags)];
+    const current = untrack(() => selectedTags);
+    if (unique.length === current.length && unique.every((t) => current.includes(t))) return;
+    selectedTags = unique;
+  });
+
+  function syncSelectedTagsToUrl() {
+    if (typeof window === 'undefined') return;
+    const next = new URL(window.location.href);
+    next.searchParams.delete('tag');
+    for (const tag of selectedTags) next.searchParams.append('tag', tag);
+    window.history.replaceState(window.history.state, '', next);
+  }
+
+  function toggleTagFilter(tag: string) {
+    const normalized = tag.trim();
+    if (!normalized) return;
+    if (selectedTagSet.has(normalized)) selectedTags = selectedTags.filter((t) => t !== normalized);
+    else selectedTags = [...selectedTags, normalized];
+    syncSelectedTagsToUrl();
+  }
+
+  function clearTagFilters() {
+    selectedTags = [];
+    syncSelectedTagsToUrl();
+  }
+
+  function getTaskKey(task: Task): string {
+    if (task.id) return task.id;
+    const createdAt = task.created_at ?? '';
+    return `${task.title}::${createdAt}`;
+  }
+
+  function getTaskDescDomId(key: string): string {
+    return `task-desc-${key.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+  }
+
+  function toggleTaskDescription(key: string) {
+    if (expandedTaskDescSet.has(key)) expandedTaskDescKeys = expandedTaskDescKeys.filter((k) => k !== key);
+    else expandedTaskDescKeys = [...expandedTaskDescKeys, key];
+  }
+
+  function matchesTagFilters(task: Task, filters: string[]): boolean {
+    if (filters.length === 0) return true;
+    const tags = task.tags ?? [];
+    return filters.some((filter) => tags.includes(filter));
+  }
+
+  const filteredTasks = $derived(tasks.filter((t) => matchesTagFilters(t, selectedTags)));
+
   function staTasks(sta: Task['status']) {
-    return tasks.filter(t => t.status === sta);
+    return filteredTasks.filter(t => t.status === sta);
   }
 
   function resetTaskForm() { taskForm = { title: '', status: 'to_do' }; editingTask = null; }
@@ -304,7 +375,7 @@
   }
 
   const tabs = [
-    { id: 'kanban', label: 'Kanban', icon: '⬡' },
+    { id: 'kanban', label: 'Kanban', icon: '⌘' },
     { id: 'projects', label: 'Proyectos', icon: '🚀' },
     { id: 'links', label: 'Links útiles', icon: '🔗' },
     { id: 'skills', label: 'Skills.md', icon: '📝' }
@@ -330,8 +401,27 @@
   <!-- KANBAN -->
   {#if activeTab === 'kanban'}
     <div class="fade-in">
-      <div class="tab-actions">
+      <div class="tab-actions kanban-actions">
         <button class="btn btn-primary" onclick={() => { resetTaskForm(); showTaskForm = true; }}>+ Nueva tarea</button>
+        {#if tagCounts.length > 0}
+          <div class="tag-filters" aria-label="Filtrar por tags">
+            <span class="tag-filter-label">Tags:</span>
+            {#each tagCounts as t}
+              <button
+                class="tag-filter"
+                class:active={selectedTagSet.has(t.tag)}
+                type="button"
+                onclick={() => toggleTagFilter(t.tag)}
+                aria-pressed={selectedTagSet.has(t.tag)}
+              >
+                {t.tag} <span class="tag-filter-count">({t.count})</span>
+              </button>
+            {/each}
+            {#if selectedTags.length > 0}
+              <button class="tag-filter-clear" type="button" onclick={clearTagFilters}>Limpiar</button>
+            {/if}
+          </div>
+        {/if}
       </div>
       <div class="kanban-board">
         {#each statuses as sta}
@@ -349,19 +439,40 @@
             </div>
             <div class="kanban-cards">
               {#each staTasks(sta.id) as task}
+                {@const key = getTaskKey(task)}
+                {@const descId = getTaskDescDomId(key)}
                 <div
                   class="kanban-card"
                   draggable="true"
                   ondragstart={() => onDragStart(task)}
                 >
-                  <div class="kcard-title">{task.title}</div>
-                  {#if task.description}
-                    <div class="kcard-desc">{task.description}</div>
+                  <div class="kcard-header">
+                    <div class="kcard-title">{task.title}</div>
+                    {#if task.description}
+                      <button
+                        class="kcard-desc-toggle"
+                        type="button"
+                        draggable="false"
+                        aria-expanded={expandedTaskDescSet.has(key)}
+                        aria-controls={descId}
+                        onpointerdown={(e) => e.stopPropagation()}
+                        onclick={(e) => { e.stopPropagation(); toggleTaskDescription(key); }}
+                        ondragstart={(e) => e.preventDefault()}
+                      >
+                        <span class="kcard-desc-toggle-label">
+                          {expandedTaskDescSet.has(key) ? 'Ocultar' : 'Ver más'}
+                        </span>
+                        <span class="kcard-desc-toggle-icon" class:open={expandedTaskDescSet.has(key)}>▾</span>
+                      </button>
+                    {/if}
+                  </div>
+                  {#if task.description && expandedTaskDescSet.has(key)}
+                    <div class="kcard-desc" id={descId}>{task.description}</div>
                   {/if}
-                  {#if task.tags?.length}
+                  {#if task.tags?.length && expandedTaskDescSet.has(key)}
                     <div class="kcard-tags">
                       {#each task.tags as tag}
-                        <span class="tag" style="background:var(--bg3);staor:var(--text3)">{tag}</span>
+                        <span class="tag">{tag}</span>
                       {/each}
                     </div>
                   {/if}
@@ -369,13 +480,13 @@
                     <div class="kcard-due">📅 {new Date(task.due_date).toLocaleDateString('es-ES')}</div>
                   {/if}
                   <div class="kcard-actions">
-                    <button class="btn btn-ghost" style="font-size:11px;padding:3px 6px;" onclick={() => editTask(task)}>Editar</button>
                     <select class="kcard-move" onchange={(e) => moveTask(task, (e.target as HTMLSelectElement).value as Task['status'])} value={task.status}>
                       {#each statuses as s}
-                        <option value={s.id}>{s.label}</option>
+                      <option value={s.id}>{s.label}</option>
                       {/each}
                     </select>
-                    <button class="btn btn-ghost" style="font-size:11px;staor:var(--accent-red);padding:3px 6px;" onclick={() => deleteTask(task.id!)}>✕</button>
+                    <button class="btn btn-secondary" style="font-size:11px;padding:3px 6px;" onclick={() => editTask(task)}>Editar</button>
+                    <button class="btn btn-ghost" style="font-size:11px;color:var(--accent-red);padding:3px 6px;" onclick={() => deleteTask(task.id!)}>✕</button>
                   </div>
                 </div>
               {/each}
@@ -397,7 +508,7 @@
             <div class="project-header">
               <div class="project-name">{p.name}</div>
               <div style="display:flex;gap:6px;">
-                <button class="small-btn btn-secondary" style="font-size:11px;" onclick={() => editProject(p)}>🖉</button>
+                <button class="small-btn btn-secondary" style="font-size:11px;" onclick={() => editProject(p)}>🖋</button>
                 <button class="small-btn btn-ghost" style="font-size:11px;" onclick={() => deleteProject(p.id!)}>✕</button>
               </div>
             </div>
@@ -438,7 +549,7 @@
               <div class="link-url">{l.url}</div>
             </div>
             <div style="display:flex;gap:6px;">
-              <button class="small-btn btn-secondary" onclick={() => editLink(l)}>🖉</button>
+              <button class="small-btn btn-secondary" onclick={() => editLink(l)}>🖋</button>
               <button class="small-btn btn-ghost" onclick={() => deleteLink(l.id!)}>✕</button>
             </div>
           </div>
@@ -519,7 +630,7 @@
       <div class="form-group">
         <label>Status</label>
         <select bind:value={taskForm.status}>
-          {#each statuses as sta}col
+          {#each statuses as sta}
             <option value={sta.id}>{sta.label}</option>
           {/each}
         </select>
@@ -612,6 +723,72 @@
   .tab-actions { margin-bottom: 20px; }
 
   /* Kanban */
+  .kanban-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .tag-filters {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .tag-filter-label {
+    font-size: 12px;
+    color: var(--text2);
+    font-family: var(--font-mono);
+    margin-right: 2px;
+    user-select: none;
+  }
+
+  .tag-filter {
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 8px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    color: var(--text2);
+    text-transform: uppercase;
+    font-family: var(--font-mono);
+    font-weight: 600;
+    transition: all var(--transition);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .tag-filter:hover { border-color: var(--accent-green); color: var(--text2); }
+
+  .tag-filter.active {
+    background: rgba(168,230,207,0.12);
+    border-color: rgba(168,230,207,0.45);
+    color: var(--text);
+  }
+
+  .tag-filter-count {
+    font-size: 11px;
+    opacity: 0.85;
+    font-family: var(--font-mono);
+  }
+
+  .tag-filter-clear {
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    color: var(--text3);
+    border: 1px dashed var(--border);
+    background: transparent;
+    transition: all var(--transition);
+  }
+
+  .tag-filter-clear:hover { border-color: var(--text3); color: var(--text2); }
+
   .kanban-board {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -669,10 +846,55 @@
   .kanban-card:hover { border-color: var(--accent-green); transform: translateY(-1px); }
   .kanban-card:active { cursor: grabbing; }
 
+  .kcard-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 4px;
+  }
+
   .kcard-title { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
   .kcard-desc { font-size: 12px; color: var(--text2); margin-bottom: 6px; }
   .kcard-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
   .kcard-due { font-size: 11px; color: var(--text3); font-family: var(--font-mono); margin-bottom: 8px; }
+
+  .kcard-desc-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-family: var(--font-mono);
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    color: var(--text3);
+    transition: all var(--transition);
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .kcard-desc-toggle:hover { border-color: var(--text3); color: var(--text2); }
+
+  .kcard-desc-toggle-icon {
+    display: inline-block;
+    transition: transform var(--transition);
+    transform-origin: center;
+  }
+
+  .kcard-desc-toggle-icon.open { transform: rotate(180deg); }
+
+  .tag {
+    font-size: 11px;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    color: var(--text3);
+    font-family: var(--font-mono);
+    white-space: nowrap;
+  }
 
   .kcard-actions {
     display: flex;
