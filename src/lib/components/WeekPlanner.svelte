@@ -1,13 +1,14 @@
 <script lang="ts">
   import { page } from '$app/state';
-  import type { CalendarEvent } from '$lib/types';
+  import type { CalendarEvent, CalendarTodo } from '$lib/types';
   import { createRepository } from '$lib/services/repository';
 
   const userId = $derived(page.data.user?.id ?? '');
   const repo = $derived(createRepository(userId));
 
-  let { events, title = 'Semana actual', showEventList = true }: {
+  let { events, todos = [], title = 'Semana actual', showEventList = true }: {
     events: CalendarEvent[];
+    todos?: CalendarTodo[];
     title?: string;
     showEventList?: boolean;
   } = $props();
@@ -36,6 +37,7 @@
       weekday: string;
       specialTitles: string[];
       events: CalendarEvent[];
+      todos: CalendarTodo[];
     }> = [];
 
     for (let i = 0; i < 7; i++) {
@@ -45,12 +47,14 @@
       const dayEvents = events.filter(e => e.event_date === iso);
       const specialTitles = dayEvents.filter(e => e.type === 'special_day').map(e => e.event_name);
       const dayItems = dayEvents.filter(e => e.type !== 'special_day');
+      const dayTodos = todos.filter(t => t.todo_date === iso);
       days.push({
         iso,
         date,
         weekday: date.toLocaleDateString('es-ES', { weekday: 'long' }),
         specialTitles,
-        events: dayItems
+        events: dayItems,
+        todos: dayTodos
       });
     }
     return days;
@@ -64,34 +68,41 @@
     isToday: boolean;
     isPast: boolean;
     events: CalendarEvent[];
+    todos: CalendarTodo[];
   };
 
   const eventGroups = $derived((() => {
-    const byDate = new Map<string, CalendarEvent[]>();
+    const byDate = new Map<string, { events: CalendarEvent[]; todos: CalendarTodo[] }>();
+
     for (const ev of events) {
       const iso = ev.event_date;
-      if (!byDate.has(iso)) byDate.set(iso, []);
-      byDate.get(iso)!.push(ev);
+      if (!byDate.has(iso)) byDate.set(iso, { events: [], todos: [] });
+      byDate.get(iso)!.events.push(ev);
     }
 
-    const groups: EventGroup[] = [...byDate.entries()].map(([iso, dayEvents]) => {
+    for (const td of todos) {
+      const iso = td.todo_date;
+      if (!byDate.has(iso)) byDate.set(iso, { events: [], todos: [] });
+      byDate.get(iso)!.todos.push(td);
+    }
+
+    const groups: EventGroup[] = [...byDate.entries()].map(([iso, data]) => {
       const d = new Date(iso);
       const isToday = iso === todayIso;
       const isPast = iso < todayIso && !isToday;
-      // Keep special_day first inside each day, then events.
-      const sorted = [...dayEvents].sort((a, b) => {
+      const sorted = [...data.events].sort((a, b) => {
         if (a.type === b.type) return a.event_name.localeCompare(b.event_name, 'es', { sensitivity: 'base' });
         return a.type === 'special_day' ? -1 : 1;
       });
-      return { iso, date: d, isToday, isPast, events: sorted };
+      return { iso, date: d, isToday, isPast, events: sorted, todos: data.todos };
     });
 
     return groups.sort((a, b) => {
       if (a.isToday && !b.isToday) return -1;
       if (!a.isToday && b.isToday) return 1;
-      if (a.isPast !== b.isPast) return a.isPast ? 1 : -1; // past goes last
-      if (a.isPast && b.isPast) return b.iso.localeCompare(a.iso); // recent past first
-      return a.iso.localeCompare(b.iso); // upcoming chronological
+      if (a.isPast !== b.isPast) return a.isPast ? 1 : -1;
+      if (a.isPast && b.isPast) return b.iso.localeCompare(a.iso);
+      return a.iso.localeCompare(b.iso);
     });
   })());
 
@@ -128,10 +139,13 @@
       </div>
 
       <div class="week-body">
-        {#if d.events.length === 0}
+        {#if d.events.length === 0 && d.todos.length === 0}
           <div class="week-empty">{isSpecial ? 'Sin eventos' : '—'}</div>
         {:else}
           <div class="week-list">
+            {#each d.todos as td (td.id)}
+              <span class="week-todo">{td.name}</span>
+            {/each}
             {#each d.events as ev (ev.id)}
               <a class="week-event" href={`#event-${slugify(ev.event_name)}`}>{ev.event_name}</a>
             {/each}
@@ -162,6 +176,17 @@
             </div>
           </div>
           <div class="week-event-list">
+            {#each g.todos as td (td.id)}
+              {@const tdDate = new Date(td.todo_date)}
+              {@const isToday = toIsoDateLocal(tdDate) === todayIso}
+              <div class="cal-card card todo-card" class:today={isToday}>
+                <div class="cal-info">
+                  <div class="cal-name">{td.name}</div>
+                  <div class="cal-date">{new Date(td.todo_date).toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
+                  <span class="tag" style="background:var(--accent-orange);color:var(--bg2)">Tarea</span>
+                </div>
+              </div>
+            {/each}
             {#each g.events as ev (ev.id)}
               {@const evDate = new Date(ev.event_date)}
               {@const isToday = toIsoDateLocal(evDate) === todayIso}
@@ -208,6 +233,15 @@
                     </div>
                   </div>
                   <div class="week-event-list">
+                    {#each g.todos as td (td.id)}
+                      <div class="cal-card card todo-card expired">
+                        <div class="cal-info">
+                          <div class="cal-name">{td.name}</div>
+                          <div class="cal-date">{new Date(td.todo_date).toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
+                          <span class="tag" style="background:var(--accent-orange);color:var(--bg2)">Tarea</span>
+                        </div>
+                      </div>
+                    {/each}
                     {#each g.events as ev (ev.id)}
                       {@const evDate = new Date(ev.event_date)}
                       {@const isToday = toIsoDateLocal(evDate) === todayIso}
@@ -332,6 +366,10 @@
     outline-offset: 2px;
   }
 
+  .cal-card.todo-card {
+    border-left: 3px solid var(--accent-orange);
+  }
+
   .cal-info { flex: 1; }
   .cal-name { font-weight: 700; font-size: 15px; line-height: 1.2; }
   .cal-date { font-size: 13px; color: var(--text2); text-transform: capitalize; margin: 3px 0; }
@@ -431,6 +469,18 @@
   }
 
   .week-event:hover { background: var(--accent-green); }
+
+  .week-todo {
+    font-size: 11px;
+    color: var(--bg2);
+    font-weight: 600;
+    padding: 5px 7px;
+    border-radius: 6px;
+    border: 1px solid rgba(238, 152, 99, 0.5);
+    background: var(--accent-orange);
+    display: block;
+    margin-bottom: 4px;
+  }
 
   .empty-state {
     color: var(--text3);

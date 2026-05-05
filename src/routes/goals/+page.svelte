@@ -4,13 +4,14 @@
   import { createRepository } from '$lib/services/repository';
   import Toast from '$lib/components/Toast.svelte';
   import WeekPlanner from '$lib/components/WeekPlanner.svelte';
+  import PieChart from '$lib/components/PieChart.svelte';
   import { awardXP, XP_VALUES } from '$lib/utils/xp';
   import { onDestroy, tick } from 'svelte';
   import 'gridstack/dist/gridstack.min.css';
-  import type { Book, LearningItem, SuccessExperience, Reward, MemoryPhoto, CalendarEvent, UsefulLink } from '$lib/types';
+  import type { Book, LearningItem, SuccessExperience, Reward, MemoryPhoto, CalendarEvent, UsefulLink, CalendarTodo, Expense, ExpenseCategory } from '$lib/types';
 
   // --- State ---
-  const GOALS_TABS = ['vision', 'books', 'learning', 'memories', 'calendar', 'successes', 'rewards'] as const;
+  const GOALS_TABS = ['vision', 'books', 'learning', 'memories', 'calendar', 'successes', 'rewards', 'expenses'] as const;
   type GoalsTab = typeof GOALS_TABS[number];
 
   const userId = $derived(page.data.user?.id ?? '');
@@ -30,11 +31,84 @@
   let visionToast = $state(false);
   let visionToastTimer: ReturnType<typeof setTimeout> | null = $state(null);
 
+  // Calendar Todos (To Do in Calendar)
+  let calendarTodos = $state<CalendarTodo[]>([]);
+  let todoInput = $state('');
+  let todoDateInput = $state(new Date().toISOString().split('T')[0]);
+  let editingTodoId = $state<string | null>(null);
+  let editTodoName = $state('');
+  let editTodoDate = $state('');
+
+  // Expenses
+  let expenses = $state<Expense[]>([]);
+  let showExpenseForm = $state(false);
+  let editingExpenseId = $state<string | null>(null);
+  let expenseForm = $state<Expense>({ name: '', category: '', cost: 0, expense_date: new Date().toISOString().split('T')[0] });
+  let expenseFilterCategory = $state('');
+  let expenseFilterStartDate = $state('');
+  let expenseFilterEndDate = $state('');
+  const usedCategories = $derived([...new Set(expenses.map(e => e.category))].filter(Boolean));
+
+  const filteredExpenses = $derived(() => {
+    let result = [...expenses];
+    if (expenseFilterCategory) {
+      result = result.filter(e => e.category === expenseFilterCategory);
+    }
+    if (expenseFilterStartDate) {
+      result = result.filter(e => e.expense_date >= expenseFilterStartDate);
+    }
+    if (expenseFilterEndDate) {
+      result = result.filter(e => e.expense_date <= expenseFilterEndDate);
+    }
+    return result;
+  });
+
+  const expensesTotal = $derived(filteredExpenses().reduce((sum, e) => sum + (e.cost || 0), 0));
+
+  const expensesByCategory = $derived(() => {
+    const categories: Record<string, number> = {};
+    for (const e of filteredExpenses()) {
+      const cat = e.category || 'Sin categoría';
+      categories[cat] = (categories[cat] || 0) + (e.cost || 0);
+    }
+    const total = Object.values(categories).reduce((a, b) => a + b, 0);
+    return Object.entries(categories)
+      .map(([name, total]) => ({ name, total, percentage: total > 0 ? (total / total) * 100 : 0 }))
+      .sort((a, b) => b.total - a.total);
+  });
+
+  const expensesByMonth = $derived(() => {
+    const months: Record<string, Expense[]> = {};
+    for (const e of filteredExpenses()) {
+      const monthKey = e.expense_date.substring(0, 7);
+      if (!months[monthKey]) months[monthKey] = [];
+      months[monthKey].push(e);
+    }
+    return Object.entries(months)
+      .sort(([a], [b]) => b.localeCompare(a))
+      .map(([month, items]) => ({
+        month,
+        monthLabel: new Date(month + '-01').toLocaleDateString('es-ES', { year: 'numeric', month: 'long' }),
+        items,
+        total: items.reduce((sum, e) => sum + (e.cost || 0), 0)
+      }));
+  });
+
   // Books
   let books = $state<Book[]>([]);
   let showBookForm = $state(false);
   let editingBook = $state<Book | null>(null);
   let bookForm = $state<Book>({ title: '', current_page: 0, total_pages: 0 });
+  let expandedBookNotes = $state<string[]>([]);
+  const expandedBookNotesSet = $derived(new Set(expandedBookNotes));
+
+  function toggleBookNotes(bookId: string) {
+    if (expandedBookNotesSet.has(bookId)) {
+      expandedBookNotes = expandedBookNotes.filter(id => id !== bookId);
+    } else {
+      expandedBookNotes = [...expandedBookNotes, bookId];
+    }
+  }
 
   // Learning
   let learning = $state<LearningItem[]>([]);
@@ -121,14 +195,16 @@
 
   async function loadAll() {
     if (!userId) return;
-    const [b, l, m, c, s, r, vb] = await Promise.all([
+    const [b, l, m, c, s, r, vb, ct, e] = await Promise.all([
       repo.books.list(),
       repo.learning.list(),
       repo.memories.list(),
       repo.calendar.list(),
       repo.successes.list(),
       repo.rewards.list(),
-      repo.links.getVisionBoard()
+      repo.links.getVisionBoard(),
+      repo.calendarTodos.list(),
+      repo.expenses.list()
     ]);
     books = b.data || [];
     learning = l.data || [];
@@ -137,6 +213,8 @@
     successes = s.data || [];
     rewards = r.data || [];
     visionBoardLink = vb.data?.[0] || null;
+    calendarTodos = ct.data || [];
+    expenses = e.data || [];
     if (visionBoardLink?.link_type === 'vision_board_canva') visionLinkMode = 'canva';
     if (visionBoardLink?.link_type === 'vision_board_image') visionLinkMode = 'image';
     visionLinkInput = visionBoardLink?.url || '';
@@ -356,6 +434,85 @@
     saving = false;
   }
 
+  // Calendar Todos
+  async function addTodo() {
+    const name = todoInput.trim();
+    if (!name || !todoDateInput) return;
+    saving = true;
+    await repo.calendarTodos.insert({ name, todo_date: todoDateInput });
+    todoInput = '';
+    todoDateInput = new Date().toISOString().split('T')[0];
+    await loadAll();
+    saving = false;
+  }
+
+  function startEditTodo(todo: CalendarTodo) {
+    editingTodoId = todo.id || null;
+    editTodoName = todo.name;
+    editTodoDate = todo.todo_date;
+  }
+
+  async function saveEditTodo() {
+    if (!editingTodoId || !editTodoName.trim() || !editTodoDate) return;
+    saving = true;
+    await repo.calendarTodos.update(editingTodoId, { name: editTodoName.trim(), todo_date: editTodoDate });
+    editingTodoId = null;
+    editTodoName = '';
+    editTodoDate = '';
+    await loadAll();
+    saving = false;
+  }
+
+  function cancelEditTodo() {
+    editingTodoId = null;
+    editTodoName = '';
+    editTodoDate = '';
+  }
+
+  async function deleteTodo(id: string) {
+    if (!confirm('¿Eliminar tarea?')) return;
+    await repo.calendarTodos.remove(id);
+    await loadAll();
+  }
+
+  // Expenses
+  function resetExpenseForm() {
+    expenseForm = { name: '', category: '', cost: 0, expense_date: new Date().toISOString().split('T')[0] };
+    editingExpenseId = null;
+  }
+
+  async function saveExpense() {
+    if (!expenseForm.name.trim() || !expenseForm.category.trim() || expenseForm.cost <= 0) return;
+    saving = true;
+    if (editingExpenseId) {
+      await repo.expenses.update(editingExpenseId, { ...expenseForm });
+    } else {
+      await repo.expenses.insert(expenseForm);
+    }
+    showExpenseForm = false;
+    resetExpenseForm();
+    await loadAll();
+    saving = false;
+  }
+
+  function editExpense(e: Expense) {
+    editingExpenseId = e.id || null;
+    expenseForm = { ...e };
+    showExpenseForm = true;
+  }
+
+  async function deleteExpense(id: string) {
+    if (!confirm('¿Eliminar gasto?')) return;
+    await repo.expenses.remove(id);
+    await loadAll();
+  }
+
+  function clearExpenseFilters() {
+    expenseFilterCategory = '';
+    expenseFilterStartDate = '';
+    expenseFilterEndDate = '';
+  }
+
   async function saveSuccess() {
     saving = true;
     const wasDone = editingSuccess?.done ?? false;
@@ -456,7 +613,8 @@
     { id: 'memories', label: 'Memorias', icon: '📸' },
     { id: 'calendar', label: 'Calendario', icon: '📅' },
     { id: 'successes', label: 'Logros', icon: '🏆' },
-    { id: 'rewards', label: 'Recompensas', icon: '🎁' }
+    { id: 'rewards', label: 'Recompensas', icon: '🎁' },
+    { id: 'expenses', label: 'Gastos', icon: '💰' }
   ] as const;
 </script>
 
@@ -516,7 +674,7 @@
                 loading="lazy"
                 style="position: absolute; width: 100%; height: 100%; top: 0; left: 0; border: none; padding: 0;margin: 0;"
                 src={visionBoardLink.url + '?embed'}
-                allowfullscreen="allowfullscreen"
+                allowfullscreen={true}
                 allow="fullscreen"
                 title="Vision Board Canva"
               ></iframe>
@@ -552,25 +710,39 @@
       <div class="books-grid">
         {#each books as book}
           {@const pct = bookProgress(book)}
+          {@const showNotes = expandedBookNotesSet.has(book.id || '')}
           <div class="book-card card" class:finished={pct >= 100}>
-            <div class="book-cover">
-              {#if book.cover_url}
-                <img src={book.cover_url} alt={book.title} />
-              {:else}
-                <span>{book.title[0]}</span>
-              {/if}
-            </div>
-            <div class="book-info">
-              <div class="book-title">{book.title}</div>
-              <div class="book-progress-label">{book.current_page} / {book.total_pages} págs</div>
-              <div class="progress-track" style="margin:6px 0;">
-                <div class="progress-fill" style="width:{pct}%;background:{pct>=100?'var(--accent-yellow)':'var(--accent-green)'};"></div>
+            <div class="book-cover-info">
+              <div class="book-cover">
+                {#if book.cover_url}
+                  <img src={book.cover_url} alt={book.title} />
+                {:else}
+                  <span>{book.title[0]}</span>
+                {/if}
               </div>
-              <div class="book-pct">{pct}% {pct >= 100 ? '✓ Terminado' : ''}</div>
-              {#if book.notes}
+              <div class="book-info">
+                <div class="book-title">{book.title}</div>
+                <div class="book-progress-label">{book.current_page} / {book.total_pages} págs</div>
+                <div class="progress-track" style="margin:6px 0;">
+                  <div class="progress-fill" style="width:{pct}%;background:{pct>=100?'var(--accent-yellow)':'var(--accent-green)'};"></div>
+                </div>
+                <div class="book-pct">{pct}% {pct >= 100 ? '✓ Terminado' : ''}</div>
+              </div>
+            </div>
+            {#if book.notes}
+              <button
+                class="book-notes-toggle"
+                type="button"
+                onclick={() => toggleBookNotes(book.id || '')}
+                aria-expanded={showNotes}
+              >
+                <span>Notas</span>
+                <span class="toggle-icon" class:open={showNotes}>▾</span>
+              </button>
+              {#if showNotes}
                 <div class="book-notes">{book.notes}</div>
               {/if}
-            </div>
+            {/if}
             <div class="card-actions">
               <button class="small-btn btn-ghost" onclick={() => editBook(book)}>🖋</button>
               <button class="small-btn btn-ghost" onclick={() => deleteBook(book.id!)}>✕</button>
@@ -666,10 +838,65 @@
   <!-- CALENDAR -->
   {:else if activeTab === 'calendar'}
     <div class="fade-in">
+      <div class="task-title">Pendientes</div>
+      <div class="calendar-todo-section">
+        <div class="todo-header">
+          <div class="todo-form">
+            <input
+              type="text"
+              bind:value={todoInput}
+              placeholder="Nueva tarea..."
+              class="todo-input"
+              onkeydown={(e) => e.key === 'Enter' && addTodo()}
+            />
+            <input
+              type="date"
+              bind:value={todoDateInput}
+              class="todo-date"
+            />
+            <button class="btn btn-primary" onclick={addTodo} disabled={!todoInput.trim()}>+</button>
+          </div>
+        </div>
+        {#if calendarTodos.length === 0}
+          <div class="empty-todos">Sin tareas pendientes</div>
+        {:else}
+          <div class="todo-list">
+            {#each calendarTodos as todo (todo.id)}
+              <div class="todo-item">
+                {#if editingTodoId === todo.id}
+                  <div class="todo-edit-form">
+                    <input
+                      type="text"
+                      bind:value={editTodoName}
+                      class="todo-edit-input"
+                      onkeydown={(e) => e.key === 'Enter' && saveEditTodo()}
+                    />
+                    <input
+                      type="date"
+                      bind:value={editTodoDate}
+                      class="todo-edit-date"
+                    />
+                    <button class="btn btn-primary" onclick={saveEditTodo}>Guardar</button>
+                    <button class="btn btn-secondary" onclick={cancelEditTodo}>Cancelar</button>
+                  </div>
+                {:else}
+                  <span class="todo-name">{todo.name}</span>
+                  <span class="todo-date-label">{new Date(todo.todo_date).toLocaleDateString('es-ES')}</span>
+                  <div class="todo-actions">
+                    <button class="small-btn btn-secondary" onclick={() => startEditTodo(todo)}>🖋</button>
+                    <button class="small-btn btn-ghost" onclick={() => deleteTodo(todo.id!)}>✕</button>
+                  </div>
+                {/if}
+              </div>
+            {/each}
+          </div>
+        {/if}
+      </div>
+      <hr style="border: none; border-top: 1px solid var(--border); margin: 20px 0;" />
       <div class="tab-actions">
         <button class="btn btn-primary" onclick={() => { calForm = { event_name: '', event_date: '', type: 'event' }; showCalForm = true; }}>+ Agregar evento</button>
       </div>
-      <WeekPlanner events={calEvents} />
+      <WeekPlanner events={calEvents} todos={calendarTodos} />
     </div>
 
   <!-- SUCCESSES -->
@@ -701,6 +928,81 @@
           <div class="empty-state card">Registra tus experiencias de éxito 🏆</div>
         {/if}
       </div>
+    </div>
+
+  <!-- EXPENSES -->
+  {:else if activeTab === 'expenses'}
+    <div class="fade-in">
+      <div class="tab-actions">
+        <button class="btn btn-primary" onclick={() => { resetExpenseForm(); showExpenseForm = true; }}>+ Agregar gasto</button>
+      </div>
+
+      <div class="expenses-filters">
+        <select bind:value={expenseFilterCategory} class="expense-filter-select">
+          <option value="">Todas las categorías</option>
+          {#each usedCategories as cat}
+            <option value={cat}>{cat}</option>
+          {/each}
+        </select>
+        <input
+          type="date"
+          bind:value={expenseFilterStartDate}
+          class="expense-filter-date"
+          placeholder="Desde"
+        />
+        <input
+          type="date"
+          bind:value={expenseFilterEndDate}
+          class="expense-filter-date"
+          placeholder="Hasta"
+        />
+        {#if expenseFilterCategory || expenseFilterStartDate || expenseFilterEndDate}
+          <button class="btn btn-ghost" onclick={clearExpenseFilters}>Limpiar</button>
+        {/if}
+      </div>
+
+      {#if expensesByCategory().length > 0}
+        <div class="card expenses-chart-card">
+          <h3 class="card-title">Gastos por categoría</h3>
+          <PieChart data={expensesByCategory()} type="pie" title="Gastos por categoría" />
+          <div class="expenses-total">
+            Total: <span class="total-amount">${expensesTotal.toFixed(2)}</span>
+          </div>
+        </div>
+      {/if}
+
+      {#if expensesByMonth().length === 0}
+        <div class="empty-state card">Agrega tus primeros gastos 💰</div>
+      {:else}
+        <div class="expenses-groups">
+          {#each expensesByMonth() as monthGroup}
+            <div class="expense-month-group">
+              <div class="expense-month-header">
+                <span class="month-label">{monthGroup.monthLabel}</span>
+                <span class="month-total">${monthGroup.total.toFixed(2)}</span>
+              </div>
+              <div class="expense-items">
+                {#each monthGroup.items as exp (exp.id)}
+                  <div class="expense-item card">
+                    <div class="expense-info">
+                      <div class="expense-name">{exp.name}</div>
+                      <div class="expense-category">{exp.category}</div>
+                    </div>
+                    <div class="expense-meta">
+                      <div class="expense-cost">${exp.cost.toFixed(2)}</div>
+                      <div class="expense-date">{new Date(exp.expense_date).toLocaleDateString('es-ES')}</div>
+                    </div>
+                    <div class="card-actions-inline">
+                      <button class="small-btn btn-secondary" onclick={() => editExpense(exp)}>🖋</button>
+                      <button class="small-btn btn-ghost" onclick={() => deleteExpense(exp.id!)}>✕</button>
+                    </div>
+                  </div>
+                {/each}
+              </div>
+            </div>
+          {/each}
+        </div>
+      {/if}
     </div>
 
   <!-- REWARDS -->
@@ -891,6 +1193,38 @@
   </div>
 {/if}
 
+{#if showExpenseForm}
+  <div class="modal-backdrop" onclick={(e) => {
+        if (e.target === e.currentTarget) {
+          showExpenseForm = false; resetExpenseForm();
+        }
+      }}>
+    <div class="modal">
+      <h3>{editingExpenseId ? 'Editar gasto' : 'Nuevo gasto'}</h3>
+      <div class="form-group"><label>Nombre</label><input bind:value={expenseForm.name} placeholder="¿Qué gastaste?" /></div>
+      <div class="form-group">
+        <label>Categoría</label>
+        <input
+          bind:value={expenseForm.category}
+          placeholder="Ej: Comida, Transporte..."
+          list="expense-categories"
+        />
+        <datalist id="expense-categories">
+          {#each usedCategories as cat}
+            <option value={cat} />
+          {/each}
+        </datalist>
+      </div>
+      <div class="form-group"><label>Costo</label><input type="number" bind:value={expenseForm.cost} min="0" step="0.01" placeholder="0.00" /></div>
+      <div class="form-group"><label>Fecha</label><input type="date" bind:value={expenseForm.expense_date} /></div>
+      <div class="form-actions">
+        <button class="btn btn-secondary" onclick={() => { showExpenseForm = false; resetExpenseForm(); }}>Cancelar</button>
+        <button class="btn btn-primary" onclick={saveExpense} disabled={saving || !expenseForm.name.trim() || !expenseForm.category.trim() || expenseForm.cost <= 0}>{saving ? '...' : 'Guardar'}</button>
+      </div>
+    </div>
+  </div>
+{/if}
+
 <Toast visible={visionToast} message="Se agregó el Vision Board Link. Puedes verlo en Work/Links útiles" />
 
 <style>
@@ -1067,12 +1401,17 @@
   .book-card {
     position: relative;
     display: flex;
-    gap: 14px;
+    flex-direction: column;
     transition: transform var(--transition);
   }
 
   .book-card:hover { transform: translateY(-2px); }
   .book-card.finished { border-color: rgba(255,217,61,0.3); }
+
+  .book-cover-info {
+    display: flex;
+    gap: 14px;
+  }
 
   .book-cover {
     width: 48px;
@@ -1095,7 +1434,38 @@
   .book-title { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
   .book-progress-label { font-size: 12px; color: var(--text3); font-family: var(--font-mono); }
   .book-pct { font-size: 11px; color: var(--text3); font-family: var(--font-mono); }
-  .book-notes { font-size: 12px; color: var(--text2); margin-top: 6px; border-top: 1px solid var(--border); padding-top: 6px; }
+
+  .book-notes-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-family: var(--font-mono);
+    color: var(--text3);
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 8px;
+    margin-top: 8px;
+    cursor: pointer;
+    transition: all var(--transition);
+  }
+
+  .book-notes-toggle:hover {
+    border-color: var(--text3);
+    color: var(--text2);
+  }
+
+  .toggle-icon {
+    display: inline-block;
+    transition: transform var(--transition);
+  }
+
+  .toggle-icon.open {
+    transform: rotate(180deg);
+  }
+
+  .book-notes { font-size: 12px; color: var(--text2); margin-top: 8px; border-top: 1px solid var(--border); padding-top: 8px; }
 
   .card-actions {
     position: absolute;
@@ -1306,7 +1676,234 @@
   .mem-drag:active { cursor: grabbing; }
 
   .mem-card:hover .mem-delete { opacity: 1; }
-  
+
+  /* Calendar Todos (To Do) */
+
+  .task-title {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 12px;
+  }
+
+  .calendar-todo-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+
+  .todo-header {
+    display: flex;
+    justify-content: end;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+
+  .todo-form {
+    display: flex;
+    gap: 8px;
+    justify-content: end;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .todo-input {
+    width: 300px;
+  }
+
+  .todo-date {
+    width: 150px;
+  }
+
+  .empty-todos {
+    color: var(--text3);
+    font-size: 13px;
+    font-family: var(--font-mono);
+    text-align: center;
+    padding: 16px;
+  }
+
+  .todo-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .todo-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--bg2);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+
+  .todo-name {
+    flex: 1;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    min-width: 120px;
+  }
+
+  .todo-date-label {
+    font-size: 12px;
+    color: var(--text3);
+    font-family: var(--font-mono);
+  }
+
+  .todo-actions {
+    display: flex;
+    gap: 4px;
+  }
+
+  .todo-edit-form {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .todo-edit-input {
+    flex: 1;
+    min-width: 120px;
+  }
+
+  .todo-edit-date {
+    width: 140px;
+  }
+
+  /* Expenses */
+  .expenses-filters {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .expense-filter-select {
+    width: 180px;
+  }
+
+  .expense-filter-date {
+    width: 140px;
+  }
+
+  .expenses-chart-card {
+    margin-bottom: 20px;
+  }
+
+  .expenses-total {
+    margin-top: 16px;
+    text-align: right;
+    font-size: 14px;
+    color: var(--text2);
+    font-family: var(--font-mono);
+  }
+
+  .total-amount {
+    font-weight: 700;
+    color: var(--accent-green);
+    font-size: 18px;
+  }
+
+  .expenses-groups {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .expense-month-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .expense-month-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .month-label {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    text-transform: capitalize;
+  }
+
+  .month-total {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--accent-yellow);
+    font-family: var(--font-mono);
+  }
+
+  .expense-items {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .expense-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .expense-info {
+    flex: 1;
+    min-width: 120px;
+  }
+
+  .expense-name {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text);
+  }
+
+  .expense-category {
+    font-size: 12px;
+    color: var(--text3);
+    font-family: var(--font-mono);
+  }
+
+  .expense-meta {
+    text-align: right;
+  }
+
+  .expense-cost {
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--accent-orange);
+    font-family: var(--font-mono);
+  }
+
+  .expense-date {
+    font-size: 11px;
+    color: var(--text3);
+    font-family: var(--font-mono);
+  }
+
+  .card-actions-inline {
+    display: flex;
+    gap: 4px;
+  }
+
   /* Successes */
   .success-list { display: flex; flex-direction: column; gap: 12px; }
 
@@ -1384,6 +1981,10 @@
       display: grid;
       grid-template-columns: 1fr;
       gap: 10px;
+    }
+
+    .todo-input {
+      width: 100%;
     }
 
     .learn-topic { font-size: 14px; }
