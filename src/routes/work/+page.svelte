@@ -28,6 +28,12 @@
   let draggedTask = $state<Task | null>(null);
   let selectedTags = $state<string[]>(page.data.selectedTags ?? []);
   let expandedTaskDescKeys = $state<string[]>([]);
+  let collapsedColumns = $state<Record<string, boolean>>({
+    to_do: false,
+    doing: false,
+    done: true,
+    to_review: true
+  });
 
   const selectedTagSet = $derived(new Set(selectedTags));
   const expandedTaskDescSet = $derived(new Set(expandedTaskDescKeys));
@@ -337,6 +343,14 @@
     editingSkillId = null;
   }
 
+  async function copySkillContent(content: string) {
+    try {
+      await navigator.clipboard.writeText(content);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  }
+
   // Simple markdown-to-html for preview
   function renderMd(md: string): string {
     return md
@@ -425,72 +439,82 @@
       </div>
       <div class="kanban-board">
         {#each statuses as sta}
+          {@const isCollapsed = collapsedColumns[sta.id]}
           <div
             class="kanban-sta"
+            class:collapsed={isCollapsed}
             ondragover={(e) => e.preventDefault()}
             ondrop={() => onDrop(sta.id)}
             role="region"
             aria-label={sta.label}
           >
-            <div class="kanban-sta-header">
+            <button
+              class="kanban-sta-header"
+              type="button"
+              onclick={() => collapsedColumns[sta.id] = !collapsedColumns[sta.id]}
+              aria-expanded={!isCollapsed}
+            >
+              <span class="sta-toggle" class:collapsed={isCollapsed}>❯</span>
               <span class="sta-dot" style="background:{sta.color}"></span>
               <span class="sta-label">{sta.label}</span>
               <span class="sta-count">{staTasks(sta.id).length}</span>
-            </div>
-            <div class="kanban-cards">
-              {#each staTasks(sta.id) as task}
-                {@const key = getTaskKey(task)}
-                {@const descId = getTaskDescDomId(key)}
-                <div
-                  class="kanban-card"
-                  draggable="true"
-                  ondragstart={() => onDragStart(task)}
-                >
-                  <div class="kcard-header">
-                    <div class="kcard-title">{task.title}</div>
-                    {#if task.description}
-                      <button
-                        class="kcard-desc-toggle"
-                        type="button"
-                        draggable="false"
-                        aria-expanded={expandedTaskDescSet.has(key)}
-                        aria-controls={descId}
-                        onpointerdown={(e) => e.stopPropagation()}
-                        onclick={(e) => { e.stopPropagation(); toggleTaskDescription(key); }}
-                        ondragstart={(e) => e.preventDefault()}
-                      >
-                        <span class="kcard-desc-toggle-label">
-                          {expandedTaskDescSet.has(key) ? 'Ocultar' : 'Ver más'}
-                        </span>
-                        <span class="kcard-desc-toggle-icon" class:open={expandedTaskDescSet.has(key)}>▾</span>
-                      </button>
-                    {/if}
-                  </div>
-                  {#if task.description && expandedTaskDescSet.has(key)}
-                    <div class="kcard-desc" id={descId}>{task.description}</div>
-                  {/if}
-                  {#if task.tags?.length && expandedTaskDescSet.has(key)}
-                    <div class="kcard-tags">
-                      {#each task.tags as tag}
-                        <span class="tag">{tag}</span>
-                      {/each}
+            </button>
+            {#if !isCollapsed}
+              <div class="kanban-cards">
+                {#each staTasks(sta.id) as task}
+                  {@const key = getTaskKey(task)}
+                  {@const descId = getTaskDescDomId(key)}
+                  <div
+                    class="kanban-card"
+                    draggable="true"
+                    ondragstart={() => onDragStart(task)}
+                  >
+                    <div class="kcard-header">
+                      <div class="kcard-title">{task.title}</div>
+                      {#if task.description}
+                        <button
+                          class="kcard-desc-toggle"
+                          type="button"
+                          draggable="false"
+                          aria-expanded={expandedTaskDescSet.has(key)}
+                          aria-controls={descId}
+                          onpointerdown={(e) => e.stopPropagation()}
+                          onclick={(e) => { e.stopPropagation(); toggleTaskDescription(key); }}
+                          ondragstart={(e) => e.preventDefault()}
+                        >
+                          <span class="kcard-desc-toggle-label">
+                            {expandedTaskDescSet.has(key) ? 'Ocultar' : 'Ver más'}
+                          </span>
+                          <span class="kcard-desc-toggle-icon" class:open={expandedTaskDescSet.has(key)}>▾</span>
+                        </button>
+                      {/if}
                     </div>
-                  {/if}
-                  {#if task.due_date}
-                    <div class="kcard-due">📅 {new Date(task.due_date).toLocaleDateString('es-ES')}</div>
-                  {/if}
-                  <div class="kcard-actions">
-                    <select class="kcard-move" onchange={(e) => moveTask(task, (e.target as HTMLSelectElement).value as Task['status'])} value={task.status}>
-                      {#each statuses as s}
-                      <option value={s.id}>{s.label}</option>
-                      {/each}
-                    </select>
-                    <button class="btn btn-secondary" style="font-size:11px;padding:3px 6px;" onclick={() => editTask(task)}>Editar</button>
-                    <button class="btn btn-ghost" style="font-size:11px;color:var(--accent-red);padding:3px 6px;" onclick={() => deleteTask(task.id!)}>✕</button>
+                    {#if task.description && expandedTaskDescSet.has(key)}
+                      <div class="kcard-desc" id={descId}>{task.description}</div>
+                    {/if}
+                    {#if task.tags?.length && expandedTaskDescSet.has(key)}
+                      <div class="kcard-tags">
+                        {#each task.tags as tag}
+                          <span class="tag">{tag}</span>
+                        {/each}
+                      </div>
+                    {/if}
+                    {#if task.due_date}
+                      <div class="kcard-due">📅 {new Date(task.due_date).toLocaleDateString('es-ES')}</div>
+                    {/if}
+                    <div class="kcard-actions">
+                      <select class="kcard-move" onchange={(e) => moveTask(task, (e.target as HTMLSelectElement).value as Task['status'])} value={task.status}>
+                        {#each statuses as s}
+                        <option value={s.id}>{s.label}</option>
+                        {/each}
+                      </select>
+                      <button class="btn btn-secondary" style="font-size:11px;padding:3px 6px;" onclick={() => editTask(task)}>Editar</button>
+                      <button class="btn btn-ghost" style="font-size:11px;color:var(--accent-red);padding:3px 6px;" onclick={() => deleteTask(task.id!)}>✕</button>
+                    </div>
                   </div>
-                </div>
-              {/each}
-            </div>
+                {/each}
+              </div>
+            {/if}
           </div>
         {/each}
       </div>
@@ -589,6 +613,9 @@
                     <button class="btn btn-secondary" onclick={cancelEditSkill}>Cancelar</button>
                     <button class="btn btn-primary" onclick={saveMd} disabled={mdSaving}>{mdSaving ? '...' : 'Guardar'}</button>
                   {:else}
+                    <button class="btn btn-ghost skill-copy-btn" onclick={() => copySkillContent(skill.content || '')} title="Copiar contenido">
+                      ❏
+                    </button>
                     <button class="btn btn-secondary" onclick={() => startEditSkill(skill)}>Editar</button>
                   {/if}
                 </div>
@@ -802,6 +829,57 @@
     border-radius: var(--radius-lg);
     padding: 14px;
     min-height: 300px;
+    max-height: 600px;
+    overflow-y: auto;
+    transition: all var(--transition);
+  }
+
+  .kanban-sta.collapsed {
+    min-height: auto;
+    padding: 10px 14px;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .kanban-sta.collapsed .kanban-cards {
+    display: none;
+  }
+
+  .kanban-sta-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+    cursor: pointer;
+    background: none;
+    border: none;
+    width: 100%;
+    padding: 0;
+    text-align: left;
+  }
+
+  .kanban-sta.collapsed .kanban-sta-header {
+    margin-bottom: 0;
+  }
+
+  .sta-toggle {
+    font-size: 10px;
+    color: var(--text3);
+    transition: transform var(--transition);
+    flex-shrink: 0;
+    transform: rotate(90deg);
+  }
+
+  .sta-toggle.collapsed {
+    transform: rotate(0deg);
+  }
+
+  .kanban-sta-header:hover .sta-toggle {
+    color: var(--text);
+  }
+
+  .kanban-sta-header:hover {
+    color: var(--text);
   }
 
   .kanban-sta-header {
@@ -849,12 +927,12 @@
   .kcard-header {
     display: flex;
     align-items: flex-start;
+    flex-wrap: wrap;
     justify-content: space-between;
-    gap: 10px;
     margin-bottom: 4px;
   }
 
-  .kcard-title { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+  .kcard-title { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 4px; line-height: 1.3; }
   .kcard-desc { font-size: 12px; color: var(--text2); margin-bottom: 6px; }
   .kcard-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
   .kcard-due { font-size: 11px; color: var(--text3); font-family: var(--font-mono); margin-bottom: 8px; }
@@ -976,6 +1054,10 @@
 
   @media (max-width: 900px) {
     .skills-grid { grid-template-columns: 1fr; }
+    .skills-grid .skill-card {
+      width: 100%;
+      box-sizing: border-box;
+    }
   }
 
   .skill-card-header {
@@ -989,6 +1071,16 @@
   .skill-meta { display: flex; flex-direction: column; gap: 2px; }
   .skill-title { font-size: 13px; font-weight: 800; color: var(--text); font-family: var(--font-mono); }
   .skill-updated { font-size: 11px; color: var(--text3); font-family: var(--font-mono); }
+
+  .skill-copy-btn {
+    font-size: 16px;
+    padding: 6px 10px;
+  }
+
+  .skill-copy-btn:hover {
+    color: var(--accent-green);
+    background: var(--surface);
+  }
 
   .md-editor {
     width: 100%;
@@ -1040,6 +1132,20 @@
 
   @media (max-width: 900px) {
     .kanban-board { grid-template-columns: 1fr 1fr; }
+  }
+
+  @media (max-width: 768px) {
+    .kanban-sta.collapsed {
+      padding: 8px 10px;
+    }
+
+    .kanban-sta.collapsed .sta-label {
+      writing-mode: horizontal-tb;
+    }
+
+    .sta-toggle.collapsed {
+      transform: none;
+    }
   }
 
   @media (max-width: 600px) {
