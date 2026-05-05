@@ -19,9 +19,13 @@
     "vite": "^5.1.0"
   },
   "dependencies": {
+    "@flowbite-svelte-plugins/chart": "^0.2.4",
     "@supabase/ssr": "^0.4.0",
     "@supabase/supabase-js": "^2.43.0",
     "@sveltejs/adapter-cloudflare": "^7.2.8",
+    "apexcharts": "^5.10.6",
+    "flowbite": "^4.0.1",
+    "flowbite-svelte": "^1.33.1",
     "gridstack": "^11.5.1",
     "html2canvas": "^1.4.1",
     "svelte-dnd-action": "^0.9.46"
