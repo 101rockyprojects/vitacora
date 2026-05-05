@@ -2,12 +2,14 @@
   import { page } from '$app/state';
   import { createRepository } from '$lib/services/repository';
   import WeekPlanner from '$lib/components/WeekPlanner.svelte';
-  import type { Book, CalendarEvent, Task } from '$lib/types';
+  import PieChart from '$lib/components/PieChart.svelte';
+  import type { Book, CalendarEvent, Task, Expense, ExpenseCategory } from '$lib/types';
   import { levelFromXp, getAreaXP, AREAS } from '$lib/utils/xp';
 
   let tasks = $state<Task[]>([]);
   let books = $state<Book[]>([]);
   let calEvents = $state<CalendarEvent[]>([]);
+  let expenses = $state<Expense[]>([]);
   let areaXP: Record<string, number> = $state({});
   let totalXP = $derived(Object.values(areaXP).reduce((a, b) => a + b, 0));
   let globalLevel = $derived(levelFromXp(totalXP));
@@ -21,6 +23,7 @@
 
   const now = new Date();
   const greeting = now.getHours() < 12 ? 'Buenos días' : now.getHours() < 18 ? 'Buenas tardes' : 'Buenas noches';
+  const currentMonth = now.toISOString().substring(0, 7);
 
   $effect(() => {
     if (userId && !initialized) {
@@ -30,16 +33,18 @@
   });
 
   async function loadDashboard() {
-    const [tasksRes, booksRes, badgesRes, calRes] = await Promise.all([
+    const [tasksRes, booksRes, badgesRes, calRes, expRes] = await Promise.all([
       repo.tasks.list(),
       repo.books.list(),
       repo.userBadges.listIds(),
-      repo.calendar.list()
+      repo.calendar.list(),
+      repo.expenses.list()
     ]);
 
     tasks = tasksRes.data || [];
     books = booksRes.data || [];
     calEvents = calRes.data || [];
+    expenses = expRes.data || [];
     userBadgesCount = badgesRes.data?.length || 0;
     areaXP = await getAreaXP(userId);
     loading = false;
@@ -49,6 +54,20 @@
     if (!book.total_pages) return 0;
     return Math.round((book.current_page / book.total_pages) * 100);
   }
+
+  const currentMonthExpenses = $derived(expenses.filter(e => e.expense_date.startsWith(currentMonth)));
+  const currentMonthTotal = $derived(currentMonthExpenses.reduce((sum, e) => sum + (e.cost || 0), 0));
+  const currentMonthByCategory = $derived(() => {
+    const categories: Record<string, number> = {};
+    for (const e of currentMonthExpenses) {
+      const cat = e.category || 'Sin categoría';
+      categories[cat] = (categories[cat] || 0) + (e.cost || 0);
+    }
+    const total = Object.values(categories).reduce((a, b) => a + b, 0);
+    return Object.entries(categories)
+      .map(([name, total]) => ({ name, total, percentage: total > 0 ? (total / total) * 100 : 0 }))
+      .sort((a, b) => b.total - a.total);
+  });
 
 </script>
 
@@ -194,6 +213,21 @@
       {/if}
     </div>
 
+
+    <div class="card expenses-card">
+      <h3 class="card-title">Gastos del mes <a href="/goals?tab=expenses" class="card-link">Ver todos →</a></h3>
+      {#if currentMonthByCategory().length > 0}
+      <div class="expenses-chart">
+        <PieChart data={currentMonthByCategory()} type="bar" />
+      </div>
+      <div class="month-expense-total">
+        Total: <span>${currentMonthTotal.toFixed(2)}</span>
+      </div>
+      {:else}
+      <div class="empty-state">Sin gastos este mes</div>
+      {/if}
+    </div>
+
     <!-- Quick motivational -->
     <div class="card motive-card">
       <div class="motive-glyph">⊶</div>
@@ -203,7 +237,6 @@
       <div class="motive-links">
         <a href="/goals" class="motive-link">Visión →</a>
         <a href="/work" class="motive-link">Kanban →</a>
-        <a href="/partner" class="motive-link">Partner →</a>
         <a href="/goals?tab=calendar" class="motive-link">Calendario →</a>
       </div>
     </div>
@@ -321,7 +354,7 @@
 
   .dash-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1fr 1fr;
     gap: 16px;
   }
 
@@ -457,7 +490,37 @@
   }
 
   .week-card {
+    grid-column: span 3;
+  }
+
+  .motive-card {
+    grid-column: span 1;
+  }
+
+  .expenses-card {
     grid-column: span 2;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .expenses-chart {
+    display: flex;
+    justify-content: center;
+    margin: 10px 0;
+    min-height: 280px;
+  }
+
+  .month-expense-total {
+    text-align: center;
+    font-size: 13px;
+    color: var(--text2);
+    font-family: var(--font-mono);
+  }
+
+  .month-expense-total span {
+    font-weight: 700;
+    color: var(--accent-yellow);
+    font-size: 16px;
   }
 
   .motive-glyph {
@@ -513,6 +576,9 @@
 
   @media (max-width: 900px) {
     .stats-row { grid-template-columns: 1fr 1fr; }
-    .dash-grid { grid-template-columns: 1fr; }
+    .dash-grid { grid-template-columns: 1fr 1fr; }
+    .week-card { grid-column: span 2; }
+    .motive-card { grid-column: span 1; }
+    .expenses-card { grid-column: span 1; }
   }
 </style>
