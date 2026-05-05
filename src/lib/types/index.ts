@@ -132,6 +132,30 @@ export interface UserBadge {
   badge?: Badge;
 }
 
+export interface CalendarTodo {
+  id?: string;
+  user_id?: string;
+  name: string;
+  todo_date: string;
+  created_at?: string;
+}
+
+export interface Expense {
+  id?: string;
+  user_id?: string;
+  name: string;
+  category: string;
+  cost: number;
+  expense_date: string;
+  created_at?: string;
+}
+
+export interface ExpenseCategory {
+  name: string;
+  total: number;
+  percentage: number;
+}
+
 export interface AreaXP {
   area: string;
   xp: number;

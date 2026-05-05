@@ -3,7 +3,9 @@ import type {
   Badge,
   Book,
   CalendarEvent,
+  CalendarTodo,
   DateIdea,
+  Expense,
   LearningItem,
   MemoryPhoto,
   Project,
@@ -139,6 +141,26 @@ export function createRepository(
       insert: (item: Omit<CalendarEvent, 'id' | 'user_id'>) =>
         client.from('calendar_events').insert({ ...item, user_id: uid() }),
       remove: (id: string) => client.from('calendar_events').delete().eq('id', id)
+    },
+
+    calendarTodos: {
+      list: () =>
+        client.from('calendar_todos').select('*').eq('user_id', uid()).order('todo_date', { ascending: true }),
+      insert: (item: Omit<CalendarTodo, 'id' | 'user_id'>) =>
+        client.from('calendar_todos').insert({ ...item, user_id: uid() }),
+      update: (id: string, values: Partial<CalendarTodo>) =>
+        client.from('calendar_todos').update(values).eq('id', id),
+      remove: (id: string) => client.from('calendar_todos').delete().eq('id', id)
+    },
+
+    expenses: {
+      list: () =>
+        client.from('expenses').select('*').eq('user_id', uid()).order('expense_date', { ascending: false }),
+      insert: (item: Omit<Expense, 'id' | 'user_id'>) =>
+        client.from('expenses').insert({ ...item, user_id: uid() }),
+      update: (id: string, values: Partial<Expense>) =>
+        client.from('expenses').update(values).eq('id', id),
+      remove: (id: string) => client.from('expenses').delete().eq('id', id)
     },
 
     successes: {
