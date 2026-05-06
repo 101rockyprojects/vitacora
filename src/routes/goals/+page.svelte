@@ -71,9 +71,9 @@
       const cat = e.category || 'Sin categoría';
       categories[cat] = (categories[cat] || 0) + (e.cost || 0);
     }
-    const total = Object.values(categories).reduce((a, b) => a + b, 0);
+    const grandTotal = Object.values(categories).reduce((a, b) => a + b, 0);
     return Object.entries(categories)
-      .map(([name, total]) => ({ name, total, percentage: total > 0 ? (total / total) * 100 : 0 }))
+      .map(([name, total]) => ({ name, total, percentage: grandTotal > 0 ? (total / grandTotal) * 100 : 0 }))
       .sort((a, b) => b.total - a.total);
   });
 
@@ -938,33 +938,48 @@
       </div>
 
       <div class="expenses-filters">
-        <select bind:value={expenseFilterCategory} class="expense-filter-select">
-          <option value="">Todas las categorías</option>
-          {#each usedCategories as cat}
-            <option value={cat}>{cat}</option>
-          {/each}
-        </select>
-        <input
-          type="date"
-          bind:value={expenseFilterStartDate}
-          class="expense-filter-date"
-          placeholder="Desde"
-        />
-        <input
-          type="date"
-          bind:value={expenseFilterEndDate}
-          class="expense-filter-date"
-          placeholder="Hasta"
-        />
+        <label class="filter-label">
+          <span>Categoría</span>
+          <select bind:value={expenseFilterCategory} class="expense-filter-select">
+            <option value="">Total</option>
+            {#each usedCategories as cat}
+              <option value={cat}>{cat}</option>
+            {/each}
+          </select>
+        </label>
+        <label class="filter-label">
+          <span>Desde</span>
+          <input
+            type="date"
+            bind:value={expenseFilterStartDate}
+            class="expense-filter-date"
+          />
+        </label>
+        <label class="filter-label">
+          <span>Hasta</span>
+          <input
+            type="date"
+            bind:value={expenseFilterEndDate}
+            class="expense-filter-date"
+          />
+        </label>
         {#if expenseFilterCategory || expenseFilterStartDate || expenseFilterEndDate}
           <button class="btn btn-ghost" onclick={clearExpenseFilters}>Limpiar</button>
         {/if}
       </div>
 
-      {#if expensesByCategory().length > 0}
+      {#if !expenseFilterCategory && expensesByCategory().length > 0}
         <div class="card expenses-chart-card">
-          <h3 class="card-title">Gastos por categoría</h3>
-          <PieChart data={expensesByCategory()} type="pie" title="Gastos por categoría" />
+          <PieChart data={expensesByCategory()} type="pie" title="Gastos Totales" />
+          <div class="expenses-total">
+            Total: <span class="total-amount">${expensesTotal.toFixed(2)}</span>
+          </div>
+        </div>
+      {:else if expenseFilterCategory && expensesByMonth().length > 0}
+        {@const monthData = expensesByMonth()}
+        {@const grandTotal = monthData.reduce((sum, m) => sum + m.total, 0)}
+        <div class="card expenses-total-card">
+          <PieChart data={monthData.map(m => ({ name: m.monthLabel, total: m.total, percentage: grandTotal > 0 ? (m.total / grandTotal) * 100 : 0 }))} type="pie" title="Gastos en {expenseFilterCategory}" />
           <div class="expenses-total">
             Total: <span class="total-amount">${expensesTotal.toFixed(2)}</span>
           </div>
@@ -1201,7 +1216,7 @@
       }}>
     <div class="modal">
       <h3>{editingExpenseId ? 'Editar gasto' : 'Nuevo gasto'}</h3>
-      <div class="form-group"><label>Nombre</label><input bind:value={expenseForm.name} placeholder="¿Qué gastaste?" /></div>
+      <div class="form-group"><label>Nombre</label><input bind:value={expenseForm.name} placeholder="¿En qué gastaste?" /></div>
       <div class="form-group">
         <label>Categoría</label>
         <input
@@ -1516,25 +1531,6 @@
 
   .mem-card:hover { transform: scale(1.02); }
 
-  .mem-open {
-    position: absolute;
-    left: 6px;
-    bottom: 6px;
-    z-index: 20;
-    font-family: var(--font-mono);
-    font-size: 11px;
-    color: white;
-    background: rgba(0,0,0,0.55);
-    border: 1px solid rgba(51,61,87,0.85);
-    border-radius: 8px;
-    padding: 4px 8px;
-    line-height: 1;
-    opacity: 0;
-    transition: opacity var(--transition), transform var(--transition);
-  }
-
-  .mem-card:hover .mem-open { opacity: 1; transform: translateY(-1px); }
-
   :global(.memory-grid .grid-stack-item-content) {
     overflow: visible;
     position: relative;
@@ -1789,7 +1785,7 @@
     gap: 10px;
     margin-bottom: 20px;
     flex-wrap: wrap;
-    align-items: center;
+    align-items: end;
   }
 
   .expense-filter-select {
@@ -1797,7 +1793,27 @@
   }
 
   .expense-filter-date {
-    width: 140px;
+    width: 150px;
+  }
+
+  .filter-label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .filter-label span {
+    font-size: 10px;
+    color: var(--text3);
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .expenses-total-card {
+    margin-bottom: 20px;
+    padding: 24px;
+    text-align: center;
   }
 
   .expenses-chart-card {
