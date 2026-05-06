@@ -11,7 +11,7 @@
     { href: '/dashboard', label: 'Dashboard', icon: '◈' },
     { href: '/goals', label: 'Visión & Metas', icon: '⊶' },
     { href: '/work', label: 'Trabajo', icon: '⌘' },
-    { href: '/partner', label: 'Partner', icon: '🎔' },
+    { href: '/partner', label: 'Partner', icon: '♥' },
     { href: '/profile', label: 'Perfil & XP', icon: '◎' }
   ];
 

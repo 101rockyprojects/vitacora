@@ -3,12 +3,14 @@
   import { createRepository } from '$lib/services/repository';
   import WeekPlanner from '$lib/components/WeekPlanner.svelte';
   import PieChart from '$lib/components/PieChart.svelte';
-  import type { Book, CalendarEvent, Task, Expense, ExpenseCategory } from '$lib/types';
+  import type { Book, CalendarEvent, Task, Expense, ExpenseCategory, CalendarTodo } from '$lib/types';
   import { levelFromXp, getAreaXP, AREAS } from '$lib/utils/xp';
+  import { checkAndCreateNotifications } from '$lib/utils/notifications';
 
   let tasks = $state<Task[]>([]);
   let books = $state<Book[]>([]);
   let calEvents = $state<CalendarEvent[]>([]);
+  let calendarTodos = $state<CalendarTodo[]>([]);
   let expenses = $state<Expense[]>([]);
   let areaXP: Record<string, number> = $state({});
   let totalXP = $derived(Object.values(areaXP).reduce((a, b) => a + b, 0));
@@ -33,21 +35,25 @@
   });
 
   async function loadDashboard() {
-    const [tasksRes, booksRes, badgesRes, calRes, expRes] = await Promise.all([
+    const [tasksRes, booksRes, badgesRes, calRes, expRes, calTodosRes] = await Promise.all([
       repo.tasks.list(),
       repo.books.list(),
       repo.userBadges.listIds(),
       repo.calendar.list(),
-      repo.expenses.list()
+      repo.expenses.list(),
+      repo.calendarTodos.list()
     ]);
 
     tasks = tasksRes.data || [];
     books = booksRes.data || [];
     calEvents = calRes.data || [];
+    calendarTodos = calTodosRes.data || [];
     expenses = expRes.data || [];
     userBadgesCount = badgesRes.data?.length || 0;
     areaXP = await getAreaXP(userId);
     loading = false;
+
+    checkAndCreateNotifications(tasks, calEvents, calendarTodos);
   }
 
   function bookProgress(book: any) {
@@ -218,7 +224,7 @@
       <h3 class="card-title">Gastos del mes <a href="/goals?tab=expenses" class="card-link">Ver todos →</a></h3>
       {#if currentMonthByCategory().length > 0}
       <div class="expenses-chart">
-        <PieChart data={currentMonthByCategory()} type="bar" />
+        <PieChart data={currentMonthByCategory()} type="pie" />
       </div>
       <div class="month-expense-total">
         Total: <span>${currentMonthTotal.toFixed(2)}</span>

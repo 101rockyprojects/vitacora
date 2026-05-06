@@ -4,6 +4,7 @@
   import { createRepository } from '$lib/services/repository';
   import { awardXP, XP_VALUES } from '$lib/utils/xp';
   import { tick, untrack } from 'svelte';
+  import Toast from '$lib/components/Toast.svelte';
   import type { Task, Project, UsefulLink, SkillsMd } from '$lib/types';
 
   const WORK_TABS = ['kanban', 'projects', 'links', 'skills'] as const;
@@ -69,6 +70,8 @@
   let mdContent = $state('');
   let mdSaving = $state(false);
   let mdTextarea: HTMLTextAreaElement | null = $state(null);
+  let copyToast = $state(false);
+  let copyToastTimer: ReturnType<typeof setTimeout> | null = $state(null);
 
   let saving = $state(false);
 
@@ -346,6 +349,12 @@
   async function copySkillContent(content: string) {
     try {
       await navigator.clipboard.writeText(content);
+      copyToast = true;
+      if (copyToastTimer) clearTimeout(copyToastTimer);
+      copyToastTimer = setTimeout(() => {
+        copyToast = false;
+        copyToastTimer = null;
+      }, 2500);
     } catch (err) {
       console.error('Failed to copy:', err);
     }
@@ -715,8 +724,10 @@
         <button class="btn btn-primary" onclick={saveLink} disabled={saving}>{saving ? '...' : 'Guardar'}</button>
       </div>
     </div>
-  </div>
-{/if}
+</div>
+  {/if}
+
+<Toast visible={copyToast} message="Copiado al portapapeles" />
 
 <style>
   .work-page { max-width: 1200px; }
@@ -1030,7 +1041,7 @@
   .plink-deploy:hover { background: rgba(255,217,61,0.15); }
 
   /* Links */
-  .links-list { display: flex; flex-direction: column; gap: 10px; }
+  .links-list { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
   .link-item { display: flex; align-items: center; gap: 14px; }
   .link-icon { font-size: 20px; }
@@ -1073,7 +1084,7 @@
   .skill-updated { font-size: 11px; color: var(--text3); font-family: var(--font-mono); }
 
   .skill-copy-btn {
-    font-size: 16px;
+    font-size: 20px;
     padding: 6px 10px;
   }
 
