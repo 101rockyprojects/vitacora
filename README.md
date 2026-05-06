@@ -76,11 +76,12 @@ Visit `http://localhost:5173` → You'll be redirected to `/auth` to sign up.
 
 | Section | Features |
 |---------|----------|
-| **Dashboard** | Global XP level, area bars, today's tasks, books in progress |
-| **Visión & Metas** | Vision board, motivational phrases, books, learning, memory album, calendar, success experiences, rewards |
+| **Dashboard** | Global XP level, area bars, today's tasks, books in progress, expense pie chart |
+| **Visión & Metas** | Vision board, motivational phrases, books, learning, memory album, calendar, success experiences, rewards, expenses tracker with category/month filters |
 | **Trabajo** | Kanban board (drag & drop), projects grid, useful links, skills.md editor |
-| **Partner** | Date ideas list, random picker, mark as done |
+| **Partner** | Unique 6-char code for connection, connect with partner, shared date ideas list with purple indicator, random picker, mark as done, disconnect option |
 | **Perfil & XP** | XP per area, global level, badges/achievements, activity log, export as PNG |
+| **Notifications** | Toast notifications, bell icon with unread badge, auto-alerts for due tasks and calendar events |
 
 ### XP System
 
@@ -93,6 +94,18 @@ Visit `http://localhost:5173` → You'll be redirected to `/auth` to sign up.
 | Learning topic added | 15 |
 | Memory added | 5 |
 | Reward earned | 20 |
+
+## Partner Connection
+
+Share your unique 6-character code with your partner to connect and share date ideas:
+
+1. Visit **Partner** page - your code is displayed automatically
+2. Copy your code and share it with your partner
+3. Partner enters your code in "Conectar con pareja" form
+4. Once connected, both see each other's date ideas (marked with purple border)
+5. Either partner can disconnect at any time
+
+No new tables needed - uses existing Supabase user metadata (`partner_code`, `partner_id`).
 
 ---
 
