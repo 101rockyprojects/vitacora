@@ -3,6 +3,7 @@
   import { page } from '$app/state';
   import { onMount } from 'svelte';
   import Sidebar from '$lib/components/Sidebar.svelte';
+  import NotificationContainer from '$lib/components/NotificationContainer.svelte';
   
   let { data, children } = $props();
   
@@ -69,6 +70,9 @@
   <main class="main-content" class:full-width={isAuthPage || !data.session}>
     {@render children()}
   </main>
+  {#if data.session && !isAuthPage}
+    <NotificationContainer />
+  {/if}
 </div>
 
 <style>
