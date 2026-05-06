@@ -1,9 +1,11 @@
 <script lang="ts">
   import { page } from '$app/state';
   import { createRepository } from '$lib/services/repository';
+  import Toast from '$lib/components/Toast.svelte';
   import type { DateIdea } from '$lib/types';
 
   let ideas = $state<DateIdea[]>([]);
+  let partnerIdeas = $state<DateIdea[]>([]);
   const userId = $derived(page.data.user?.id ?? '');
   const repo = $derived(createRepository(userId));
   let initialized = $state(false);
@@ -12,6 +14,16 @@
   let randomPick = $state<DateIdea | null>(null);
   let showRandom = $state(false);
   let saving = $state(false);
+
+  // Partner connection
+  let partnerProfile: { id: string; email: string } | null = $state(null);
+  let myPartnerCode = $state('');
+  let partnerCodeInput = $state('');
+  let showConnectForm = $state(false);
+  let connecting = $state(false);
+  let partnerError = $state('');
+  let copyToast = $state(false);
+  let copyToastTimer: ReturnType<typeof setTimeout> | null = $state(null);
 
   const builtInIdeas = [
     'Dibujos Locos',
@@ -38,12 +50,36 @@
 
   async function initIdeas() {
     await loadIdeas();
+    await loadPartnerData();
 
     const { count } = await repo.dateIdeas.count();
     if (count === 0) {
       const toInsert = builtInIdeas.map(text => ({ idea_text: text, status: 'pending' as const }));
       await repo.dateIdeas.insertMany(toInsert);
       await loadIdeas();
+    }
+  }
+
+  async function loadPartnerData() {
+    const profile = await repo.partner.getProfile();
+    if (profile) {
+      myPartnerCode = profile.partner_code || '';
+      if (profile.partner_id) {
+        partnerProfile = await repo.partner.getPartnerProfile();
+        if (partnerProfile) {
+          const { data } = await repo.partner.getPartnerIdeas();
+          partnerIdeas = data || [];
+        }
+      }
+    }
+
+    if (!myPartnerCode) {
+      myPartnerCode = repo.partner.generateCode();
+      try {
+        await repo.partner.setPartnerCode(myPartnerCode);
+      } catch (e) {
+        console.error('Failed to set partner code:', e);
+      }
     }
   }
 
@@ -74,6 +110,55 @@
     await loadIdeas();
   }
 
+  async function copyPartnerCode(content: string) {
+    try {
+      await navigator.clipboard.writeText(content);
+      copyToast = true;
+      if (copyToastTimer) clearTimeout(copyToastTimer);
+      copyToastTimer = setTimeout(() => {
+        copyToast = false;
+        copyToastTimer = null;
+      }, 2500);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  }
+
+  async function connectWithPartner() {
+    if (!partnerCodeInput.trim()) return;
+    connecting = true;
+    partnerError = '';
+    try {
+      const found = await repo.partner.searchByCode(partnerCodeInput.trim());
+      if (!found) {
+        partnerError = 'Código no encontrado';
+        connecting = false;
+        return;
+      }
+      if (found.partner_id) {
+        partnerError = 'Este usuario ya tiene pareja';
+        connecting = false;
+        return;
+      }
+      await repo.partner.connect(found.id);
+      partnerProfile = { id: found.id, email: found.email || '' };
+      const { data } = await repo.partner.getPartnerIdeas();
+      partnerIdeas = data || [];
+      showConnectForm = false;
+      partnerCodeInput = '';
+    } catch (e: any) {
+      partnerError = e.message || 'Error al conectar';
+    }
+    connecting = false;
+  }
+
+  async function disconnectPartner() {
+    if (!confirm('¿Desconectar de tu pareja?')) return;
+    await repo.partner.disconnect();
+    partnerProfile = null;
+    partnerIdeas = [];
+  }
+
   function pickRandom() {
     const pending = ideas.filter(i => i.status === 'pending');
     if (!pending.length) { alert('¡Todas las ideas están hechas! Agrega más 💕'); return; }
@@ -85,16 +170,73 @@
   const doneCount = $derived(ideas.filter(i => i.status === 'done').length);
 </script>
 
+<Toast visible={copyToast} message="Copiado al portapapeles" />
+
 <div class="partner-page fade-in">
   <div class="section-header">
     <div>
-      <h2 class="section-title">🎔 Partner</h2>
+      <h2 class="section-title">♥ Partner</h2>
       <div class="section-subtitle">Ideas para hacer juntos</div>
     </div>
     <div style="display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;">
       <button class="btn btn-primary" onclick={pickRandom}>⊶ Sorpréndeme</button>
       <button class="btn btn-secondary" onclick={() => showForm = true}>+ Nueva idea</button>
     </div>
+  </div>
+
+  <!-- Partner Connection -->
+  <div class="partner-connection card">
+    {#if partnerProfile}
+      <div class="connected-section">
+        <div class="partner-info">
+          <span class="partner-icon">💑</span>
+          <div>
+            <div class="partner-label">Conectado con</div>
+            <div class="partner-email">{partnerProfile.email}</div>
+          </div>
+        </div>
+        <button class="btn btn-ghost" onclick={disconnectPartner}>Desconectar</button>
+      </div>
+    {:else}
+      <div class="disconnected-section">
+        <section class="first-step">
+          <div class="my-code">
+            <span class="code-label">Tu código</span>
+            <div class="code-display">
+              <span class="code">{myPartnerCode}</span>
+              <button class="copy-btn" onclick={() => copyPartnerCode(myPartnerCode)} title="Copiar">❏</button>
+            </div>
+          </div>
+          <div class="connect-action">
+            <button class="btn btn-secondary" onclick={() => showConnectForm = !showConnectForm}>
+              {showConnectForm ? 'Cancelar' : 'Conectar con pareja'}
+            </button>
+          </div>
+        </section>
+
+        {#if showConnectForm}
+          <div class="connect-form">
+            <div class="my-code">
+              <span class="code-label">Código de tu pareja</span>
+              <input
+                type="text"
+                bind:value={partnerCodeInput}
+                placeholder="123456"
+                maxlength="6"
+                class="code-input"
+                onkeydown={(e) => e.key === 'Enter' && connectWithPartner()}
+              />
+            </div>
+            <button class="btn btn-primary" onclick={connectWithPartner} disabled={connecting}>
+              {connecting ? '...' : 'Conectar'}
+            </button>
+          </div>
+          {#if partnerError}
+            <div class="error-msg">{partnerError}</div>
+          {/if}
+        {/if}
+      </div>
+    {/if}
   </div>
 
   <!-- Stats -->
@@ -123,6 +265,28 @@
 
   <!-- Ideas grid -->
   <div class="ideas-section">
+    {#if partnerProfile && partnerIdeas.length > 0}
+      <h3 class="ideas-group-label partner-label">💑 Ideas de {partnerProfile.email.split('@')[0]}</h3>
+      <div class="ideas-grid">
+        {#each partnerIdeas.filter(i => i.status === 'pending') as idea}
+          <div class="idea-card partner-idea">
+            <div class="idea-main">
+              <span class="check-circle" style="background:var(--accent-purple)"></span>
+              <span class="idea-text">{idea.idea_text}</span>
+            </div>
+          </div>
+        {/each}
+        {#each partnerIdeas.filter(i => i.status === 'done') as idea}
+          <div class="idea-card partner-idea done">
+            <div class="idea-main">
+              <span class="check-circle checked" style="background:var(--accent-purple)">✓</span>
+              <span class="idea-text done-text">{idea.idea_text}</span>
+            </div>
+          </div>
+        {/each}
+      </div>
+    {/if}
+
     <h3 class="ideas-group-label">Por hacer ✨</h3>
     <div class="ideas-grid">
       {#each ideas.filter(i => i.status === 'pending') as idea}
@@ -205,6 +369,127 @@
 <style>
   .partner-page { max-width: 900px; }
 
+  .partner-connection {
+    margin-bottom: 20px;
+  }
+
+  .first-step {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .connected-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .partner-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .partner-icon {
+    font-size: 28px;
+  }
+
+  .partner-label {
+    font-size: 11px;
+    color: var(--text2);
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+  }
+
+  .partner-email {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .disconnected-section {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .my-code {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .code-label {
+    font-size: 11px;
+    color: var(--text2);
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+  }
+
+  .code-display {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .code {
+    font-family: var(--font-mono);
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--accent-green);
+    letter-spacing: 0.1em;
+    background: var(--bg3);
+    padding: 8px 16px;
+    border-radius: var(--radius);
+  }
+
+  .copy-btn {
+    background: var(--surface);
+    color: var(--text);
+    font-size: 20px;
+    padding: 8px 10px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all var(--transition);
+  }
+
+  .copy-btn:hover {
+    background: var(--surface2);
+    color: var(--accent-green);
+  }
+
+  .connect-action {
+    display: flex;
+    justify-content: end;
+  }
+
+  .connect-form {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .code-input {
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-family: var(--font-mono);
+    font-size: 16px;
+    text-align: center;
+    width: 160px;
+  }
+
+  .error-msg {
+    text-align: center;
+    color: var(--accent-red);
+    font-size: 12px;
+    font-family: var(--font-mono);
+  }
+
   .partner-stats {
     display: grid;
     grid-template-columns: auto auto auto 1fr;
@@ -229,7 +514,7 @@
 
   .pstat-label {
     font-size: 11px;
-    color: var(--text3);
+    color: var(--text2);
     font-family: var(--font-mono);
     text-transform: uppercase;
     letter-spacing: 0.06em;
@@ -242,7 +527,7 @@
   .ideas-group-label {
     font-size: 13px;
     font-weight: 700;
-    color: var(--text3);
+    color: var(--text2);
     text-transform: uppercase;
     letter-spacing: 0.08em;
     font-family: var(--font-mono);
@@ -273,6 +558,14 @@
   .idea-card:hover { border-color: var(--accent-green); transform: translateY(-1px); }
   .idea-card.done { background: var(--bg2); opacity: 0.6; }
   .idea-card.done:hover { opacity: 0.8; }
+
+  .idea-card.partner-idea {
+    border-left: 3px solid var(--accent-purple);
+  }
+
+  .partner-label {
+    color: var(--accent-purple) !important;
+  }
 
   .idea-main { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
 

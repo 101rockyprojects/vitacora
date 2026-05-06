@@ -234,6 +234,170 @@ export function createRepository(
         return data.signedUrl;
       },
       deleteMemory: (path: string) => client.storage.from('memories').remove([path])
+    },
+
+    partner: {
+      generateCode: () => {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        let code = '';
+        for (let i = 0; i < 6; i++) {
+          code += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return code;
+      },
+
+      getProfile: async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return null;
+        return {
+          id: user.id,
+          email: user.email,
+          partner_code: user.user_metadata?.partner_code || null,
+          partner_id: user.user_metadata?.partner_id || null
+        };
+      },
+
+      setPartnerCode: async (code: string) => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Not authenticated');
+
+        const { data: allUsers } = await supabase.auth.admin.listUsers();
+        const existing = allUsers?.users.find(u => 
+          u.user_metadata?.partner_code === code.toUpperCase() && u.id !== user.id
+        );
+        
+        if (existing) {
+          throw new Error('Code already in use');
+        }
+
+        const { error } = await supabase.auth.updateUser({
+          data: { partner_code: code.toUpperCase() }
+        });
+        
+        if (error) throw error;
+      },
+
+      searchByCode: async (code: string) => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return null;
+
+        const { data: allUsers } = await supabase.auth.admin.listUsers();
+        const found = allUsers?.users.find(u => 
+          u.user_metadata?.partner_code === code.toUpperCase() && u.id !== user.id
+        );
+        
+        if (!found) return null;
+        return {
+          id: found.id,
+          email: found.email || '',
+          partner_code: found.user_metadata?.partner_code || null,
+          partner_id: found.user_metadata?.partner_id || null
+        };
+      },
+
+      connect: async (partnerId: string) => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Not authenticated');
+
+        const { data: allUsers } = await supabase.auth.admin.listUsers();
+        const partner = allUsers?.users.find(u => u.id === partnerId);
+        
+        if (!partner) throw new Error('User not found');
+
+        const partnerData = partner.user_metadata || {};
+
+        try {
+          const response = await fetch(`${import.meta.env.PUBLIC_SUPABASE_URL}/auth/v1/admin/users/${partnerId}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${import.meta.env.PUBLIC_SUPABASE_ANON_KEY}`,
+              'apikey': import.meta.env.PUBLIC_SUPABASE_ANON_KEY
+            },
+            body: JSON.stringify({
+              user_metadata: { ...partnerData, partner_id: user.id }
+            })
+          });
+
+          if (!response.ok) {
+            console.error('Partner update failed:', await response.text());
+          }
+        } catch (e) {
+          console.error('Partner update error:', e);
+        }
+
+        const { error: userError } = await supabase.auth.updateUser({
+          data: { partner_id: partnerId }
+        });
+
+        if (userError) throw userError;
+      },
+
+      disconnect: async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Not authenticated');
+
+        const partnerId = user.user_metadata?.partner_id;
+        if (partnerId) {
+          try {
+            const { data: allUsers } = await supabase.auth.admin.listUsers();
+            const partner = allUsers?.users.find(u => u.id === partnerId);
+            if (partner) {
+              const partnerData = partner.user_metadata || {};
+              await fetch(`${import.meta.env.PUBLIC_SUPABASE_URL}/auth/v1/admin/users/${partnerId}`, {
+                method: 'PUT',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${import.meta.env.PUBLIC_SUPABASE_ANON_KEY}`,
+                  'apikey': import.meta.env.PUBLIC_SUPABASE_ANON_KEY
+                },
+                body: JSON.stringify({
+                  user_metadata: { ...partnerData, partner_id: null }
+                })
+              });
+            }
+          } catch (e) {
+            console.error('Disconnect error:', e);
+          }
+        }
+
+        const { error } = await supabase.auth.updateUser({
+          data: { partner_id: null }
+        });
+
+        if (error) throw error;
+      },
+
+      getPartnerIdeas: async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return { data: [] };
+
+        const partnerId = user.user_metadata?.partner_id;
+        if (!partnerId) return { data: [] };
+
+        return client
+          .from('date_ideas')
+          .select('*')
+          .eq('user_id', partnerId)
+          .order('created_at', { ascending: true });
+      },
+
+      getPartnerProfile: async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return null;
+
+        const partnerId = user.user_metadata?.partner_id;
+        if (!partnerId) return null;
+
+        const { data: allUsers } = await supabase.auth.admin.listUsers();
+        const partner = allUsers?.users.find(u => u.id === partnerId);
+        if (!partner) return null;
+
+        return {
+          id: partner.id,
+          email: partner.email || ''
+        };
+      }
     }
   };
 }
