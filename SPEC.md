@@ -9,6 +9,7 @@ Personal life management application with gamification (XP system, badges, level
 - **Charts**: ApexCharts with Flowbite plugin
 - **Backend**: Supabase (PostgreSQL, Auth, Storage)
 - **Build**: Vite
+- **Deploy**: Cloudflare Pages
 
 ## Database Schema
 

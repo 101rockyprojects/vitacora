@@ -48,6 +48,7 @@ npm run check    # Type checking
 - Use for discovering Flowbite components and getting documentation
 
 ### Common Tasks
+- Add new section: modify corresponding `+page.svelte` in `src/routes/` and create migration if needed
 - Add new table: create migration + types + repository
 - Add new route: create `+page.svelte` in `src/routes/`
 - Add chart: use `PieChart` component with `type="bar"` or `type="pie"`

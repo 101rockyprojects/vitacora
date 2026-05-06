@@ -196,4 +196,4 @@ supabase/
 
 ## License
 
-Personal use. Built with 🎔
+Personal use. Built with ♥
