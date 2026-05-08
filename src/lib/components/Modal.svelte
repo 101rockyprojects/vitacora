@@ -1,11 +1,16 @@
 <script lang="ts">
-  import { tick } from 'svelte';
+  import type { Snippet } from 'svelte';
 
   let { 
     open = $bindable(false),
     title = '',
     onclose = () => {},
     children
+  }: { 
+    open?: boolean;
+    title?: string;
+    onclose?: () => void;
+    children?: Snippet;
   } = $props();
 
   let dialogRef: HTMLDialogElement | null = $state(null);
@@ -58,7 +63,9 @@
         </button>
       </header>
     {/if}
-    {@render children()}
+    {#if children}
+      {@render children()}
+    {/if}
   </div>
 </dialog>
 

@@ -241,6 +241,8 @@ input::placeholder, textarea::placeholder { color: var(--text3); }
 .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
 .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
 
+.tab-actions { margin-bottom: 20px; }
+
 /* Responsive */
 @media (max-width: 900px) {
   .main-content { margin-left: 0; padding-top: 50px; max-width: 100vw; }
