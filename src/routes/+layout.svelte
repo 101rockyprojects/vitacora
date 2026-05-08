@@ -67,7 +67,7 @@
   {#if data.session && !isAuthPage}
     <Sidebar user={data.user} />
   {/if}
-  <main class="main-content" class:full-width={isAuthPage || !data.session}>
+  <main class="main-content" class:full-width={isAuthPage || !data.session} id="main-content" tabindex="-1">
     {@render children()}
   </main>
   {#if data.session && !isAuthPage}

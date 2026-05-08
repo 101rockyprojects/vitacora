@@ -55,24 +55,29 @@
   </button>
 {/if}
 
-<aside class="sidebar" class:closed={isMobile && !isOpen}>
+<aside class="sidebar" class:closed={isMobile && !isOpen} aria-label="Navegación principal">
   <div class="sidebar-logo">
-    <span class="logo-icon">◈</span>
+    <span class="logo-icon" aria-hidden="true">◈</span>
     <span class="logo-text">VitaCora</span>
   </div>
 
-  <nav class="sidebar-nav">
-    {#each nav as item}
-      <a
-        href={item.href}
-        class="nav-item"
-        class:active={currentPath === item.href || currentPath.startsWith(item.href + '/')}
-        onclick={() => { if (isMobile) isOpen = false; }}
-      >
-        <span class="nav-icon">{item.icon}</span>
-        <span class="nav-label">{item.label}</span>
-      </a>
-    {/each}
+  <nav class="sidebar-nav" aria-label="Menú principal">
+    <ul>
+      {#each nav as item}
+        <li>
+          <a
+            href={item.href}
+            class="nav-item"
+            class:active={currentPath === item.href || currentPath.startsWith(item.href + '/')}
+            aria-current={currentPath === item.href ? 'page' : undefined}
+            onclick={() => { if (isMobile) isOpen = false; }}
+          >
+            <span class="nav-icon" aria-hidden="true">{item.icon}</span>
+            <span class="nav-label">{item.label}</span>
+          </a>
+        </li>
+      {/each}
+    </ul>
   </nav>
 
   <div class="sidebar-bottom">
@@ -163,11 +168,17 @@
   }
 
   .sidebar-nav {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    padding: 0 12px;
     flex: 1;
+  }
+
+  .sidebar-nav ul {
+    list-style: none;
+    margin: 0;
+    padding: 0 12px;
+  }
+
+  .sidebar-nav li {
+    margin-bottom: 2px;
   }
 
   .nav-item {
