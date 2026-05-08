@@ -26,7 +26,7 @@ export function checkAndCreateNotifications(
         type: 'urgent',
         title: 'Tarea para hoy',
         message: task.title,
-        link: '/work?tab=kanban'
+        link: '/projects?tab=kanban'
       });
     } else if (dueDate > today && dueDate <= inThreeDays) {
       const daysLeft = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
@@ -34,7 +34,7 @@ export function checkAndCreateNotifications(
         type: 'warning',
         title: `Tarea vence en ${daysLeft} día${daysLeft > 1 ? 's' : ''}`,
         message: task.title,
-        link: '/work?tab=kanban'
+        link: '/projects?tab=kanban'
       });
     }
   }
