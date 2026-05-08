@@ -48,6 +48,10 @@
     }
   });
 
+  function handleModalKeydown(e: KeyboardEvent, closeFn: () => void) {
+    if (e.key === 'Escape') closeFn();
+  }
+
   async function initIdeas() {
     await loadIdeas();
     await loadPartnerData();
@@ -326,22 +330,23 @@
 
 <!-- Random picker modal -->
 {#if showRandom && randomPick}
-  <div class="modal-backdrop" onclick={(e) => {
-        if (e.target === e.currentTarget) {
-          showRandom = false
-        }
-      }}>
-    <div class="random-modal">
-      <button class="random-close" onclick={() => showRandom = false}>✕</button>
+  <div 
+    class="modal-backdrop" 
+    onclick={(e) => { if (e.target === e.currentTarget) showRandom = false; }}
+    onkeydown={(e) => handleModalKeydown(e, () => showRandom = false)}
+    role="presentation"
+  >
+    <div class="random-modal" role="dialog" aria-modal="true" aria-labelledby="random-idea-text">
+      <button type="button" class="random-close" onclick={() => showRandom = false} aria-label="Cerrar">✕</button>
       <div class="random-emoji">💕</div>
       <div class="random-label">¡Esta noche pueden hacer...</div>
-      <div class="random-idea">{randomPick.idea_text}</div>
+      <div class="random-idea" id="random-idea-text">{randomPick.idea_text}</div>
       {#if randomPick.link}
-        <a href={randomPick.link} target="_blank" class="btn btn-secondary">Ver enlace →</a>
+        <a href={randomPick.link} target="_blank" class="btn btn-secondary" rel="noopener noreferrer">Ver enlace →</a>
       {/if}
       <div class="random-actions">
-        <button class="btn btn-primary" onclick={() => { toggleStatus(randomPick!); showRandom = false; }}>¡Lo hicimos! ✓</button>
-        <button class="btn btn-ghost" onclick={pickRandom}>Otra idea 🎲</button>
+        <button type="button" class="btn btn-primary" onclick={() => { toggleStatus(randomPick!); showRandom = false; }}>¡Lo hicimos! ✓</button>
+        <button type="button" class="btn btn-ghost" onclick={pickRandom}>Otra idea 🎲</button>
       </div>
     </div>
   </div>
@@ -349,19 +354,28 @@
 
 <!-- Add idea modal -->
 {#if showForm}
-  <div class="modal-backdrop" onclick={(e) => {
-        if (e.target === e.currentTarget) {
-          showForm = false
-        }
-      }}>
-    <div class="modal">
-      <h3>Nueva idea de cita</h3>
-      <div class="form-group"><label>Idea</label><input bind:value={newIdea.idea_text} placeholder="¿Qué quieren hacer?" /></div>
-      <div class="form-group"><label>Enlace (opcional)</label><input bind:value={newIdea.link} placeholder="https://..." /></div>
-      <div class="form-actions">
-        <button class="btn btn-secondary" onclick={() => showForm = false}>Cancelar</button>
-        <button class="btn btn-primary" onclick={addIdea} disabled={saving}>{saving ? '...' : 'Agregar'}</button>
-      </div>
+  <div 
+    class="modal-backdrop" 
+    onclick={(e) => { if (e.target === e.currentTarget) showForm = false; }}
+    onkeydown={(e) => handleModalKeydown(e, () => showForm = false)}
+    role="presentation"
+  >
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="idea-form-title">
+      <h3 id="idea-form-title">Nueva idea de cita</h3>
+      <form onsubmit={(e) => { e.preventDefault(); addIdea(); }}>
+        <div class="form-group">
+          <label for="idea-text">Idea</label>
+          <input id="idea-text" bind:value={newIdea.idea_text} placeholder="¿Qué quieren hacer?" />
+        </div>
+        <div class="form-group">
+          <label for="idea-link">Enlace (opcional)</label>
+          <input id="idea-link" type="url" bind:value={newIdea.link} placeholder="https://..." />
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" onclick={() => showForm = false}>Cancelar</button>
+          <button type="submit" class="btn btn-primary" disabled={saving}>{saving ? '...' : 'Agregar'}</button>
+        </div>
+      </form>
     </div>
   </div>
 {/if}
