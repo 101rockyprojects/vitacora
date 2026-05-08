@@ -82,6 +82,10 @@
     { id: 'to_review', label: 'Revisar', color: 'var(--accent-orange)' }
   ];
 
+  function handleModalKeydown(e: KeyboardEvent, closeFn: () => void) {
+    if (e.key === 'Escape') closeFn();
+  }
+
   $effect(() => {
     if (userId && !initialized) {
       initialized = true;
@@ -653,79 +657,118 @@
 
 <!-- Modals -->
 {#if showTaskForm}
-  <div class="modal-backdrop" onclick={(e) => 
-      {
-        if (e.target === e.currentTarget) {
-          showTaskForm = false; resetTaskForm();
-        }
-      }}>
-    <div class="modal">
-      <h3>{editingTask ? 'Editar tarea' : 'Nueva tarea'}</h3>
-      <div class="form-group"><label>Título</label><input bind:value={taskForm.title} placeholder="¿Qué hay que hacer?" /></div>
-      <div class="form-group"><label>Descripción</label><textarea bind:value={taskForm.description} rows="2"></textarea></div>
-      <div class="form-group">
-        <label>Status</label>
-        <select bind:value={taskForm.status}>
-          {#each statuses as sta}
-            <option value={sta.id}>{sta.label}</option>
-          {/each}
-        </select>
-      </div>
-      <div class="form-group"><label>Fecha límite</label><input type="date" bind:value={taskForm.due_date} /></div>
-      <div class="form-group">
-        <label>Tags (coma separados)</label>
-        <input
-          value={taskForm.tags?.join(', ') || ''}
-          oninput={(e) => { taskForm.tags = (e.target as HTMLInputElement).value.split(',').map(t => t.trim()).filter(Boolean); }}
-          placeholder="ej: urgente, trabajo, personal"
-        />
-      </div>
-      <div class="form-actions">
-        <button class="btn btn-secondary" onclick={() => { showTaskForm = false; resetTaskForm(); }}>Cancelar</button>
-        <button class="btn btn-primary" onclick={saveTask} disabled={saving}>{saving ? '...' : 'Guardar'}</button>
-      </div>
+  <div 
+    class="modal-backdrop" 
+    onclick={(e) => { if (e.target === e.currentTarget) { showTaskForm = false; resetTaskForm(); } }}
+    onkeydown={(e) => handleModalKeydown(e, () => { showTaskForm = false; resetTaskForm(); })}
+    role="presentation"
+  >
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="task-form-title">
+      <h3 id="task-form-title">{editingTask ? 'Editar tarea' : 'Nueva tarea'}</h3>
+      <form onsubmit={(e) => { e.preventDefault(); saveTask(); }}>
+        <div class="form-group">
+          <label for="task-title">Título</label>
+          <input id="task-title" bind:value={taskForm.title} placeholder="¿Qué hay que hacer?" />
+        </div>
+        <div class="form-group">
+          <label for="task-desc">Descripción</label>
+          <textarea id="task-desc" bind:value={taskForm.description} rows="2"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="task-status">Status</label>
+          <select id="task-status" bind:value={taskForm.status}>
+            {#each statuses as sta}
+              <option value={sta.id}>{sta.label}</option>
+            {/each}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="task-due">Fecha límite</label>
+          <input id="task-due" type="date" bind:value={taskForm.due_date} />
+        </div>
+        <div class="form-group">
+          <label for="task-tags">Tags (coma separados)</label>
+          <input
+            id="task-tags"
+            value={taskForm.tags?.join(', ') || ''}
+            oninput={(e) => { taskForm.tags = (e.target as HTMLInputElement).value.split(',').map(t => t.trim()).filter(Boolean); }}
+            placeholder="ej: urgente, trabajo, personal"
+          />
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" onclick={() => { showTaskForm = false; resetTaskForm(); }}>Cancelar</button>
+          <button type="submit" class="btn btn-primary" disabled={saving}>{saving ? '...' : 'Guardar'}</button>
+        </div>
+      </form>
     </div>
   </div>
 {/if}
 
 {#if showProjectForm}
-  <div class="modal-backdrop" onclick={(e) => {
-        if (e.target === e.currentTarget) {
-          showProjectForm = false
-        }
-      }}>
-    <div class="modal">
-      <h3>{editingProjectId ? 'Editar proyecto' : 'Nuevo proyecto'}</h3>
-      <div class="form-group"><label>Nombre</label><input bind:value={projectForm.name} placeholder="Nombre del proyecto" /></div>
-      <div class="form-group"><label>Descripción</label><textarea bind:value={projectForm.description} rows="3"></textarea></div>
-      <div class="form-group"><label>GitHub</label><input bind:value={projectForm.github_link} placeholder="https://github.com/..." /></div>
-      <div class="form-group"><label>Deploy</label><input bind:value={projectForm.deploy_link} placeholder="https://..." /></div>
-      <div class="form-group"><label>Inspiración</label><input bind:value={projectForm.inspiration_link} placeholder="https://..." /></div>
-      <div class="form-actions">
-        <button class="btn btn-secondary" onclick={() => showProjectForm = false}>Cancelar</button>
-        <button class="btn btn-primary" onclick={saveProject} disabled={saving}>{saving ? '...' : 'Guardar'}</button>
-      </div>
+  <div 
+    class="modal-backdrop" 
+    onclick={(e) => { if (e.target === e.currentTarget) showProjectForm = false; }}
+    onkeydown={(e) => handleModalKeydown(e, () => showProjectForm = false)}
+    role="presentation"
+  >
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="project-form-title">
+      <h3 id="project-form-title">{editingProjectId ? 'Editar proyecto' : 'Nuevo proyecto'}</h3>
+      <form onsubmit={(e) => { e.preventDefault(); saveProject(); }}>
+        <div class="form-group">
+          <label for="project-name">Nombre</label>
+          <input id="project-name" bind:value={projectForm.name} placeholder="Nombre del proyecto" />
+        </div>
+        <div class="form-group">
+          <label for="project-desc">Descripción</label>
+          <textarea id="project-desc" bind:value={projectForm.description} rows="3"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="project-github">GitHub</label>
+          <input id="project-github" bind:value={projectForm.github_link} placeholder="https://github.com/..." />
+        </div>
+        <div class="form-group">
+          <label for="project-deploy">Deploy</label>
+          <input id="project-deploy" bind:value={projectForm.deploy_link} placeholder="https://..." />
+        </div>
+        <div class="form-group">
+          <label for="project-inspiration">Inspiración</label>
+          <input id="project-inspiration" bind:value={projectForm.inspiration_link} placeholder="https://..." />
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" onclick={() => showProjectForm = false}>Cancelar</button>
+          <button type="submit" class="btn btn-primary" disabled={saving}>{saving ? '...' : 'Guardar'}</button>
+        </div>
+      </form>
     </div>
   </div>
 {/if}
 
 {#if showLinkForm}
-  <div class="modal-backdrop" onclick={(e) => {
-        if (e.target === e.currentTarget) {
-          showLinkForm = false
-        }
-      }}>
-    <div class="modal">
-      <h3>{editingLinkId ? 'Editar link útil' : 'Nuevo link útil'}</h3>
-      <div class="form-group"><label>Título</label><input bind:value={linkForm.title} placeholder="Nombre del recurso" /></div>
-      <div class="form-group"><label>URL</label><input bind:value={linkForm.url} placeholder="https://..." /></div>
-      <div class="form-actions">
-        <button class="btn btn-secondary" onclick={() => showLinkForm = false}>Cancelar</button>
-        <button class="btn btn-primary" onclick={saveLink} disabled={saving}>{saving ? '...' : 'Guardar'}</button>
-      </div>
+  <div 
+    class="modal-backdrop" 
+    onclick={(e) => { if (e.target === e.currentTarget) showLinkForm = false; }}
+    onkeydown={(e) => handleModalKeydown(e, () => showLinkForm = false)}
+    role="presentation"
+  >
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="link-form-title">
+      <h3 id="link-form-title">{editingLinkId ? 'Editar link útil' : 'Nuevo link útil'}</h3>
+      <form onsubmit={(e) => { e.preventDefault(); saveLink(); }}>
+        <div class="form-group">
+          <label for="link-title">Título</label>
+          <input id="link-title" bind:value={linkForm.title} placeholder="Nombre del recurso" />
+        </div>
+        <div class="form-group">
+          <label for="link-url">URL</label>
+          <input id="link-url" type="url" bind:value={linkForm.url} placeholder="https://..." />
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" onclick={() => showLinkForm = false}>Cancelar</button>
+          <button type="submit" class="btn btn-primary" disabled={saving}>{saving ? '...' : 'Guardar'}</button>
+        </div>
+      </form>
     </div>
-</div>
-  {/if}
+  </div>
+{/if}
 
 <Toast visible={copyToast} message="Copiado al portapapeles" />
 

@@ -170,6 +170,10 @@
     }
   });
 
+  function handleModalKeydown(e: KeyboardEvent, closeFn: () => void) {
+    if (e.key === 'Escape') closeFn();
+  }
+
   function switchTab(tabId: GoalsTab) {
     if (GOALS_TABS.includes(activeTab)) {
       activeTab = tabId as typeof activeTab;
@@ -1051,44 +1055,77 @@
 
 <!-- MODALS -->
 {#if showBookForm}
-  <div class="modal-backdrop" onclick={(e) => {
-        if (e.target === e.currentTarget) {
-          showBookForm = false; resetBookForm();
-        }
-      }}>
-    <div class="modal">
-      <h3>{editingBook ? 'Editar libro' : 'Nuevo libro'}</h3>
-      <div class="form-group"><label>Título</label><input bind:value={bookForm.title} placeholder="Nombre del libro" /></div>
-      <div class="grid-2">
-        <div class="form-group"><label>Página actual</label><input type="number" bind:value={bookForm.current_page} min="0" /></div>
-        <div class="form-group"><label>Total páginas</label><input type="number" bind:value={bookForm.total_pages} min="0" /></div>
-      </div>
-      <div class="form-group"><label>URL portada (opcional)</label><input bind:value={bookForm.cover_url} placeholder="https://..." /></div>
-      <div class="form-group"><label>Notas</label><textarea bind:value={bookForm.notes} rows="3" placeholder="Reflexiones..."></textarea></div>
-      <div class="form-actions">
-        <button class="btn btn-secondary" onclick={() => { showBookForm = false; resetBookForm(); }}>Cancelar</button>
-        <button class="btn btn-primary" onclick={saveBook} disabled={saving}>{saving ? '...' : 'Guardar'}</button>
-      </div>
+  <div 
+    class="modal-backdrop" 
+    onclick={(e) => { if (e.target === e.currentTarget) { showBookForm = false; resetBookForm(); } }}
+    onkeydown={(e) => handleModalKeydown(e, () => { showBookForm = false; resetBookForm(); })}
+    role="presentation"
+  >
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="book-form-title">
+      <h3 id="book-form-title">{editingBook ? 'Editar libro' : 'Nuevo libro'}</h3>
+      <form onsubmit={(e) => { e.preventDefault(); saveBook(); }}>
+        <div class="form-group">
+          <label for="book-title">Título</label>
+          <input id="book-title" bind:value={bookForm.title} placeholder="Nombre del libro" />
+        </div>
+        <div class="grid-2">
+          <div class="form-group">
+            <label for="book-current">Página actual</label>
+            <input id="book-current" type="number" bind:value={bookForm.current_page} min="0" />
+          </div>
+          <div class="form-group">
+            <label for="book-total">Total páginas</label>
+            <input id="book-total" type="number" bind:value={bookForm.total_pages} min="0" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="book-cover">URL portada (opcional)</label>
+          <input id="book-cover" type="url" bind:value={bookForm.cover_url} placeholder="https://..." />
+        </div>
+        <div class="form-group">
+          <label for="book-notes">Notas</label>
+          <textarea id="book-notes" bind:value={bookForm.notes} rows="3" placeholder="Reflexiones..."></textarea>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" onclick={() => { showBookForm = false; resetBookForm(); }}>Cancelar</button>
+          <button type="submit" class="btn btn-primary" disabled={saving}>{saving ? '...' : 'Guardar'}</button>
+        </div>
+      </form>
     </div>
   </div>
 {/if}
 
 {#if showLearnForm}
-  <div class="modal-backdrop" onclick={(e) => {
-        if (e.target === e.currentTarget) {
-          showLearnForm = false
-        }
-      }}>
-    <div class="modal">
-      <h3>{editingLearnId ? 'Editar tema de aprendizaje' : 'Nuevo tema de aprendizaje'}</h3>
-      <div class="form-group"><label>Tema</label><input bind:value={learnForm.topic} placeholder="Ej: Diseño de APIs REST" /></div>
-      <div class="form-group"><label>Enlace de recurso</label><input bind:value={learnForm.resource_link} placeholder="https://..." /></div>
-      <div class="form-group"><label>URL imagen/captura</label><input bind:value={learnForm.image_url} placeholder="https://..." /></div>
-      <div class="form-group"><label>Notas</label><textarea bind:value={learnForm.notes} rows="3"></textarea></div>
-      <div class="form-actions">
-        <button class="btn btn-secondary" onclick={() => showLearnForm = false}>Cancelar</button>
-        <button class="btn btn-primary" onclick={saveLearn} disabled={saving}>{saving ? '...' : 'Guardar'}</button>
-      </div>
+  <div 
+    class="modal-backdrop" 
+    onclick={(e) => { if (e.target === e.currentTarget) showLearnForm = false; }}
+    onkeydown={(e) => handleModalKeydown(e, () => showLearnForm = false)}
+    role="presentation"
+  >
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="learn-form-title">
+      <h3 id="learn-form-title">{editingLearnId ? 'Editar tema de aprendizaje' : 'Nuevo tema de aprendizaje'}</h3>
+      <form onsubmit={(e) => { e.preventDefault(); saveLearn(); }}>
+        <div class="form-group">
+          <label for="learn-topic">Tema</label>
+          <input id="learn-topic" bind:value={learnForm.topic} placeholder="Ej: Diseño de APIs REST" />
+        </div>
+        <div class="form-group">
+          <label for="learn-resource">Enlace de recurso</label>
+          <input id="learn-resource" type="url" bind:value={learnForm.resource_link} placeholder="https://..." />
+        </div>
+        <div class="form-group">
+          <label for="learn-image">URL imagen/captura</label>
+          <input id="learn-image" type="url" bind:value={learnForm.image_url} placeholder="https://..." />
+        </div>
+        <div class="form-group">
+          <label for="learn-notes">Notas</label>
+          <textarea id="learn-notes" bind:value={learnForm.notes} rows="3"></textarea>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" onclick={() => showLearnForm = false}>Cancelar</button>
+          <button type="submit" class="btn btn-primary" disabled={saving}>{saving ? '...' : 'Guardar'}</button>
+        </div>
+      </form>
     </div>
   </div>
 {/if}
