@@ -10,6 +10,7 @@
   const nav = [
     { href: '/dashboard', label: 'Dashboard', icon: '◈' },
     { href: '/goals', label: 'Visión & Metas', icon: '⊶' },
+    { href: '/projects', label: 'Proyectos', icon: '◉' },
     { href: '/work', label: 'Trabajo', icon: '⌘' },
     { href: '/partner', label: 'Partner', icon: '♥' },
     { href: '/profile', label: 'Perfil & XP', icon: '◎' }
