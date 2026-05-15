@@ -19,7 +19,34 @@
   let globalLevel = $derived(levelFromXp(totalXP));
 
   // Stats for badge checking
-  let stats = $state({ books_finished: 0, successes: 0, tasks_done: 0, projects: 0, memories: 0, learning: 0 });
+  type ProfileStats = {
+    books_finished: number;
+    successes: number;
+    tasks_done: number;
+    projects: number;
+    memories: number;
+    learning: number;
+    skills_documented: number;
+    links_added: number;
+    calendar_events: number;
+    tasks_this_week: number;
+    tasks_same_day: number;
+    tasks_by_day: Record<string, number>;
+  };
+  let stats = $state<ProfileStats>({
+    books_finished: 0,
+    successes: 0,
+    tasks_done: 0,
+    projects: 0,
+    memories: 0,
+    learning: 0,
+    skills_documented: 0,
+    links_added: 0,
+    calendar_events: 0,
+    tasks_this_week: 0,
+    tasks_same_day: 0,
+    tasks_by_day: {}
+  });
 
   $effect(() => {
     if (userId && !initialized) {
@@ -29,16 +56,32 @@
   });
 
   async function loadAll() {
-    const [xpRes, badgesRes, logRes, booksRes, successRes, tasksRes, projectsRes, memoriesRes, learnRes] = await Promise.all([
+    const [
+      xpRes,
+      badgesRes,
+      logRes,
+      booksRes,
+      successRes,
+      tasksRes,
+      projectsRes,
+      memoriesRes,
+      learnRes,
+      linksRes,
+      skillsRes,
+      eventsRes
+    ] = await Promise.all([
       Promise.resolve(await getAreaXP(userId)),
       repo.userBadges.list(),
       repo.xp.listLogs(),
       repo.books.listProgress(),
       repo.successes.listDoneIds(),
-      repo.tasks.listDoneIds(),
+      repo.tasks.list(),
       repo.projects.listIds(),
       repo.memories.listIds(),
-      repo.learning.listIds()
+      repo.learning.listIds(),
+      repo.links.list(),
+      repo.skillsMd.list(),
+      repo.calendar.list()
     ]);
 
     areaXP = xpRes;
@@ -46,13 +89,51 @@
     xpLog = logRes.data || [];
 
     const books = booksRes.data || [];
+    const links = linksRes.data || [];
+    const skills = skillsRes.data || [];
+    const events = eventsRes.data || [];
+
+    // Calculate task counts
+    const now = new Date();
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const today = now.toISOString().split('T')[0];
+
+    const tasksThisWeek = (tasksRes.data || []).filter((t: any) => {
+      if (t.status !== 'done') return false;
+      const created = t.updated_at || t.created_at;
+      return created && new Date(created) >= weekAgo;
+    }).length;
+
+    const tasksToday = (tasksRes.data || []).filter((t: any) => {
+      if (t.status !== 'done') return false;
+      const created = t.updated_at || t.created_at;
+      return created && created.startsWith(today);
+    }).length;
+
+    const tasksDoneByDay: Record<string, number> = {};
+    for (const t of tasksRes.data || []) {
+      if (t.status === 'done') {
+        const created = t.updated_at || t.created_at;
+        if (created) {
+          const day = created.split('T')[0];
+          tasksDoneByDay[day] = (tasksDoneByDay[day] || 0) + 1;
+        }
+      }
+    }
+
     stats = {
       books_finished: books.filter(b => b.current_page >= b.total_pages && b.total_pages > 0).length,
       successes: successRes.data?.length || 0,
       tasks_done: tasksRes.data?.length || 0,
       projects: projectsRes.data?.length || 0,
       memories: memoriesRes.data?.length || 0,
-      learning: learnRes.data?.length || 0
+      learning: learnRes.data?.length || 0,
+      skills_documented: skills.length,
+      links_added: links.length,
+      calendar_events: events.length,
+      tasks_this_week: tasksThisWeek,
+      tasks_same_day: tasksToday,
+      tasks_by_day: tasksDoneByDay
     };
 
     // Check and award badges
@@ -92,6 +173,11 @@
         case 'global_level': earned = globalLvl >= val; break;
         case 'memories': earned = stats.memories >= val; break;
         case 'learning': earned = stats.learning >= val; break;
+        case 'skills_documented': earned = (stats.skills_documented || 0) >= val; break;
+        case 'links_added': earned = (stats.links_added || 0) >= val; break;
+        case 'calendar_events': earned = (stats.calendar_events || 0) >= val; break;
+        case 'tasks_week': earned = (stats.tasks_this_week || 0) >= val; break;
+        case 'tasks_same_day': earned = (stats.tasks_same_day || 0) >= val; break;
       }
 
       if (earned) {
@@ -509,7 +595,7 @@
   .activity-date { color: var(--text3); font-family: var(--font-mono); font-size: 11px; }
 
   /* Stats */
-  .stats-overview { }
+  .stats-overview { margin-bottom: 0; }
 
   .stats-title {
     font-size: 16px;
