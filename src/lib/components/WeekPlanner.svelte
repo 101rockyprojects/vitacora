@@ -61,6 +61,7 @@
   })());
 
   let showPastEvents = $state(false);
+  let showFutureEvents = $state(false);
 
   type EventGroup = {
     iso: string;
@@ -108,6 +109,14 @@
 
   const upcomingEventGroups = $derived(eventGroups.filter((g) => !g.isPast));
   const pastEventGroups = $derived(eventGroups.filter((g) => g.isPast));
+  const nextMonthCutoffIso = $derived((() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    d.setMonth(d.getMonth() + 1);
+    return toIsoDateLocal(d);
+  })());
+  const nextEventGroups = $derived(upcomingEventGroups.filter((g) => g.iso <= nextMonthCutoffIso));
+  const futureEventGroups = $derived(upcomingEventGroups.filter((g) => g.iso > nextMonthCutoffIso));
 
   async function load() {
     if (!userId) return;
@@ -162,7 +171,7 @@
   <div class="week-section cal-list">
     <div class="week-title">Eventos y Fechas especiales</div>
     <div class="cal-groups">
-      {#each upcomingEventGroups as g (g.iso)}
+      {#each nextEventGroups as g (g.iso)}
         <div class="cal-group" class:today-group={g.isToday}>
           <div class="cal-group-header">
             <div class="cal-group-date">
@@ -205,6 +214,67 @@
           </div>
         </div>
       {/each}
+
+      {#if futureEventGroups.length > 0}
+        <div class="cal-past">
+          <button
+            class="cal-past-toggle"
+            type="button"
+            aria-expanded={showFutureEvents}
+            onclick={() => (showFutureEvents = !showFutureEvents)}
+          >
+            <span>
+              Eventos del próximo mes <span class="cal-count">{futureEventGroups.reduce((n, g) => n + g.events.length, 0)}</span>
+            </span>
+            <span class="cal-chevron" class:open={showFutureEvents}>▾</span>
+          </button>
+
+          {#if showFutureEvents}
+            <div class="cal-past-body">
+              {#each futureEventGroups as g (g.iso)}
+                <div class="cal-group">
+                  <div class="cal-group-header">
+                    <div class="cal-group-date">
+                      {g.date.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                    </div>
+                    <div class="cal-group-meta">
+                      <span class="cal-count">{g.events.length}</span>
+                    </div>
+                  </div>
+                  <div class="week-event-list">
+                    {#each g.todos as td (td.id)}
+                      {@const tdDate = new Date(td.todo_date)}
+                      {@const isToday = toIsoDateLocal(tdDate) === todayIso}
+                      <div class="cal-card card todo-card" class:today={isToday}>
+                        <div class="cal-info">
+                          <div class="cal-name">{td.name}</div>
+                          <div class="cal-date">{new Date(td.todo_date).toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
+                          <span class="tag" style="background:var(--accent-orange);color:var(--bg2)">Tarea</span>
+                        </div>
+                      </div>
+                    {/each}
+                    {#each g.events as ev (ev.id)}
+                      {@const evDate = new Date(ev.event_date)}
+                      {@const isToday = toIsoDateLocal(evDate) === todayIso}
+                      {@const expired = toIsoDateLocal(evDate) < todayIso}
+                      <div class="cal-card card" id="event-{slugify(ev.event_name)}" class:today={isToday} class:expired={expired}>
+                        <div class="cal-info">
+                          <div class="cal-name">{ev.event_name}</div>
+                          <div class="cal-date">{new Date(ev.event_date).toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
+                          {#if !expired}
+                            <span class="tag" style="background:var(--bg);color:var(--text2)">{ev.type === 'special_day' ? 'Dia especial' : 'Evento'}</span>
+                          {/if}
+                        </div>
+                        <button class="small-btn btn-ghost" onclick={() => deleteCal(ev.id!)}>✕</button>
+                      </div>
+                    {/each}
+                  </div>
+                </div>
+              {/each}
+            </div>
+          {/if}
+        </div>
+      {/if}
 
       {#if pastEventGroups.length > 0}
         <div class="cal-past">
