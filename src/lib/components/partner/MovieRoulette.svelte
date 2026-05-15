@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { dictionary } from './../../../../.svelte-kit/generated/client-optimized/app.js';
   import { page } from '$app/state';
   import { createRepository } from '$lib/services/repository';
   import Toast from '$lib/components/Toast.svelte';
