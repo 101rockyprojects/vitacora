@@ -13,7 +13,7 @@
   import Rewards from './Rewards.svelte';
   import Expenses from './Expenses.svelte';
 
-  const GOALS_TABS = ['vision', 'books', 'learning', 'memories', 'calendar', 'successes', 'rewards', 'expenses'] as const;
+  const GOALS_TABS = ['calendar', 'vision', 'books', 'learning', 'memories', 'successes', 'rewards', 'expenses'] as const;
   type GoalsTab = typeof GOALS_TABS[number];
 
   const userId = $derived(page.data.user?.id ?? '');
@@ -24,7 +24,7 @@
     url = new URL(window.location.href);
   }
   const current = url.searchParams.get('tab');
-  const defaultTab = GOALS_TABS.includes(current as GoalsTab) ? (current as GoalsTab) : 'vision';
+  const defaultTab = GOALS_TABS.includes(current as GoalsTab) ? (current as GoalsTab) : 'calendar';
   let activeTab = $state<GoalsTab>(defaultTab);
 
   let visionBoardLink = $state<UsefulLink | null>(null);
@@ -46,11 +46,11 @@
   let saving = $state(false);
 
   const tabs = [
+    { id: 'calendar', label: 'Calendario', icon: '📅' },
     { id: 'vision', label: 'Visión', icon: '⊶' },
     { id: 'books', label: 'Libros', icon: '📚' },
     { id: 'learning', label: 'Aprendizaje', icon: '🧠' },
     { id: 'memories', label: 'Memorias', icon: '📸' },
-    { id: 'calendar', label: 'Calendario', icon: '📅' },
     { id: 'successes', label: 'Logros', icon: '🏆' },
     { id: 'rewards', label: 'Recompensas', icon: '🎁' },
     { id: 'expenses', label: 'Gastos', icon: '💰' }
@@ -70,7 +70,7 @@
       next.searchParams.set('tab', activeTab);
       window.history.replaceState(window.history.state, '', next);
     } else {
-      activeTab = 'vision';
+      activeTab = 'calendar';
     }
   }
 
@@ -166,7 +166,9 @@
     {/each}
   </div>
 
-  {#if activeTab === 'vision'}
+  {#if activeTab === 'calendar'}
+    <Calendar userId={userId} bind:calEvents bind:calendarTodos onRefresh={loadAll} />
+  {:else if activeTab === 'vision'}
     <Vision
       bind:visionBoardLink
       bind:showVisionLinkForm
@@ -181,8 +183,6 @@
     <Learning userId={userId} bind:learning onRefresh={loadAll} />
   {:else if activeTab === 'memories'}
     <Memories userId={userId} bind:memories onRefresh={loadAll} />
-  {:else if activeTab === 'calendar'}
-    <Calendar userId={userId} bind:calEvents bind:calendarTodos onRefresh={loadAll} />
   {:else if activeTab === 'successes'}
     <Successes userId={userId} bind:successes onRefresh={loadAll} />
   {:else if activeTab === 'rewards'}
