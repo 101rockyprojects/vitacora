@@ -144,18 +144,18 @@
 </div>
 
 {#if showCalForm}
-  <div class="modal-backdrop" onclick={(e) => {
+  <div class="modal-backdrop" role="presentation" onclick={(e) => {
         if (e.target === e.currentTarget) {
           showCalForm = false
         }
-      }}>
-    <div class="modal">
+      }} onkeydown={(e) => e.key === 'Escape' && (showCalForm = false)}>
+    <div class="modal" role="document">
       <h3>Nuevo evento</h3>
-      <div class="form-group"><label>Nombre</label><input bind:value={calForm.event_name} placeholder="Cumpleaños, viaje..." /></div>
-      <div class="form-group"><label>Fecha</label><input type="date" bind:value={calForm.event_date} /></div>
+      <div class="form-group"><label for="cal-name">Nombre</label><input id="cal-name" bind:value={calForm.event_name} placeholder="Cumpleaños, viaje..." /></div>
+      <div class="form-group"><label for="cal-date">Fecha</label><input id="cal-date" type="date" bind:value={calForm.event_date} /></div>
       <div class="form-group">
-        <label>Tipo</label>
-        <select bind:value={calForm.type}>
+        <label for="cal-type">Tipo</label>
+        <select id="cal-type" bind:value={calForm.type}>
           <option value="event">Evento</option>
           <option value="special_day">Día especial</option>
         </select>

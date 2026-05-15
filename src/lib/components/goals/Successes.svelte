@@ -126,15 +126,15 @@
 </div>
 
 {#if showSuccessForm}
-  <div class="modal-backdrop" onclick={(e) => {
+  <div class="modal-backdrop" role="presentation" onclick={(e) => {
         if (e.target === e.currentTarget) {
           closeSuccessForm()
         }
-      }}>
-    <div class="modal">
+      }} onkeydown={(e) => e.key === 'Escape' && closeSuccessForm()}>
+    <div class="modal" role="document">
       <h3>{editingSuccessId ? 'Editar meta / logro' : 'Nueva meta / logro'}</h3>
-      <div class="form-group"><label>Descripción de la meta</label><textarea bind:value={successForm.goal_description} rows="2" placeholder="¿Qué quieres lograr?"></textarea></div>
-      <div class="form-group"><label>Reflexión</label><textarea bind:value={successForm.reflection} rows="8" placeholder="¿Qué aprendiste?"></textarea></div>
+      <div class="form-group"><label for="success-goal">Descripción de la meta</label><textarea id="success-goal" bind:value={successForm.goal_description} rows="2" placeholder="¿Qué quieres lograr?"></textarea></div>
+      <div class="form-group"><label for="success-reflection">Reflexión</label><textarea id="success-reflection" bind:value={successForm.reflection} rows="8" placeholder="¿Qué aprendiste?"></textarea></div>
       <div class="form-group" style="display:flex;align-items:center;gap:8px;">
         <input type="checkbox" bind:checked={successForm.done} id="done-check" style="width:auto;" disabled={!!editingSuccess?.done} />
         <label for="done-check" style="text-transform:none;font-size:14px;color:var(--text);">Marcar como completada</label>

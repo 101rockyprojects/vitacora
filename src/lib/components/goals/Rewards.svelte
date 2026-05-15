@@ -74,16 +74,16 @@
 </div>
 
 {#if showRewardForm}
-  <div class="modal-backdrop" onclick={(e) => {
+  <div class="modal-backdrop" role="presentation" onclick={(e) => {
         if (e.target === e.currentTarget) {
           showRewardForm = false
         }
-      }}>
-    <div class="modal">
+      }} onkeydown={(e) => e.key === 'Escape' && (showRewardForm = false)}>
+    <div class="modal" role="document">
       <h3>{editingRewardId ? 'Editar recompensa' : 'Nueva recompensa'}</h3>
-      <div class="form-group"><label>Logro</label><input bind:value={rewardForm.achievement_name} placeholder="¿Qué lograste?" /></div>
-      <div class="form-group"><label>Recompensa</label><input bind:value={rewardForm.reward_given} placeholder="¿Cómo te premiaste?" /></div>
-      <div class="form-group"><label>Fecha</label><input type="date" bind:value={rewardForm.date_awarded} /></div>
+      <div class="form-group"><label for="reward-achievement">Logro</label><input id="reward-achievement" bind:value={rewardForm.achievement_name} placeholder="¿Qué lograste?" /></div>
+      <div class="form-group"><label for="reward-given">Recompensa</label><input id="reward-given" bind:value={rewardForm.reward_given} placeholder="¿Cómo te premiaste?" /></div>
+      <div class="form-group"><label for="reward-date">Fecha</label><input id="reward-date" type="date" bind:value={rewardForm.date_awarded} /></div>
       <div class="form-actions">
         <button class="btn btn-secondary" onclick={() => showRewardForm = false}>Cancelar</button>
         <button class="btn btn-primary" onclick={saveReward} disabled={saving}>{saving ? '...' : 'Guardar'}</button>

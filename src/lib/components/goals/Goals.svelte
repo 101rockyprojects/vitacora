@@ -224,6 +224,4 @@
   }
 
   .tab-btn:hover:not(.active) { background: var(--surface); color: var(--text2); }
-
-  .tab-actions { margin-bottom: 20px; }
 </style>

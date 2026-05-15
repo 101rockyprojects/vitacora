@@ -177,18 +177,18 @@
 </div>
 
 {#if showMemForm}
-  <div class="modal-backdrop" onclick={(e) => {
+  <div class="modal-backdrop" role="presentation" onclick={(e) => {
         if (e.target === e.currentTarget) {
           showMemForm = false
         }
-      }}>
-    <div class="modal">
+      }} onkeydown={(e) => e.key === 'Escape' && (showMemForm = false)}>
+    <div class="modal" role="document">
       <h3>Nuevo recuerdo</h3>
-      <div class="form-group"><label>Fecha</label><input type="date" bind:value={memForm.date} /></div>
-      <div class="form-group"><label>Descripción</label><textarea bind:value={memForm.description} rows="2"></textarea></div>
+      <div class="form-group"><label for="mem-date">Fecha</label><input id="mem-date" type="date" bind:value={memForm.date} /></div>
+      <div class="form-group"><label for="mem-desc">Descripción</label><textarea id="mem-desc" bind:value={memForm.description} rows="2"></textarea></div>
       <div class="form-group">
-        <label>Imagen</label>
-        <div class="mem-upload-toggle">
+        <label for="mem-file">Imagen</label>
+        <div class="mem-upload-toggle" id="mem-image-mode">
           <button type="button" class="toggle-pill" class:active={memImageMode === 'file'} onclick={() => { memImageMode = 'file'; memImageLink = ''; }}>Archivo</button>
           <button type="button" class="toggle-pill" class:active={memImageMode === 'link'} onclick={() => { memImageMode = 'link'; memFile = null; }}>Link</button>
         </div>

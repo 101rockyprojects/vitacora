@@ -199,29 +199,30 @@
 </div>
 
 {#if showExpenseForm}
-  <div class="modal-backdrop" onclick={(e) => {
+  <div class="modal-backdrop" role="presentation" onclick={(e) => {
         if (e.target === e.currentTarget) {
           showExpenseForm = false; resetExpenseForm();
         }
-      }}>
-    <div class="modal">
+      }} onkeydown={(e) => e.key === 'Escape' && (showExpenseForm = false, resetExpenseForm())}>
+    <div class="modal" role="document">
       <h3>{editingExpenseId ? 'Editar gasto' : 'Nuevo gasto'}</h3>
-      <div class="form-group"><label>Nombre</label><input bind:value={expenseForm.name} placeholder="¿En qué gastaste?" /></div>
+      <div class="form-group"><label for="expense-name">Nombre</label><input id="expense-name" bind:value={expenseForm.name} placeholder="¿En qué gastaste?" /></div>
       <div class="form-group">
-        <label>Categoría</label>
+        <label for="expense-category">Categoría</label>
         <input
+          id="expense-category"
           bind:value={expenseForm.category}
           placeholder="Ej: Comida, Transporte..."
           list="expense-categories"
         />
         <datalist id="expense-categories">
           {#each usedCategories as cat}
-            <option value={cat} />
+            <option value={cat}></option>
           {/each}
         </datalist>
       </div>
-      <div class="form-group"><label>Costo</label><input type="number" bind:value={expenseForm.cost} min="0" step="0.01" placeholder="0.00" /></div>
-      <div class="form-group"><label>Fecha</label><input type="date" bind:value={expenseForm.expense_date} /></div>
+      <div class="form-group"><label for="expense-cost">Costo</label><input id="expense-cost" type="number" bind:value={expenseForm.cost} min="0" step="0.01" placeholder="0.00" /></div>
+      <div class="form-group"><label for="expense-date">Fecha</label><input id="expense-date" type="date" bind:value={expenseForm.expense_date} /></div>
       <div class="form-actions">
         <button class="btn btn-secondary" onclick={() => { showExpenseForm = false; resetExpenseForm(); }}>Cancelar</button>
         <button class="btn btn-primary" onclick={saveExpense} disabled={saving || !expenseForm.name.trim() || !expenseForm.category.trim() || expenseForm.cost <= 0}>{saving ? '...' : 'Guardar'}</button>
