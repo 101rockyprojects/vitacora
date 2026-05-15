@@ -29,7 +29,8 @@
     "flowbite-svelte": "^1.33.1",
     "gridstack": "^11.5.1",
     "html2canvas": "^1.4.1",
-    "svelte-dnd-action": "^0.9.46"
+    "svelte-dnd-action": "^0.9.46",
+    "ws": "^8.20.1"
   },
   "type": "module"
 }
