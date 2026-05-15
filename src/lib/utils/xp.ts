@@ -8,7 +8,14 @@ export const XP_VALUES = {
   learning_added: 15,
   memory_added: 5,
   daily_login: 5,
-  reward_earned: 20
+  reward_earned: 20,
+  standup_note_added: 5,
+  project_created: 15,
+  useful_link_added: 5,
+  skill_document_updated: 10,
+  calendar_event_added: 5,
+  expense_logged: 3,
+  streak_7_days: 50
 };
 
 export const AREAS = [
@@ -79,5 +86,13 @@ export const PREDEFINED_BADGES: Array<{
   { name: 'Proyecto Master', description: 'Crea 3 proyectos', icon: '🚀', condition_type: 'projects', condition_value: 3 },
   { name: 'Nivel 5', description: 'Alcanza el nivel 5 global', icon: '🌟', condition_type: 'global_level', condition_value: 5 },
   { name: 'Memorias', description: 'Agrega 10 fotos al álbum', icon: '📸', condition_type: 'memories', condition_value: 10 },
-  { name: 'Aprendiz', description: 'Registra 5 temas de aprendizaje', icon: '🧠', condition_type: 'learning', condition_value: 5 }
+  { name: 'Aprendiz', description: 'Registra 5 temas de aprendizaje', icon: '🧠', condition_type: 'learning', condition_value: 5 },
+  { name: 'Racha 7 días', description: '7 días consecutivos de actividad', icon: '🔥', condition_type: 'login_streak', condition_value: 7 },
+  { name: 'Racha 30 días', description: '30 días consecutivos de actividad', icon: '⚡', condition_type: 'login_streak', condition_value: 30 },
+  { name: 'Primero de la mañana', description: 'Completa una tarea antes de las 9am', icon: '🌅', condition_type: 'early_task', condition_value: 1 },
+  { name: 'Week Warrior', description: 'Completa 10 tareas en una semana', icon: '🗓️', condition_type: 'tasks_week', condition_value: 10 },
+  { name: 'Multi-tasker', description: 'Completa 3 tareas en un día', icon: '🎯', condition_type: 'tasks_same_day', condition_value: 3 },
+  { name: 'Documentator', description: 'Documenta 5 skills', icon: '📝', condition_type: 'skills_documented', condition_value: 5 },
+  { name: 'Coleccionista', description: 'Agrega 10 enlaces útiles', icon: '🔗', condition_type: 'links_added', condition_value: 10 },
+  { name: 'Planner', description: 'Crea 5 eventos de calendario', icon: '📅', condition_type: 'calendar_events', condition_value: 5 }
 ];
