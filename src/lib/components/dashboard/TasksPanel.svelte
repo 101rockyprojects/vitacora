@@ -8,7 +8,7 @@
 
   let { tasks = [], loading = false }: Props = $props();
 
-  const todayTasks = $derived(tasks.filter(t => t.status !== 'done').slice(0, 5));
+  const todayTasks = $derived(tasks.filter(t => t.status !== 'done' && t.status !== 'to_review').slice(0, 5));
 </script>
 
 <div class="card">

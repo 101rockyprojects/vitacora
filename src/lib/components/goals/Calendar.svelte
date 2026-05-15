@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { CalendarEvent, CalendarTodo } from '$lib/types';
   import { createRepository } from '$lib/services/repository';
+  import { awardXP, XP_VALUES } from '$lib/utils/xp';
   import WeekPlanner from '$lib/components/WeekPlanner.svelte';
 
   interface Props {
@@ -71,6 +72,7 @@
   async function saveCal() {
     saving = true;
     await repo.calendar.insert(calForm);
+    await awardXP(userId, 'selfcare', 'calendar_event_added', XP_VALUES.calendar_event_added);
     calForm = { event_name: '', event_date: '', type: 'event' };
     showCalForm = false;
     const { data } = await repo.calendar.list();
@@ -136,7 +138,7 @@
   </div>
   <hr style="border: none; border-top: 1px solid var(--border); margin: 20px 0;" />
   <div class="tab-actions">
-    <button class="btn btn-primary" onclick={() => { calForm = { event_name: '', event_date: '', type: 'event' }; showCalForm = true; }}>+ Agregar evento</button>
+    <button class="btn btn-primary" onclick={() => { calForm = { event_name: '', event_date: '', type: 'event' }; showCalForm = true; }}>+ Agregar evento o día especial</button>
   </div>
   <WeekPlanner events={calEvents} todos={calendarTodos} />
 </div>

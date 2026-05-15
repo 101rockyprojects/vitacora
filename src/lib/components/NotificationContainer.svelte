@@ -39,29 +39,31 @@
 </script>
 
 <div class="notification-container">
-  {#each notifications.slice(0, 3) as notification (notification.id)}
-    <div
-      class="toast-notification {getTypeStyles(notification.type)}"
-      onclick={() => handleClick(notification)}
-      onkeydown={(e) => e.key === 'Enter' && handleClick(notification)}
-      role="button"
-      tabindex="0"
-    >
-      <span class="toast-icon">{getTypeIcon(notification.type)}</span>
-      <div class="toast-content">
-        <div class="toast-title">{notification.title}</div>
-        <div class="toast-message">{notification.message}</div>
-      </div>
-      <button
-        class="toast-close"
-        onclick={(e) => { e.stopPropagation(); notificationStore.removeNotification(notification.id); }}
-        type="button"
-        aria-label="Cerrar"
+  {#if unreadCount > 0}
+    {#each notifications.slice(0, 3) as notification (notification.id)}
+      <div
+        class="toast-notification {getTypeStyles(notification.type)}"
+        onclick={() => handleClick(notification)}
+        onkeydown={(e) => e.key === 'Enter' && handleClick(notification)}
+        role="button"
+        tabindex="0"
       >
-        ✕
-      </button>
-    </div>
-  {/each}
+        <span class="toast-icon">{getTypeIcon(notification.type)}</span>
+        <div class="toast-content">
+          <div class="toast-title">{notification.title}</div>
+          <div class="toast-message">{notification.message}</div>
+        </div>
+        <button
+          class="toast-close"
+          onclick={(e) => { e.stopPropagation(); notificationStore.removeNotification(notification.id); }}
+          type="button"
+          aria-label="Cerrar"
+        >
+          ✕
+        </button>
+      </div>
+    {/each}
+  {/if}
 
   <div class="notification-bell">
     <button
@@ -73,7 +75,7 @@
     >
       🔔
       {#if unreadCount > 0}
-        <span class="bell-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>
+        <span class="bell-badge animate-ping">{unreadCount > 9 ? '9+' : unreadCount}</span>
       {/if}
     </button>
 
@@ -118,7 +120,7 @@
     position: fixed;
     top: 80px;
     right: 20px;
-    z-index: 100;
+    z-index: 40;
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -194,7 +196,7 @@
     height: 44px;
     border-radius: 50%;
     background: var(--surface);
-    border: 1px solid var(--border);
+    border: 1px solid var(--accent-purple);
     font-size: 20px;
     display: flex;
     align-items: center;
@@ -213,8 +215,8 @@
     position: absolute;
     top: -4px;
     right: -4px;
-    background: var(--accent-red);
-    color: white;
+    background: var(--accent-purple);
+    color: var(--bg);
     font-size: 10px;
     font-weight: 700;
     min-width: 18px;
@@ -224,7 +226,6 @@
     align-items: center;
     justify-content: center;
     padding: 0 4px;
-    animation: pulse 2s infinite;
   }
 
   .notification-menu {
@@ -322,10 +323,5 @@
     color: var(--text3);
     font-family: var(--font-mono);
     margin-top: 4px;
-  }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.7; }
   }
 </style>

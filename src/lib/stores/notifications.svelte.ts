@@ -6,6 +6,7 @@ export interface Notification {
   link: string;
   createdAt: number;
   read: boolean;
+  toastDismissed: boolean;
 }
 
 class NotificationStore {
@@ -14,19 +15,20 @@ class NotificationStore {
 
   private timers = new Map<string, ReturnType<typeof setTimeout>>();
 
-  addNotification(notification: Omit<Notification, 'id' | 'createdAt' | 'read'>) {
+  addNotification(notification: Omit<Notification, 'id' | 'createdAt' | 'read' | 'toastDismissed'>) {
     const id = crypto.randomUUID();
     const newNotification: Notification = {
       ...notification,
       id,
       createdAt: Date.now(),
-      read: false
+      read: false,
+      toastDismissed: false
     };
 
     this.notifications = [newNotification, ...this.notifications];
 
     const timer = setTimeout(() => {
-      this.removeNotification(id);
+      this.dismissToast(id);
     }, 30000);
 
     this.timers.set(id, timer);
@@ -41,6 +43,12 @@ class NotificationStore {
     this.notifications = this.notifications.filter(n => n.id !== id);
   }
 
+  dismissToast(id: string) {
+    this.notifications = this.notifications.map(n =>
+      n.id === id ? { ...n, toastDismissed: true } : n
+    );
+  }
+
   markAsRead(id: string) {
     this.notifications = this.notifications.map(n =>
       n.id === id ? { ...n, read: true } : n
@@ -48,7 +56,7 @@ class NotificationStore {
   }
 
   markAllAsRead() {
-    this.notifications = this.notifications.map(n => ({ ...n, read: true }));
+    this.notifications = this.notifications.map(n => ({ ...n, read: true, toastDismissed: true }));
   }
 
   toggleMenu() {
