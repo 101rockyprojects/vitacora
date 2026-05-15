@@ -105,7 +105,7 @@
     border-right: 1px solid var(--border);
     display: flex;
     flex-direction: column;
-    z-index: 50;
+    z-index: 40;
     padding: 24px 0;
     overflow: hidden;
     transition: width 0.22s ease, padding 0.22s ease, border-color 0.22s ease;
@@ -130,7 +130,7 @@
     position: fixed;
     left: 10px;
     top: 10px;
-    z-index: 80;
+    z-index: 45;
     width: 36px;
     height: 36px;
     border-radius: 12px;
