@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Project } from '$lib/types';
   import { createRepository } from '$lib/services/repository';
+  import { awardXP, XP_VALUES } from '$lib/utils/xp';
 
   interface Props {
     userId: string;
@@ -18,8 +19,12 @@
 
   async function saveProject() {
     saving = true;
-    if (editingProjectId) await repo.projects.update(editingProjectId, projectForm);
-    else await repo.projects.insert(projectForm);
+    if (editingProjectId) {
+      await repo.projects.update(editingProjectId, projectForm);
+    } else {
+      await repo.projects.insert(projectForm);
+      await awardXP(userId, 'work', 'project_created', XP_VALUES.project_created);
+    }
     projectForm = { name: '' };
     editingProjectId = null;
     showProjectForm = false;

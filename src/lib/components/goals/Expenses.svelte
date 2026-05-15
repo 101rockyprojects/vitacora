@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Expense } from '$lib/types';
   import { createRepository } from '$lib/services/repository';
+  import { awardXP, XP_VALUES } from '$lib/utils/xp';
   import PieChart from '$lib/components/PieChart.svelte';
 
   interface Props {
@@ -80,6 +81,7 @@
       await repo.expenses.update(editingExpenseId, { ...expenseForm });
     } else {
       await repo.expenses.insert(expenseForm);
+      await awardXP(userId, 'selfcare', 'expense_logged', XP_VALUES.expense_logged);
     }
     showExpenseForm = false;
     resetExpenseForm();

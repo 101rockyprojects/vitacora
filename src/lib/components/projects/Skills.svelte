@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { SkillsMd } from '$lib/types';
   import { createRepository } from '$lib/services/repository';
+  import { awardXP, XP_VALUES } from '$lib/utils/xp';
   import { tick } from 'svelte';
 
   interface Props {
@@ -73,6 +74,7 @@
     if (!editingSkillId) return;
     mdSaving = true;
     await repo.skillsMd.update(editingSkillId, { content: mdContent, updated_at: new Date().toISOString() });
+    await awardXP(userId, 'education', 'skill_document_updated', XP_VALUES.skill_document_updated, editingSkillId);
     const { data } = await repo.skillsMd.list();
     skills = data || [];
     mdSaving = false;
@@ -248,14 +250,4 @@
     height: auto;
     resize: none;
   }
-
-  :global(.md-preview h1) { font-size: 22px; margin: 16px 0 8px; color: var(--accent-green); }
-  :global(.md-preview h2) { font-size: 18px; margin: 14px 0 6px; color: var(--accent-orange); }
-  :global(.md-preview h3) { font-size: 15px; margin: 12px 0 4px; color: var(--accent-purple); }
-  :global(.md-preview code) { background: var(--bg2); padding: 2px 6px; border-radius: 4px; font-size: 12px; font-family: var(--font-mono); }
-  :global(.md-preview ul) { padding-left: 20px; }
-  :global(.md-preview li) { margin: 4px 0; }
-  :global(.md-preview a) { color: var(--accent-yellow); font-weight: 600; font-style: italic; text-decoration: underline; }
-  :global(.md-preview hr) { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
-  :global(.md-preview br) { display: block; content: ""; margin: 2px 0; }
 </style>

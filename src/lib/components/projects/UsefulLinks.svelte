@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { UsefulLink } from '$lib/types';
   import { createRepository } from '$lib/services/repository';
+  import { awardXP, XP_VALUES } from '$lib/utils/xp';
 
   interface Props {
     userId: string;
@@ -18,8 +19,12 @@
 
   async function saveLink() {
     saving = true;
-    if (editingLinkId) await repo.links.update(editingLinkId, linkForm);
-    else await repo.links.insert(linkForm);
+    if (editingLinkId) {
+      await repo.links.update(editingLinkId, linkForm);
+    } else {
+      await repo.links.insert(linkForm);
+      await awardXP(userId, 'work', 'useful_link_added', XP_VALUES.useful_link_added);
+    }
     linkForm = { title: '', url: '' };
     editingLinkId = null;
     showLinkForm = false;
