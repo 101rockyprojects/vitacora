@@ -191,8 +191,8 @@
       {#each ideas.filter(i => i.status === 'pending') as idea}
         <div class="idea-card" class:done={idea.status === 'done'}>
           <div class="idea-main">
-            <button class="idea-check" onclick={() => toggleStatus(idea)}>
-              <span class="check-circle"></span>
+            <button class="idea-check" onclick={() => toggleStatus(idea)} aria-label="Mark idea as {idea.status === 'done' ? 'pending' : 'done'}">
+              <span class="check-circle" aria-hidden="true"></span>
             </button>
             <span class="idea-text">{idea.idea_text}</span>
           </div>
