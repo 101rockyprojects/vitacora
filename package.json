@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@flowbite-svelte-plugins/chart": "^0.2.4",
+    "@justinribeiro/lite-youtube": "^1.9.0",
     "@supabase/ssr": "^0.4.0",
     "@supabase/supabase-js": "^2.43.0",
     "@sveltejs/adapter-cloudflare": "^7.2.8",
