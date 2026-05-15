@@ -8,6 +8,9 @@ import type {
   Expense,
   LearningItem,
   MemoryPhoto,
+  MovieRating,
+  MovieWatchlist,
+  MovieWithRatings,
   Project,
   Reward,
   SkillsMd,
@@ -199,6 +202,105 @@ export function createRepository(
       remove: (id: string) => client.from('date_ideas').delete().eq('id', id)
     },
 
+    movieWatchlist: {
+      list: async () => {
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        const partnerId = currentUser?.user_metadata?.partner_id;
+
+        if (partnerId) {
+          const { data, error } = await client
+            .from('movie_watchlist')
+            .select('*')
+            .in('added_by', [uid(), partnerId])
+            .order('created_at', { ascending: false });
+          return { data, error };
+        }
+
+        return client.from('movie_watchlist').select('*').eq('added_by', uid()).order('created_at', { ascending: false });
+      },
+      insertMany: (titles: string[]) =>
+        client.from('movie_watchlist').insert(titles.map(t => ({ title: t.trim(), added_by: uid() }))).select(),
+      insert: (movie: Omit<MovieWatchlist, 'id' | 'added_by'>) =>
+        client.from('movie_watchlist').insert({ ...movie, added_by: uid() }).select().single(),
+      updateTitle: (id: string, title: string) =>
+        client.from('movie_watchlist').update({ title }).eq('id', id),
+      updatePoster: (id: string, posterUrl: string) =>
+        client.from('movie_watchlist').update({ poster_url: posterUrl }).eq('id', id),
+      updateResources: (id: string, resources: string) =>
+        client.from('movie_watchlist').update({ resources }).eq('id', id),
+      remove: (id: string) => client.from('movie_watchlist').delete().eq('id', id)
+    },
+
+    movieRatings: {
+      upsert: (movieId: string, rating: number) =>
+        client.from('movie_ratings').upsert({
+          movie_id: movieId,
+          user_id: uid(),
+          rating,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'movie_id,user_id' }).select().single(),
+      listByMovie: (movieId: string) =>
+        client.from('movie_ratings').select('*').eq('movie_id', movieId),
+      listFused: () =>
+        client
+          .from('movie_watchlist_with_ratings')
+          .select('*')
+          .order('avg_rating', { ascending: true }),
+      listWithMovies: async () => {
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        const partnerId = currentUser?.user_metadata?.partner_id;
+
+        if (partnerId) {
+          const { data, error } = await client
+            .from('movie_watchlist')
+            .select('*, user_rating:movie_ratings!inner(rating)')
+            .in('movie_ratings.user_id', [uid(), partnerId])
+            .order('created_at', { ascending: false });
+          return { data, error };
+        }
+
+        return client.from('movie_watchlist')
+          .select('*, user_rating:movie_ratings!inner(rating)')
+          .eq('movie_ratings.user_id', uid())
+          .order('created_at', { ascending: false });
+      },
+      listRated: async () => {
+        const { data: movies } = await client
+          .from('movie_watchlist')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (!movies || movies.length === 0) return { data: [] as MovieWithRatings[] };
+
+        const { data: allUsers } = await (supabase as any).auth.admin.listUsers();
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        const partnerId = currentUser?.user_metadata?.partner_id;
+        const partner = partnerId ? allUsers?.users.find((u: any) => u.id === partnerId) : null;
+
+        const { data: allRatings } = await client
+          .from('movie_ratings')
+          .select('*')
+          .in('movie_id', movies.map((m: MovieWatchlist) => m.id!));
+
+        const result: MovieWithRatings[] = movies.map(m => {
+          const ratings = (allRatings || []).filter((r: MovieRating) => r.movie_id === m.id);
+          const userRating = ratings.find((r: MovieRating) => r.user_id === uid());
+          const partnerRating = partner ? ratings.find((r: MovieRating) => r.user_id === partner.id) : undefined;
+          const allRatingsNums = ratings.map((r: MovieRating) => r.rating).filter(Boolean);
+          const avg = allRatingsNums.length ? allRatingsNums.reduce((a: number, b: number) => a + b, 0) / allRatingsNums.length : 0;
+          return {
+            ...m,
+            user_rating: userRating?.rating,
+            partner_rating: partnerRating?.rating,
+            avg_rating: avg.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
+            total_ratings: allRatingsNums.length
+          } as MovieWithRatings;
+        });
+
+        return { data: result.sort((a, b) => (b.avg_rating || 0) - (a.avg_rating || 0)) };
+      }
+    },
+
     badges: {
       list: () => client.from('badges').select('*'),
       insert: (badge: Omit<Badge, 'id'>) => client.from('badges').insert(badge)
@@ -305,6 +407,7 @@ export function createRepository(
         if (!partner) throw new Error('User not found');
 
         const partnerData = partner.user_metadata || {};
+        const connectionDate = new Date().toISOString();
 
         try {
           const response = await fetch(`${import.meta.env.PUBLIC_SUPABASE_URL}/auth/v1/admin/users/${partnerId}`, {
@@ -315,7 +418,7 @@ export function createRepository(
               'apikey': import.meta.env.PUBLIC_SUPABASE_ANON_KEY
             },
             body: JSON.stringify({
-              user_metadata: { ...partnerData, partner_id: user.id }
+              user_metadata: { ...partnerData, partner_id: user.id, partner_since: connectionDate }
             })
           });
 
@@ -327,7 +430,7 @@ export function createRepository(
         }
 
         const { error: userError } = await supabase.auth.updateUser({
-          data: { partner_id: partnerId }
+          data: { partner_id: partnerId, partner_since: connectionDate }
         });
 
         if (userError) throw userError;
@@ -395,7 +498,8 @@ export function createRepository(
 
         return {
           id: partner.id,
-          email: partner.email || ''
+          email: partner.email || '',
+          partner_since: partner.user_metadata?.partner_since as string | undefined
         };
       }
     }

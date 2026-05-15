@@ -163,3 +163,28 @@ export interface AreaXP {
   label: string;
   color: string;
 }
+
+export interface MovieWatchlist {
+  id?: string;
+  added_by?: string;
+  title: string;
+  poster_url?: string;
+  resources?: string;
+  created_at?: string;
+}
+
+export interface MovieRating {
+  id?: string;
+  movie_id: string;
+  user_id?: string;
+  rating: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface MovieWithRatings extends MovieWatchlist {
+  user_rating?: number;
+  partner_rating?: number;
+  avg_rating?: number;
+  total_ratings?: number;
+}
