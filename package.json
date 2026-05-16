@@ -5,9 +5,11 @@
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
+    "build:prod": "mv .env.local .env.local.bak && npm run build; mv .env.local.bak .env.local",
     "preview": "vite preview",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-    "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch"
+    "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+    "deploy": "wrangler deploy"
   },
   "devDependencies": {
     "@sveltejs/adapter-node": "^5.0.1",
