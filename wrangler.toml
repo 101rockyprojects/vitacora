@@ -10,3 +10,7 @@ binding = "ASSETS"
 [observability.logs]
 enabled = false
 invocation_logs = true
+
+[vars]
+PUBLIC_SUPABASE_URL = "https://kfqzialabwmyrdbwewln.supabase.co"
+PUBLIC_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtmcXppYWxhYndteXJkYndld2xuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM3ODAyMjgsImV4cCI6MjA4OTM1NjIyOH0.6ccx9Rv4qiRkO-wYwUm_9JVK_DhTWtuIOdkv53ME5Po"
