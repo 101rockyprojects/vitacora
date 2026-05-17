@@ -107,16 +107,68 @@
     });
   })());
 
-  const upcomingEventGroups = $derived(eventGroups.filter((g) => !g.isPast));
-  const pastEventGroups = $derived(eventGroups.filter((g) => g.isPast));
+  // Group by month
+  const upcomingEventGroups = $derived(eventGroups.filter((g) => !g.isPast).map((g) => {
+    const monthIso = g.iso.slice(0, 7);
+    return { ...g, iso: monthIso };
+  }).reduce((acc, g) => {
+    let group = acc.find(gr => gr.iso === g.iso);
+    if (!group) {
+      group = { iso: g.iso, date: new Date(g.iso + '-01'), isToday: false, isPast: false, events: [], todos: [] };
+      acc.push(group);
+    }
+    group.events.push(...g.events);
+    group.todos.push(...g.todos);
+    return acc;
+  }, [] as EventGroup[]).sort((a, b) => a.iso.localeCompare(b.iso)));
+
+  const pastEventGroups = $derived(eventGroups.filter((g) => g.isPast).map((g) => {
+    const monthIso = g.iso.slice(0, 7);
+    return { ...g, iso: monthIso };
+  }).reduce((acc, g) => {
+    let group = acc.find(gr => gr.iso === g.iso);
+    if (!group) {
+      group = { iso: g.iso, date: new Date(g.iso + '-01'), isToday: false, isPast: true, events: [], todos: [] };
+      acc.push(group);
+    }
+    group.events.push(...g.events);
+    group.todos.push(...g.todos);
+    return acc;
+  }, [] as EventGroup[]).sort((a, b) => b.iso.localeCompare(a.iso)));
   const nextMonthCutoffIso = $derived((() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
     d.setMonth(d.getMonth() + 1);
     return toIsoDateLocal(d);
   })());
-  const nextEventGroups = $derived(upcomingEventGroups.filter((g) => g.iso <= nextMonthCutoffIso));
-  const futureEventGroups = $derived(upcomingEventGroups.filter((g) => g.iso > nextMonthCutoffIso));
+
+  const nextEventGroups = $derived(upcomingEventGroups.filter((g) => g.iso <= nextMonthCutoffIso).map((g) => {
+    const monthIso = g.iso.slice(0, 7);
+    return { ...g, iso: monthIso };
+  }).reduce((acc, g) => {
+    let group = acc.find(gr => gr.iso === g.iso);
+    if (!group) {
+      group = { iso: g.iso, date: new Date(g.iso + '-01'), isToday: false, isPast: false, events: [], todos: [] };
+      acc.push(group);
+    }
+    group.events.push(...g.events);
+    group.todos.push(...g.todos);
+    return acc;
+  }, [] as EventGroup[]).sort((a, b) => a.iso.localeCompare(b.iso)));
+
+  const futureEventGroups = $derived(upcomingEventGroups.filter((g) => g.iso > nextMonthCutoffIso).map((g) => {
+    const monthIso = g.iso.slice(0, 7);
+    return { ...g, iso: monthIso };
+  }).reduce((acc, g) => {
+    let group = acc.find(gr => gr.iso === g.iso);
+    if (!group) {
+      group = { iso: g.iso, date: new Date(g.iso + '-01'), isToday: false, isPast: false, events: [], todos: [] };
+      acc.push(group);
+    }
+    group.events.push(...g.events);
+    group.todos.push(...g.todos);
+    return acc;
+  }, [] as EventGroup[]).sort((a, b) => a.iso.localeCompare(b.iso)));
 
   async function load() {
     if (!userId) return;
@@ -175,7 +227,7 @@
         <div class="cal-group" class:today-group={g.isToday}>
           <div class="cal-group-header">
             <div class="cal-group-date">
-              {g.date.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+              {g.date.toLocaleDateString('es-ES', { year: 'numeric', month: 'long' })}
             </div>
             <div class="cal-group-meta">
               {#if g.isToday}
@@ -192,7 +244,7 @@
                 <div class="cal-info">
                   <div class="cal-name">{td.name}</div>
                   <div class="cal-date">{new Date(td.todo_date).toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
-                  <span class="tag" style="background:var(--accent-orange);color:var(--bg2)">Tarea</span>
+                  <span class="tag" style="background:var(--accent-orange);color:var(--text-dark)">Tarea</span>
                 </div>
               </div>
             {/each}
@@ -205,7 +257,7 @@
                   <div class="cal-name">{ev.event_name}</div>
                   <div class="cal-date">{new Date(ev.event_date).toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
                   {#if !expired}
-                    <span class="tag" style="background:var(--bg);color:var(--text2)">{ev.type === 'special_day' ? 'Dia especial' : 'Evento'}</span>
+                    <span class="tag" style="background:var(--accent-green);color:var(--text-dark)">{ev.type === 'special_day' ? 'Dia especial' : 'Evento'}</span>
                   {/if}
                 </div>
                 <button class="small-btn btn-ghost" onclick={() => deleteCal(ev.id!)}>✕</button>
@@ -224,7 +276,7 @@
             onclick={() => (showFutureEvents = !showFutureEvents)}
           >
             <span>
-              Eventos del próximo mes <span class="cal-count">{futureEventGroups.reduce((n, g) => n + g.events.length, 0)}</span>
+              Eventos futuros (más de 30 días) <span class="cal-count">{futureEventGroups.reduce((n, g) => n + g.events.length, 0)}</span>
             </span>
             <span class="cal-chevron" class:open={showFutureEvents}>▾</span>
           </button>
@@ -235,7 +287,7 @@
                 <div class="cal-group">
                   <div class="cal-group-header">
                     <div class="cal-group-date">
-                      {g.date.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                      {g.date.toLocaleDateString('es-ES', { year: 'numeric', month: 'long' })}
                     </div>
                     <div class="cal-group-meta">
                       <span class="cal-count">{g.events.length}</span>
@@ -249,7 +301,7 @@
                         <div class="cal-info">
                           <div class="cal-name">{td.name}</div>
                           <div class="cal-date">{new Date(td.todo_date).toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
-                          <span class="tag" style="background:var(--accent-orange);color:var(--bg2)">Tarea</span>
+                          <span class="tag" style="background:var(--accent-orange);color:var(--text-dark)">Tarea</span>
                         </div>
                       </div>
                     {/each}
@@ -262,7 +314,7 @@
                           <div class="cal-name">{ev.event_name}</div>
                           <div class="cal-date">{new Date(ev.event_date).toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
                           {#if !expired}
-                            <span class="tag" style="background:var(--bg);color:var(--text2)">{ev.type === 'special_day' ? 'Dia especial' : 'Evento'}</span>
+                            <span class="tag" style="background:var(--accent-green);color:var(--text-dark)">{ev.type === 'special_day' ? 'Dia especial' : 'Evento'}</span>
                           {/if}
                         </div>
                         <button class="small-btn btn-ghost" onclick={() => deleteCal(ev.id!)}>✕</button>
@@ -296,7 +348,7 @@
                 <div class="cal-group expired-group">
                   <div class="cal-group-header">
                     <div class="cal-group-date">
-                      {g.date.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                      {g.date.toLocaleDateString('es-ES', { year: 'numeric', month: 'long' })}
                     </div>
                     <div class="cal-group-meta">
                       <span class="cal-count">{g.events.length}</span>
@@ -308,7 +360,7 @@
                         <div class="cal-info">
                           <div class="cal-name">{td.name}</div>
                           <div class="cal-date">{new Date(td.todo_date).toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
-                          <span class="tag" style="background:var(--accent-orange);color:var(--bg2)">Tarea</span>
+                          <span class="tag" style="background:var(--accent-orange);color:var(--text-dark)">Tarea</span>
                         </div>
                       </div>
                     {/each}
@@ -428,7 +480,7 @@
     padding: 16px;
   }
 
-  .cal-card.today { border: 2px solid var(--accent-green); }
+  .cal-card.today { border: 2px solid var(--accent-blue); }
   .cal-card.expired { opacity: 0.8; }
 
   .cal-card:target {
@@ -474,8 +526,8 @@
   }
 
   .week-header.current {
-    background: var(--accent-green);
-    border-bottom-color: var(--accent-green);
+    background: var(--accent-blue);
+    border-bottom-color: var(--accent-blue);
   }
   
   .week-header.current .week-day { color: var(--bg3); }
