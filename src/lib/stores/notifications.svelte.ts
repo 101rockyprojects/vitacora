@@ -3,7 +3,7 @@ export interface Notification {
   type: 'urgent' | 'warning' | 'info';
   title: string;
   message: string;
-  link: string;
+  link?: string | '';
   createdAt: number;
   read: boolean;
   toastDismissed: boolean;
@@ -16,6 +16,9 @@ class NotificationStore {
   private timers = new Map<string, ReturnType<typeof setTimeout>>();
 
   addNotification(notification: Omit<Notification, 'id' | 'createdAt' | 'read' | 'toastDismissed'>) {
+    if (this.checkExistingNotification(notification.type, notification.message)) {
+      return;
+    }
     const id = crypto.randomUUID();
     const newNotification: Notification = {
       ...notification,
@@ -32,6 +35,10 @@ class NotificationStore {
     }, 30000);
 
     this.timers.set(id, timer);
+  }
+
+  checkExistingNotification(type: Notification['type'], message: string) {
+    return this.notifications.some(n => n.type === type && n.message === message);
   }
 
   removeNotification(id: string) {

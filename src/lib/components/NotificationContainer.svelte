@@ -7,7 +7,7 @@
   function handleClick(notification: Notification) {
     notificationStore.markAsRead(notification.id);
     notificationStore.removeNotification(notification.id);
-    goto(notification.link);
+    if (notification.link) goto(notification.link);
   }
 
   function formatTime(timestamp: number): string {
@@ -184,14 +184,10 @@
     color: var(--text);
   }
 
-  .notification-bell {
-    position: relative;
-  }
-
   .bell-btn {
     position: fixed;
-    top: 20px;
-    right: 20px;
+    top: 10px;
+    right: 10px;
     width: 44px;
     height: 44px;
     border-radius: 50%;
@@ -214,7 +210,7 @@
   .bell-badge {
     position: absolute;
     top: -4px;
-    right: -4px;
+    right: -2px;
     background: var(--accent-purple);
     color: var(--bg);
     font-size: 10px;
