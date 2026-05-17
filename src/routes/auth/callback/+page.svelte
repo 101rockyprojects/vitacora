@@ -34,10 +34,10 @@
         }
 
         if (type === 'recovery') {
-          goto('/profile?reset=true');
+          goto('/profile?reset=true', { invalidateAll: true });
         } else {
           localStorage.setItem('vitacora_just_logged_in', 'true');
-          goto('/dashboard');
+          goto('/dashboard', { invalidateAll: true });
         }
       } catch (e) {
         status = 'Error de conexión';

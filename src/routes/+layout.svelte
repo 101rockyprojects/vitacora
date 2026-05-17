@@ -7,12 +7,6 @@
   
   let { data, children } = $props();
   
-  $effect(() => {
-    if (data.session) {
-      // user logged in
-    }
-  });
-  
   const isAuthPage = $derived(page.url.pathname.startsWith('/auth'));
 
   const routeMeta = $derived(getRouteMeta(page.url.pathname));

@@ -28,7 +28,7 @@
         if (result.data.action === 'login') {
           if (typeof window !== 'undefined') localStorage.setItem('vitacora_just_logged_in', 'true');
           showToast('Iniciando sesión, redireccionando...');
-          setTimeout(() => goto('/dashboard'), 800);
+          setTimeout(() => goto('/dashboard', { invalidateAll: true }), 800);
         } else if (result.data.action === 'signup') {
           showToast('Se ha enviado un enlace de confirmación a tu correo');
         }
