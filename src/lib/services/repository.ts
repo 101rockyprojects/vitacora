@@ -29,6 +29,17 @@ function requireUserId(userId?: string): string {
   return userId;
 }
 
+async function getPartnerIdFromTable(client: SupabaseClient<any, any, any>): Promise<string | null> {
+  const { data: { user } } = await client.auth.getUser();
+  if (!user) return null;
+  const { data: relation } = await client
+    .from('partner_relations')
+    .select('partner_id')
+    .eq('user_id', user.id)
+    .single();
+  return relation?.partner_id || null;
+}
+
 export function createRepository(
   userId?: string,
   client: SupabaseClient<any, any, any> = supabase as SupabaseClient<any, any, any>
@@ -205,8 +216,7 @@ export function createRepository(
 
     movieWatchlist: {
       list: async () => {
-        const { data: { user: currentUser } } = await supabase.auth.getUser();
-        const partnerId = currentUser?.user_metadata?.partner_id;
+        const partnerId = await getPartnerIdFromTable(client);
 
         if (partnerId) {
           const { data, error } = await client
@@ -255,8 +265,7 @@ export function createRepository(
         return { data: formatted, error };
       },
       listWithMovies: async () => {
-        const { data: { user: currentUser } } = await supabase.auth.getUser();
-        const partnerId = currentUser?.user_metadata?.partner_id;
+        const partnerId = await getPartnerIdFromTable(client);
 
         if (partnerId) {
           const { data, error } = await client
@@ -280,10 +289,7 @@ export function createRepository(
 
         if (!movies || movies.length === 0) return { data: [] as MovieWithRatings[] };
 
-        const { data: allUsers } = await (supabase as any).auth.admin.listUsers();
-        const { data: { user: currentUser } } = await supabase.auth.getUser();
-        const partnerId = currentUser?.user_metadata?.partner_id;
-        const partner = partnerId ? allUsers?.users.find((u: any) => u.id === partnerId) : null;
+        const partnerId = await getPartnerIdFromTable(client);
 
         const { data: allRatings } = await client
           .from('movie_ratings')
@@ -293,7 +299,7 @@ export function createRepository(
         const result: MovieWithRatings[] = movies.map(m => {
           const ratings = (allRatings || []).filter((r: MovieRating) => r.movie_id === m.id);
           const userRating = ratings.find((r: MovieRating) => r.user_id === uid());
-          const partnerRating = partner ? ratings.find((r: MovieRating) => r.user_id === partner.id) : undefined;
+          const partnerRating = partnerId ? ratings.find((r: MovieRating) => r.user_id === partnerId) : undefined;
           const allRatingsNums = ratings.map((r: MovieRating) => r.rating).filter(Boolean);
           const avg = allRatingsNums.length ? allRatingsNums.reduce((a: number, b: number) => a + b, 0) / allRatingsNums.length : 0;
           return {
@@ -359,11 +365,27 @@ export function createRepository(
       getProfile: async () => {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return null;
+
+        const { data: partnerCode } = await client
+          .from('partner_codes')
+          .select('code')
+          .eq('user_id', user.id)
+          .single();
+
+        const { data: partnerRelation } = await client
+          .from('partner_relations')
+          .select('partner_id, connected_at')
+          .eq('user_id', user.id)
+          .single();
+
         return {
           id: user.id,
           email: user.email,
-          partner_code: user.user_metadata?.partner_code || null,
-          partner_id: user.user_metadata?.partner_id || null
+          partner_code: partnerCode?.code || null,
+          partner_id: partnerRelation?.partner_id || null,
+          partner_since: partnerRelation?.connected_at 
+            ? new Date(partnerRelation.connected_at).toISOString() 
+            : null
         };
       },
 
@@ -371,19 +393,21 @@ export function createRepository(
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error('Not authenticated');
 
-        const { data: allUsers } = await supabase.auth.admin.listUsers();
-        const existing = allUsers?.users.find(u => 
-          u.user_metadata?.partner_code === code.toUpperCase() && u.id !== user.id
-        );
-        
-        if (existing) {
+        const { data: codeExists } = await client
+          .from('partner_codes')
+          .select('user_id')
+          .eq('code', code.toUpperCase())
+          .neq('user_id', user.id)
+          .single();
+
+        if (codeExists) {
           throw new Error('Code already in use');
         }
 
-        const { error } = await supabase.auth.updateUser({
-          data: { partner_code: code.toUpperCase() }
-        });
-        
+        const { error } = await client
+          .from('partner_codes')
+          .upsert({ user_id: user.id, code: code.toUpperCase(), email: user.email || '' }, { onConflict: 'user_id' });
+
         if (error) throw error;
       },
 
@@ -391,17 +415,26 @@ export function createRepository(
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return null;
 
-        const { data: allUsers } = await supabase.auth.admin.listUsers();
-        const found = allUsers?.users.find(u => 
-          u.user_metadata?.partner_code === code.toUpperCase() && u.id !== user.id
-        );
-        
+        const { data: found } = await client
+          .from('partner_codes')
+          .select('user_id, code, email')
+          .eq('code', code.toUpperCase())
+          .neq('user_id', user.id)
+          .single();
+
         if (!found) return null;
+
+        const { data: existingRelation } = await client
+          .from('partner_relations')
+          .select('partner_id')
+          .eq('user_id', found.user_id)
+          .single();
+
         return {
-          id: found.id,
+          id: found.user_id,
           email: found.email || '',
-          partner_code: found.user_metadata?.partner_code || null,
-          partner_id: found.user_metadata?.partner_id || null
+          partner_code: found.code,
+          partner_id: existingRelation?.partner_id || null
         };
       },
 
@@ -409,87 +442,50 @@ export function createRepository(
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error('Not authenticated');
 
-        const { data: allUsers } = await supabase.auth.admin.listUsers();
-        const partner = allUsers?.users.find(u => u.id === partnerId);
-        
-        if (!partner) throw new Error('User not found');
-
-        const partnerData = partner.user_metadata || {};
-        const connectionDate = new Date().toISOString();
-
-        try {
-          const response = await fetch(`${import.meta.env.PUBLIC_SUPABASE_URL}/auth/v1/admin/users/${partnerId}`, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${import.meta.env.PUBLIC_SUPABASE_ANON_KEY}`,
-              'apikey': import.meta.env.PUBLIC_SUPABASE_ANON_KEY
-            },
-            body: JSON.stringify({
-              user_metadata: { ...partnerData, partner_id: user.id, partner_since: connectionDate }
-            })
-          });
-
-          if (!response.ok) {
-            console.error('Partner update failed:', await response.text());
-          }
-        } catch (e) {
-          console.error('Partner update error:', e);
-        }
-
-        const { error: userError } = await supabase.auth.updateUser({
-          data: { partner_id: partnerId, partner_since: connectionDate }
+        const { error: rpcError } = await client.rpc('connect_partners', {
+          user_a_id: user.id,
+          user_b_id: partnerId
         });
 
-        if (userError) throw userError;
+        if (rpcError) throw rpcError;
       },
 
       disconnect: async () => {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error('Not authenticated');
 
-        const partnerId = user.user_metadata?.partner_id;
-        if (partnerId) {
-          try {
-            const { data: allUsers } = await supabase.auth.admin.listUsers();
-            const partner = allUsers?.users.find(u => u.id === partnerId);
-            if (partner) {
-              const partnerData = partner.user_metadata || {};
-              await fetch(`${import.meta.env.PUBLIC_SUPABASE_URL}/auth/v1/admin/users/${partnerId}`, {
-                method: 'PUT',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${import.meta.env.PUBLIC_SUPABASE_ANON_KEY}`,
-                  'apikey': import.meta.env.PUBLIC_SUPABASE_ANON_KEY
-                },
-                body: JSON.stringify({
-                  user_metadata: { ...partnerData, partner_id: null }
-                })
-              });
-            }
-          } catch (e) {
-            console.error('Disconnect error:', e);
-          }
-        }
+        const { data: relation } = await client
+          .from('partner_relations')
+          .select('partner_id')
+          .eq('user_id', user.id)
+          .single();
 
-        const { error } = await supabase.auth.updateUser({
-          data: { partner_id: null }
+        if (!relation) return;
+
+        const { error: rpcError } = await client.rpc('disconnect_partners', {
+          user_a_id: user.id,
+          user_b_id: relation.partner_id
         });
 
-        if (error) throw error;
+        if (rpcError) throw rpcError;
       },
 
       getPartnerIdeas: async () => {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return { data: [] };
 
-        const partnerId = user.user_metadata?.partner_id;
-        if (!partnerId) return { data: [] };
+        const { data: relation } = await client
+          .from('partner_relations')
+          .select('partner_id')
+          .eq('user_id', user.id)
+          .single();
+
+        if (!relation?.partner_id) return { data: [] };
 
         return client
           .from('date_ideas')
           .select('*')
-          .eq('user_id', partnerId)
+          .eq('user_id', relation.partner_id)
           .order('created_at', { ascending: true });
       },
 
@@ -497,17 +493,24 @@ export function createRepository(
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return null;
 
-        const partnerId = user.user_metadata?.partner_id;
-        if (!partnerId) return null;
+        const { data: relation } = await client
+          .from('partner_relations')
+          .select('partner_id, connected_at')
+          .eq('user_id', user.id)
+          .single();
 
-        const { data: allUsers } = await supabase.auth.admin.listUsers();
-        const partner = allUsers?.users.find(u => u.id === partnerId);
-        if (!partner) return null;
+        if (!relation?.partner_id) return null;
+
+        const { data: partnerCode } = await client
+          .from('partner_codes')
+          .select('email')
+          .eq('user_id', relation.partner_id)
+          .single();
 
         return {
-          id: partner.id,
-          email: partner.email || '',
-          partner_since: partner.user_metadata?.partner_since as string | undefined
+          id: relation.partner_id,
+          email: partnerCode?.email || '',
+          partner_since: relation.connected_at ? new Date(relation.connected_at).toISOString() : undefined
         };
       }
     }
