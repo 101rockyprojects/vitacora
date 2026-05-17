@@ -3,15 +3,18 @@
   import { awardXP, XP_VALUES } from '$lib/utils/xp';
   import { createRepository } from '$lib/services/repository';
   import { page } from '$app/state';
+  import { workFilterTag } from '$lib/stores/workFilter.svelte';
 
   interface Props {
     userId: string;
     tasks?: Task[];
     onTasksChange?: (tasks: Task[]) => void;
-    workFilterOnly?: boolean;
+    useWorkFilter?: boolean;
   }
 
-  let { userId, tasks = $bindable([]), onTasksChange, workFilterOnly = false }: Props = $props();
+  let { userId, tasks = $bindable([]), onTasksChange, useWorkFilter = false }: Props = $props();
+
+  const filterTag = $derived(useWorkFilter ? workFilterTag.value : null);
 
   const repo = $derived(createRepository(userId));
   const statuses: { id: Task['status']; label: string; color: string }[] = [
@@ -79,7 +82,7 @@
   }
 
   const workFilteredTasks = $derived(
-    workFilterOnly ? tasks.filter(t => t.tags?.includes('work') || t.tags?.includes('trabajo')) : tasks
+    filterTag ? tasks.filter(t => t.tags?.includes(filterTag)) : tasks
   );
 
   const filteredTasks = $derived(workFilteredTasks.filter((t) => matchesTagFilters(t, selectedTags)));
@@ -158,7 +161,7 @@
 <div class="fade-in">
   <div class="tab-actions kanban-actions">
     <button class="btn btn-primary" onclick={() => { resetTaskForm(); showTaskForm = true; }}>+ Nueva tarea</button>
-    {#if !workFilterOnly && tagCounts.length > 0}
+    {#if !useWorkFilter && tagCounts.length > 0}
       <div class="tag-filters" aria-label="Filtrar por tags">
         <span class="tag-filter-label">Tags:</span>
         {#each tagCounts as t}
@@ -184,6 +187,7 @@
       <div
         class="kanban-sta"
         class:collapsed={isCollapsed}
+        class:wide={sta.id === 'to_review'}
         ondragover={(e) => e.preventDefault()}
         ondrop={() => onDrop(sta.id)}
         role="region"
@@ -208,14 +212,16 @@
               {@const key = getTaskKey(task)}
               {@const descId = getTaskDescDomId(key)}
               <div
+                id={`card-${task.id ?? key}`}
                 class="kanban-card"
+                class:wide={sta.id === 'to_review'}
                 draggable="true"
                 role="application"
                 ondragstart={() => onDragStart(task)}
               >
                 <div class="kcard-header">
                   <div class="kcard-title">{task.title}</div>
-                  {#if task.description}
+                  {#if task.description && task.description.trim() !== ''}
                     <button
                       class="kcard-desc-toggle"
                       type="button"
@@ -381,7 +387,7 @@
 
   .kanban-board {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 16px;
     align-items: start;
   }
@@ -406,6 +412,10 @@
 
   .kanban-sta.collapsed .kanban-cards {
     display: none;
+  }
+
+  .kanban-sta.wide {
+    grid-column: span 3;
   }
 
   .kanban-sta-header {
@@ -470,9 +480,10 @@
     color: var(--bg3);
   }
 
-  .kanban-cards { display: flex; flex-direction: column; gap: 10px; }
+  .kanban-cards { display: flex; flex-direction: row; gap: 10px; }
 
   .kanban-card {
+    width: 100%;
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius);
@@ -483,6 +494,10 @@
 
   .kanban-card:hover { border-color: var(--accent-green); transform: translateY(-1px); }
   .kanban-card:active { cursor: grabbing; }
+
+  .kanban-card.wide {
+    width: 33.33%;
+  }
 
   .kcard-header {
     display: flex;
@@ -504,10 +519,10 @@
     font-size: 11px;
     font-family: var(--font-mono);
     padding: 3px 8px;
-    border-radius: 999px;
+    border-radius: var(--radius-sm);
     background: var(--bg3);
     border: 1px solid var(--border);
-    color: var(--text3);
+    color: var(--text);
     transition: all var(--transition);
     cursor: pointer;
     flex-shrink: 0;
@@ -554,6 +569,8 @@
 
   @media (max-width: 900px) {
     .kanban-board { grid-template-columns: 1fr 1fr; }
+    .kanban-sta.wide { grid-column: span 1; }
+    .kanban-card.wide { width: 100%; }
   }
 
   @media (max-width: 768px) {
