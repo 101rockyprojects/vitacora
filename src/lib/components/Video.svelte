@@ -1,18 +1,29 @@
 <script lang="ts">
+  import { browser } from '$app/environment';
+  import { onMount } from 'svelte';
+
   interface Props {
     videoTitle?: string;
     videoId: string;
   }
 
   let { videoTitle = '', videoId }: Props = $props();
+
+  let mounted = $state(false);
+
+  onMount(() => {
+    mounted = true;
+  });
 </script>
 
 <div class="video-container">
-  <lite-youtube
-    videoid={videoId}
-    title={videoTitle}
-    class="video-player"
-  ></lite-youtube>
+  {#if mounted}
+    <lite-youtube
+      videoid={videoId}
+      title={videoTitle}
+      class="video-player"
+    ></lite-youtube>
+  {/if}
 </div>
 
 <style>

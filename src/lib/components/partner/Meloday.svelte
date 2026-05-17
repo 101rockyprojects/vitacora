@@ -60,7 +60,7 @@
 
     {#if loading}
       <div class="loading" aria-label="Cargando">
-        {#each Array(5) as _}
+        {#each Array(4) as _}
           <span></span>
         {/each}
       </div>
@@ -110,20 +110,20 @@
   }
 
   .loading span {
-    display: block;
-    height: 10px;
-    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    width: 100%;
+    height: 25px;
+    border-radius: var(--radius-sm);
     border: 1px solid var(--border);
     background: linear-gradient(90deg, var(--bg3), var(--surface2), var(--bg3));
     background-size: 200% 100%;
     animation: shimmer 1.15s linear infinite;
   }
 
-  .loading span:nth-child(1) { width: 92%; height: 14px; }
-  .loading span:nth-child(2) { width: 70%; }
-  .loading span:nth-child(3) { width: 98%; }
-  .loading span:nth-child(4) { width: 78%; }
-  .loading span:nth-child(5) { width: 86%; }
+  .loading span:nth-child(2) { height: 250px; }
 
   :global(.meloday-video) {
     width: 100%;
