@@ -1,5 +1,6 @@
 <script lang="ts">
   import { page } from '$app/state';
+  import { browser } from '$app/environment';
   import { createRepository } from '$lib/services/repository';
   import WeekPlanner from '$lib/components/WeekPlanner.svelte';
   import type { Book, CalendarEvent, Task, Expense, CalendarTodo } from '$lib/types';
@@ -11,6 +12,7 @@
   import BooksPanel from './BooksPanel.svelte';
   import ExpensesPanel from './ExpensesPanel.svelte';
   import Motivational from './Motivational.svelte';
+  import { notificationStore } from '$lib/stores/notifications.svelte';
 
   let tasks = $state<Task[]>([]);
   let books = $state<Book[]>([]);
@@ -56,6 +58,11 @@
     loading = false;
 
     checkAndCreateNotifications(tasks, calEvents, calendarTodos);
+
+    if (browser && localStorage.getItem('vitacora_just_logged_in')) {
+      localStorage.removeItem('vitacora_just_logged_in');
+      notificationStore.addNotification({ type: 'info', title: '¡Bienvenido/a!', message: 'Has iniciado sesión correctamente.' });
+    }
   }
 </script>
 
