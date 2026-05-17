@@ -1,17 +1,62 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
+  import { goto } from '$app/navigation';
+  import Toast from '$lib/components/Toast.svelte';
+
   let isLogin = $state(true);
   let error = $state('');
+  let loading = $state(false);
+  let showPassword = $state(false);
+  let toastVisible = $state(false);
+  let toastMessage = $state('');
+  let toastTimer: ReturnType<typeof setTimeout> | null = null;
+
+  function showToast(msg: string) {
+    toastMessage = msg;
+    toastVisible = true;
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      toastVisible = false;
+      toastTimer = null;
+    }, 3000);
+  }
+
+  function handleSubmit({ result }: { result: { type: string; data?: { success?: boolean; action?: string; error?: string } } }) {
+    loading = false;
+    if (result.type === 'success' && result.data) {
+      if (result.data.success) {
+        if (result.data.action === 'login') {
+          if (typeof window !== 'undefined') localStorage.setItem('vitacora_just_logged_in', 'true');
+          showToast('Iniciando sesión, redireccionando...');
+          setTimeout(() => goto('/dashboard'), 800);
+        } else if (result.data.action === 'signup') {
+          showToast('Se ha enviado un enlace de confirmación a tu correo');
+        }
+      } else if (result.data.error) {
+        error = result.data.error;
+      }
+    } else if (result.type === 'failure' && result.data?.error) {
+      error = result.data.error;
+    }
+  }
 </script>
 
-<div class="auth-page">
+<div class="auth-page" class:loading>
   <div class="auth-bg">
     <div class="bg-orb orb1"></div>
     <div class="bg-orb orb2"></div>
     <div class="bg-orb orb3"></div>
   </div>
 
+  {#if loading}
+    <div class="loading-overlay">
+      <div class="spinner"></div>
+      <p>Iniciando sesión...</p>
+    </div>
+  {/if}
+
   <div class="auth-card fade-in">
+    <Toast visible={toastVisible} message={toastMessage} />
     <div class="auth-logo">
       <span class="logo-glyph">◈</span>
       <h1>VitaCora</h1>
@@ -24,22 +69,34 @@
     </div>
 
 
-    <form method="POST" action={isLogin ? '?/login' : '?/signup'} use:enhance onsubmit={() => error = ''}>
+    <form method="POST" action={isLogin ? '?/login' : '?/signup'} use:enhance={() => { loading = true; error = ''; return handleSubmit; }}>
       <div class="form-group">
         <label for="email">Email</label>
-        <input id="email" name="email" type="email" placeholder="tu@email.com" required />
+        <input id="email" name="email" type="email" placeholder="tu@email.com" required disabled={loading} />
       </div>
-      <div class="form-group">
+      <div class="form-group password-group">
         <label for="password">Contraseña</label>
-        <input id="password" name="password" type="password" placeholder="••••••••" required />
+        <div class="password-input-wrap">
+          <input 
+            id="password" 
+            name="password" 
+            type={showPassword ? 'text' : 'password'} 
+            placeholder="••••••••" 
+            required 
+            disabled={loading} 
+          />
+          <button type="button" class="toggle-password" onclick={() => showPassword = !showPassword} aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}>
+            {showPassword ? '🙈' : '👁️'}
+          </button>
+        </div>
       </div>
 
       {#if error}
         <div class="auth-error">{error}</div>
       {/if}
 
-      <button type="submit" class="btn btn-primary auth-submit">
-        {isLogin ? 'Entrar' : 'Crear cuenta'}
+      <button type="submit" class="btn btn-primary auth-submit" disabled={loading}>
+        {loading ? '...' : isLogin ? 'Entrar' : 'Crear cuenta'}
       </button>
     </form>
 
@@ -141,6 +198,33 @@
     margin-bottom: 16px;
   }
 
+  .password-group { position: relative; }
+
+  .password-input-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .password-input-wrap input {
+    flex: 1;
+    padding-right: 40px;
+  }
+
+  .toggle-password {
+    position: absolute;
+    right: 8px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    padding: 4px;
+    opacity: 0.7;
+    transition: opacity var(--transition);
+  }
+
+  .toggle-password:hover { opacity: 1; }
+
   .auth-submit {
     width: 100%;
     justify-content: center;
@@ -156,5 +240,39 @@
     font-size: 11px;
     color: var(--text3);
     font-style: italic;
+  }
+
+  .auth-page.loading { pointer-events: none; }
+  .auth-page.loading .auth-card { opacity: 0.5; }
+
+  .loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    gap: 16px;
+  }
+
+  .loading-overlay p {
+    color: var(--text);
+    font-size: 16px;
+    font-family: var(--font-mono);
+  }
+
+  .spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent-green);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
   }
 </style>
