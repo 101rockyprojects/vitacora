@@ -8,31 +8,55 @@
   onMount(async () => {
     if (!browser) return;
 
+    const queryParams = new URLSearchParams(window.location.search);
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
-    const accessToken = hashParams.get('access_token');
-    const refreshToken = hashParams.get('refresh_token');
-    const type = hashParams.get('type');
 
-    if (accessToken && refreshToken) {
+    const queryToken = queryParams.get('token');
+    const queryType = queryParams.get('type');
+    const hashToken = hashParams.get('access_token');
+    const refreshToken = hashParams.get('refresh_token');
+
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabase = createClient(
+      import.meta.env.PUBLIC_SUPABASE_URL,
+      import.meta.env.PUBLIC_SUPABASE_ANON_KEY
+    );
+
+    if (queryToken || queryParams.get('code')) {
+      const code = queryToken || queryParams.get('code');
+      status = 'Verificando enlace...';
+      try {
+        const { data, error } = await supabase.auth.exchangeCodeForSession(code!);
+        if (error) {
+          status = 'Error: ' + error.message;
+          setTimeout(() => goto('/auth'), 3000);
+          return;
+        }
+        if (queryType === 'recovery' || queryType === 'email_change') {
+          goto('/profile?reset=true', { invalidateAll: true });
+        } else {
+          localStorage.setItem('vitacora_just_logged_in', 'true');
+          goto('/dashboard', { invalidateAll: true });
+        }
+      } catch (e: any) {
+        status = e?.message || 'Error de conexión';
+        setTimeout(() => goto('/auth'), 3000);
+      }
+    } else if (hashToken && refreshToken) {
       status = 'Creando sesión...';
       try {
-        const { createClient } = await import('@supabase/supabase-js');
-        const supabase = createClient(
-          import.meta.env.PUBLIC_SUPABASE_URL,
-          import.meta.env.PUBLIC_SUPABASE_ANON_KEY
-        );
-
         const { error } = await supabase.auth.setSession({
-          access_token: accessToken,
+          access_token: hashToken,
           refresh_token: refreshToken
         });
 
         if (error) {
           status = 'Error: ' + error.message;
-          setTimeout(() => goto('/auth'), 2000);
+          setTimeout(() => goto('/auth'), 3000);
           return;
         }
 
+        const type = hashParams.get('type');
         if (type === 'recovery') {
           goto('/profile?reset=true', { invalidateAll: true });
         } else {
@@ -41,11 +65,11 @@
         }
       } catch (e) {
         status = 'Error de conexión';
-        setTimeout(() => goto('/auth'), 2000);
+        setTimeout(() => goto('/auth'), 3000);
       }
     } else {
       status = 'Token no encontrado';
-      setTimeout(() => goto('/auth'), 2000);
+      setTimeout(() => goto('/auth'), 3000);
     }
   });
 </script>
