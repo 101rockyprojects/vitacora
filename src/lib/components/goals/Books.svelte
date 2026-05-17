@@ -2,6 +2,7 @@
   import type { Book } from '$lib/types';
   import { createRepository } from '$lib/services/repository';
   import { awardXP, XP_VALUES } from '$lib/utils/xp';
+  import { renderMd, formatLinks } from '$lib/utils/markdown';
 
   interface Props {
     userId: string;
@@ -36,6 +37,7 @@
     const isFinished = bookForm.current_page >= bookForm.total_pages && bookForm.total_pages > 0;
     if (editingBook?.id) {
       const wasFinished = editingBook.current_page >= editingBook.total_pages;
+      bookForm.notes = formatLinks(bookForm.notes || '');
       await repo.books.update(editingBook.id, { ...bookForm, updated_at: new Date().toISOString() });
       if (isFinished && !wasFinished) await awardXP(userId, 'education', 'book_finished', XP_VALUES.book_finished, editingBook.id);
       else await awardXP(userId, 'education', 'book_page_update', XP_VALUES.book_page_update);
@@ -101,7 +103,7 @@
             <span class="toggle-icon" class:open={showNotes}>▾</span>
           </button>
           {#if showNotes}
-            <div class="book-notes">{book.notes}</div>
+            <div class="book-notes">{@html renderMd(book.notes)}</div>
           {/if}
         {/if}
         <div class="card-actions">
@@ -165,6 +167,7 @@
   }
 
   .book-card {
+    position: relative;
     transition: transform var(--transition);
   }
 
@@ -216,7 +219,9 @@
 
   .book-notes-toggle {
     display: inline-flex;
+    width: 100%;
     align-items: center;
+    justify-content: space-between;
     gap: 6px;
     font-size: 11px;
     font-family: var(--font-mono);
@@ -235,31 +240,17 @@
     color: var(--text2);
   }
 
-  .book-notes-toggle {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 12px;
-    color: var(--text3);
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 0;
-    margin-top: 8px;
+  .toggle-icon {
+    display: inline-block;
+    transition: transform var(--transition);
   }
 
-  .book-notes-toggle:hover { color: var(--text2); }
+  .toggle-icon.open {
+    transform: rotate(180deg);
+  }
+
+  .book-notes { font-size: 12px; color: var(--text2); margin-top: 8px; border-top: 1px solid var(--border); padding-top: 8px; }
 
   .toggle-icon { display: inline-block; transition: transform var(--transition); }
   .toggle-icon.open { transform: rotate(180deg); }
-
-  .book-notes {
-    font-size: 12px;
-    color: var(--text2);
-    margin-top: 8px;
-    padding: 10px;
-    background: var(--bg3);
-    border-radius: 8px;
-    line-height: 1.5;
-  }
 </style>
