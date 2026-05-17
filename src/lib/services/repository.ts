@@ -40,7 +40,8 @@ export function createRepository(
       signOut: () => client.auth.signOut(),
       signInWithPassword: (email: string, password: string) =>
         client.auth.signInWithPassword({ email, password }),
-      signUp: (email: string, password: string) => client.auth.signUp({ email, password })
+      signUp: (email: string, password: string, options?: { emailRedirectTo?: string }) => 
+        client.auth.signUp({ email, password, options: options ? { emailRedirectTo: options.emailRedirectTo } : undefined })
     },
 
     tasks: {
@@ -241,11 +242,18 @@ export function createRepository(
         }, { onConflict: 'movie_id,user_id' }).select().single(),
       listByMovie: (movieId: string) =>
         client.from('movie_ratings').select('*').eq('movie_id', movieId),
-      listFused: () =>
-        client
+      listFused: async () => {
+        const { data, error } = await client
           .from('movie_watchlist_with_ratings')
           .select('*')
-          .order('avg_rating', { ascending: true }),
+          .order('avg_rating', { ascending: true })
+
+        const formatted = data?.map(item => ({
+          ...item,
+          avg_rating: Number(item.avg_rating).toFixed(1)
+        }))
+        return { data: formatted, error };
+      },
       listWithMovies: async () => {
         const { data: { user: currentUser } } = await supabase.auth.getUser();
         const partnerId = currentUser?.user_metadata?.partner_id;
