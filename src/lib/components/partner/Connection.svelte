@@ -68,18 +68,26 @@
   }
 
   async function connectWithPartner() {
-    if (!partnerCodeInput.trim()) return;
+    if (!partnerCodeInput.trim()) {
+      partnerError = 'El código no puede estar vacío';
+      return;
+    }
     connecting = true;
     partnerError = '';
     try {
+      if (partnerCodeInput.trim().toUpperCase() === myPartnerCode.toUpperCase()) {
+        partnerError = 'No puedes conectar contigo mismo/a (aunque es adorable, ámate mucho)';
+        connecting = false;
+        return;
+      }
       const found = await repo.partner.searchByCode(partnerCodeInput.trim());
       if (!found) {
-        partnerError = 'Código no encontrado';
+        partnerError = 'Código inválido';
         connecting = false;
         return;
       }
       if (found.partner_id) {
-        partnerError = 'Este usuario ya tiene pareja';
+        partnerError = 'Este usuario ya tiene pareja. (Aquí apoyamos la monogamia)';
         connecting = false;
         return;
       }
@@ -158,11 +166,11 @@
         {connecting ? '...' : 'Conectar'}
       </button>
     </form>
-    {#if partnerError}
-      <div class="error-msg">{partnerError}</div>
     {/if}
+  </div>
+  {#if partnerError && !connecting && showConnectForm}
+    <div class="error-msg">{partnerError}</div>
   {/if}
-</div>
 
 <style>
   .partner-connection {
@@ -307,7 +315,7 @@
   .error-msg {
     text-align: center;
     color: var(--accent-red);
-    font-size: 12px;
+    font-size: 15px;
     font-family: var(--font-mono);
   }
 </style>

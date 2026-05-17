@@ -3,6 +3,7 @@
   import { createRepository } from '$lib/services/repository';
   import Toast from '$lib/components/Toast.svelte';
   import type { MovieWithRatings } from '$lib/types';
+  import { renderMd, formatLinks } from '$lib/utils/markdown';
 
   const userId = $derived(page.data.user?.id ?? '');
   const repo = $derived(createRepository(userId));
@@ -143,7 +144,7 @@
     const movieId = modalMovie.id;
     const prevTitle = modalMovie.title;
     const prevPoster = modalMovie.poster_url || '';
-    const prevResources = modalMovie.resources || '';
+    const prevResources = formatLinks(modalMovie.resources || '');
     const prevUserRating = modalMovie.user_rating || 0;
 
     if (modalTitle !== prevTitle) {
@@ -165,23 +166,6 @@
     modalSaving = false;
     closeMovieModal();
     await loadData();
-  }
-
-  function renderMd(md: string): string {
-    if (!md) return '';
-    return md
-      .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-      .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-      .replace(/^# (.+)$/gm, '<h1>$1</h1>')
-      .replace(/^---$/gm, '<hr/>')
-      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.+?)\*/g, '<em>$1</em>')
-      .replace(/`(.+?)`/g, '<code>$1</code>')
-      .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
-      .replace(/^(\s*)-\s+(.+)$/gm, '<li>$2</li>')
-      .replace(/(<li>.*<\/li>(?:\n<li>.*<\/li>)*)/g, '<ul>$1</ul>')
-      .replace(/\n\n/g, '')
-      .replace(/\n/g, '<br/>');
   }
 
   function drawWheel() {
@@ -321,7 +305,7 @@ Película 3
               <div class="rating-title">{movie.title}</div>
               <div class="rating-stars">
                 {#if isRated}
-                  <span class="rating-avg">{avg}/5</span>
+                  <span class="rating-avg">{avg}</span>
                 {:else}
                   <span class="rating-avg">—</span>
                 {/if}

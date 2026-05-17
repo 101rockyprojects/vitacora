@@ -61,8 +61,8 @@
     text-align: center;
     font-family: var(--font-mono);
     font-weight: 600;
-    background: var(--bg2);
-    color: #c71313;
+    background: var(--bg);
+    color: var(--text);
     padding: 8px 14px;
     border-radius: var(--radius);
     border: 1px solid var(--border);
