@@ -59,13 +59,19 @@
   </div>
   <div class="links-list">
     {#each links as l}
-      <div class="link-item card">
-        <div class="link-icon">🔗</div>
-        <div class="link-info">
-          <a href={l.url} target="_blank" class="link-title">{l.title}</a>
-          <div class="link-url">{l.url}</div>
+      <div class="link-item card responsive-link">
+        <div class="rc-icon">
+          <a href={l.url} target="_blank" class="link-anchor" aria-label="Abrir {l.title}">
+            <span class="link-icon" aria-hidden="true">🔗</span>
+          </a>
         </div>
-        <div style="display:flex;gap:6px;">
+        <div class="rc-content">
+          <div class="link-info">
+            <a href={l.url} target="_blank" class="link-title">{l.title}</a>
+            <div class="link-url">{l.url}</div>
+          </div>
+        </div>
+        <div class="rc-actions">
           <button class="small-btn btn-secondary" onclick={() => editLink(l)}>🖋</button>
           <button class="small-btn btn-ghost" onclick={() => deleteLink(l.id!)}>✕</button>
         </div>
@@ -105,33 +111,88 @@
 {/if}
 
 <style>
-  .links-list { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .links-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(500px, 1fr)); gap: 12px; }
 
-  .link-item { display: flex; align-items: center; gap: 14px; }
-  .link-icon { font-size: 20px; }
-  .link-info { flex: 1; }
-  .link-title { font-weight: 600; font-size: 14px; color: var(--accent-green); }
-  .link-url { font-size: 12px; color: var(--text3); font-family: var(--font-mono); }
+  .link-anchor {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius);
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    transition: all var(--transition);
+    text-decoration: none;
+  }
 
-  @media (max-width: 600px) {
-    .links-list { gap: 12px; }
+  .link-anchor:hover, .link-anchor:focus {
+    background: var(--surface);
+    border-color: var(--accent-green);
+    outline: none;
+  }
 
-    .link-item {
-      align-items: flex-start;
-      gap: 10px;
-      flex-wrap: wrap;
+  .link-anchor:focus-visible {
+    box-shadow: 0 0 0 2px var(--accent-green);
+  }
+
+  .link-icon { font-size: 18px; }
+
+  .link-info { flex: 1; min-width: 0; }
+  .link-title { 
+    display: block;
+    font-weight: 600; 
+    font-size: 14px; 
+    color: var(--accent-green); 
+    line-height: 1.4;
+    text-decoration: none;
+    transition: color var(--transition);
+  }
+
+  .link-title:hover, .link-title:focus {
+    color: var(--accent-yellow);
+    text-decoration: underline;
+  }
+
+  .link-title:focus-visible {
+    outline: 2px solid var(--accent-yellow);
+    outline-offset: 2px;
+  }
+
+  .link-url { 
+    display: block;
+    font-size: 12px; 
+    color: var(--text3); 
+    font-family: var(--font-mono);
+    margin-top: 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  @media (min-width: 769px) {
+    .responsive-link { display: flex; gap: 14px; align-items: center; }
+    .responsive-link .rc-content { display: block; text-overflow: clip; }
+    .responsive-link .rc-actions { display: flex; gap: 6px; flex-shrink: 0; }
+  }
+
+  @media (max-width: 768px) {
+    .responsive-link { position: relative; display: flex; flex-direction: column; gap: 10px; align-items: center; }
+    .responsive-link .rc-icon { width: 100%; }
+    .responsive-link .rc-content { flex: 1; width: 100%; }
+    .responsive-link .rc-actions { position: absolute; right: 12px; display: flex; }
+    .links-list { grid-template-columns: 1fr; gap: 12px; }
+    .link-anchor {
+      width: 44px;
+      height: 44px;
     }
-
     .link-title {
-      font-size: 13px;
-      word-break: break-word;
+      font-size: 15px;
     }
-
     .link-url {
       font-size: 11px;
-      line-height: 1.4;
-      overflow-wrap: anywhere;
-      word-break: break-word;
+      white-space: normal;
+      word-break: break-all;
     }
   }
 </style>

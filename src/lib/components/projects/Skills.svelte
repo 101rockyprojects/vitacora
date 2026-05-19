@@ -2,7 +2,7 @@
   import type { SkillsMd } from '$lib/types';
   import { createRepository } from '$lib/services/repository';
   import { awardXP, XP_VALUES } from '$lib/utils/xp';
-  import { renderMd, formatLinks } from '$lib/utils/markdown';
+  import { renderMd, formatLinks, getMarkdownHelp } from '$lib/utils/markdown';
   import { tick } from 'svelte';
 
   interface Props {
@@ -99,14 +99,18 @@
 
 <div class="fade-in">
   <div class="skills-header">
-    <span class="section-title" style="font-size:18px;">skills.md</span>
-    <div style="display:flex;gap:8px;">
-      <button class="btn btn-primary" onclick={addSkill} disabled={mdSaving}>{mdSaving ? '...' : '+ Nueva skill'}</button>
-    </div>
+    <button class="btn btn-primary" onclick={addSkill} disabled={mdSaving}>{mdSaving ? '...' : '+ Nueva skill'}</button>
   </div>
 
-  {#if skills.length === 0}
-    <div class="empty-state card">Aun no tienes skills. Agrega la primera.</div>
+  {#if skills.length === 0 }
+    <div class="empty-state card">
+      Aun no tienes skills. Agrega la primera.
+      <br />
+      ↓↓↓ Aquí hay instrucciones ↓↓↓
+    </div>
+    <div class="markdown-info md-preview card">
+      {@html renderMd(getMarkdownHelp())}
+    </div>
   {:else}
     <div class="skills-grid">
       {#each skills as skill, index (skill.id)}
@@ -165,12 +169,13 @@
     gap: 14px;
   }
 
-  @media (max-width: 900px) {
-    .skills-grid { grid-template-columns: 1fr; }
-    .skills-grid .skill-card {
-      width: 100%;
-      box-sizing: border-box;
-    }
+  .markdown-info {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    color: var(--text);
+    font-size: 13px;
+    margin-top: 16px;
   }
 
   .skill-card-header {
@@ -223,5 +228,10 @@
   .skill-editor {
     height: auto;
     resize: none;
+  }
+
+
+  @media (max-width: 900px) {
+    .skills-grid { display: flex; flex-direction: column; gap: 14px; }
   }
 </style>
