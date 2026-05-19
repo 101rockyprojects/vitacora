@@ -480,7 +480,15 @@
     color: var(--bg3);
   }
 
-  .kanban-cards { display: flex; flex-direction: row; gap: 10px; }
+  .kanban-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .kanban-cards:has(.kanban-card.wide) {
+    flex-direction: row;
+  }
 
   .kanban-card {
     width: 100%;
@@ -569,6 +577,7 @@
 
   @media (max-width: 900px) {
     .kanban-board { grid-template-columns: 1fr 1fr; }
+    .kanban-cards:has(.kanban-card.wide) {flex-direction: column; }
     .kanban-sta.wide { grid-column: span 1; }
     .kanban-card.wide { width: 100%; }
   }

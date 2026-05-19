@@ -89,7 +89,7 @@
     { id: 'kanban', label: 'Kanban', icon: '⌘' },
     { id: 'projects', label: 'Proyectos', icon: '🚀' },
     { id: 'links', label: 'Links útiles', icon: '🔗' },
-    { id: 'skills', label: 'Skills.md', icon: '📝' }
+    { id: 'skills', label: 'Markdown', icon: '📝' }
   ] as const;
 </script>
 

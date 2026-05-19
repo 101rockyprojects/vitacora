@@ -59,27 +59,30 @@
   </div>
   <div class="projects-grid">
     {#each projects as p}
-      <div class="project-card card">
-        <div class="project-header">
-          <div class="project-name">{p.name}</div>
-          <div style="display:flex;gap:6px;">
-            <button class="small-btn btn-secondary" style="font-size:11px;" onclick={() => editProject(p)}>🖋</button>
-            <button class="small-btn btn-ghost" style="font-size:11px;" onclick={() => deleteProject(p.id!)}>✕</button>
+      <div class="project-card card responsive-project">
+        <div class="rc-image"></div>
+        <div class="rc-content">
+          <div class="project-header">
+            <div class="project-name">{p.name}</div>
+          </div>
+          {#if p.description}
+            <div class="project-desc">{p.description}</div>
+          {/if}
+          <div class="project-links">
+            {#if p.github_link}
+              <a href={p.github_link} target="_blank" class="plink">GitHub →</a>
+            {/if}
+            {#if p.deploy_link}
+              <a href={p.deploy_link} target="_blank" class="plink plink-deploy">Deploy →</a>
+            {/if}
+            {#if p.inspiration_link}
+              <a href={p.inspiration_link} target="_blank" class="plink">Inspiración →</a>
+            {/if}
           </div>
         </div>
-        {#if p.description}
-          <div class="project-desc">{p.description}</div>
-        {/if}
-        <div class="project-links">
-          {#if p.github_link}
-            <a href={p.github_link} target="_blank" class="plink">GitHub →</a>
-          {/if}
-          {#if p.deploy_link}
-            <a href={p.deploy_link} target="_blank" class="plink plink-deploy">Deploy →</a>
-          {/if}
-          {#if p.inspiration_link}
-            <a href={p.inspiration_link} target="_blank" class="plink">Inspiración →</a>
-          {/if}
+        <div class="rc-actions">
+          <button class="small-btn btn-secondary" style="font-size:11px;" onclick={() => editProject(p)}>🖋</button>
+          <button class="small-btn btn-ghost" style="font-size:11px;" onclick={() => deleteProject(p.id!)}>✕</button>
         </div>
       </div>
     {/each}
@@ -165,22 +168,40 @@
   .plink-deploy { color: var(--accent-yellow); background: rgba(255,217,61,0.08); border-color: rgba(255,217,61,0.2); }
   .plink-deploy:hover { background: rgba(255,217,61,0.15); }
 
-  @media (max-width: 600px) {
+
+
+  @media (min-width: 769px) {
+    .responsive-project { display: flex; gap: 14px; align-items: flex-start; }
+    .responsive-project .rc-image { width: 0; flex-shrink: 0; }
+    .responsive-project .rc-content { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+    .responsive-project .rc-actions { display: flex; gap: 6px; flex-shrink: 0; }
+  }
+
+  @media (max-width: 768px) {
+    .responsive-project { display: flex; gap: 12px; align-items: flex-start; }
+    .responsive-project .rc-image { width: 0; flex-shrink: 0; }
+    .responsive-project .rc-content { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+    .responsive-project .rc-actions { display: flex; gap: 6px; flex-shrink: 0; }
     .projects-grid {
       grid-template-columns: 1fr;
       gap: 12px;
     }
-
     .project-name {
       font-size: 14px;
       line-height: 1.3;
       word-break: break-word;
     }
-
     .project-desc {
       font-size: 12px;
       line-height: 1.45;
       word-break: break-word;
     }
+  }
+
+  @media (max-width: 480px) {
+    .responsive-project { display: flex; flex-direction: column; gap: 10px; }
+    .responsive-project .rc-image { width: 100%; height: 0; }
+    .responsive-project .rc-content { gap: 10px; }
+    .responsive-project .rc-actions { justify-content: flex-end; }
   }
 </style>
