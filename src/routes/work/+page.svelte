@@ -171,16 +171,22 @@
     {/if}
   </div>
 
-  <div class="resume-section">
+  <article class="resume-section">
     <div class="resume-header">
-      <h3 class="resume-title">Resumen de la semana</h3>
-      <div class="resume-dates">
-        <label for="resume-start">Desde:</label>
-        <input id="resume-start" type="date" bind:value={resumeStart} onchange={saveDateRange} />
-        <label for="resume-end">Hasta:</label>
-        <input id="resume-end" type="date" bind:value={resumeEnd} onchange={saveDateRange} />
+      <div class="resume-info">
+        <h3 class="resume-title">Resumen de la semana</h3>
+        <button class="btn-copy" onclick={() => copyResumeContent()} title="Copiar resumen">❏ Copiar</button>
       </div>
-      <button class="btn-copy" onclick={() => copyResumeContent()} title="Copiar resumen">📋 Copiar</button>
+      <form class="resume-dates">
+        <div class="form-group">
+          <label for="resume-start">Desde:</label>
+          <input id="resume-start" type="date" bind:value={resumeStart} onchange={saveDateRange} />
+        </div>
+        <div class="form-group">
+          <label for="resume-end">Hasta:</label>
+          <input id="resume-end" type="date" bind:value={resumeEnd} onchange={saveDateRange} />
+        </div>
+      </form>
     </div>
     {#if resumeTasks().length > 0}
       <ul class="resume-list">
@@ -195,7 +201,7 @@
     {:else}
       <div class="resume-empty">No hay tareas completadas en este período</div>
     {/if}
-  </div>
+  </article>
 
   {#if loading}
   <div class="loading">Cargando...</div>
@@ -285,11 +291,6 @@
     justify-content: flex-end;
   }
 
-  @media (max-width: 768px) {
-    .filter-kanban { flex-direction: column; }
-    .filter-editor { width: 100%; }
-  }
-
   .resume-section {
     background: var(--bg2);
     border: 1px solid var(--border);
@@ -300,10 +301,18 @@
 
   .resume-header {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
+    justify-content: space-between;
     gap: 12px;
     flex-wrap: wrap;
     margin-bottom: 12px;
+  }
+
+  .resume-info {
+    display: flex;
+    flex-direction: column;
+    align-items: start;
+    gap: 6px;
   }
 
   .resume-title {
@@ -314,11 +323,15 @@
     font-family: var(--font-mono);
   }
 
+  .form-group {
+    margin-bottom: 5px;
+  }
+
   .resume-dates {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 8px;
-    flex: 1;
   }
 
   .resume-dates label {
@@ -335,7 +348,7 @@
   }
 
   .btn-copy {
-    padding: 6px 12px;
+    padding: 5px 10px;
     background: var(--bg3);
     border: 1px solid var(--border);
     border-radius: var(--radius);
@@ -394,5 +407,10 @@
     font-size: 13px;
     text-align: center;
     padding: 12px;
+  }
+
+  @media (max-width: 768px) {
+    .filter-kanban { flex-direction: column; }
+    .filter-editor { width: 100%; }
   }
 </style>
