@@ -125,6 +125,11 @@
 
   .loading span:nth-child(2) { height: 250px; }
 
+  @media (max-width: 600px) {
+    .loading span:nth-child(2) { height: 150px; }
+    .meloday-header { flex-direction: column; }
+  }
+
   :global(.meloday-video) {
     width: 100%;
     height: 100%;

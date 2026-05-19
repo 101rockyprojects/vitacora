@@ -3,6 +3,7 @@
   import { createRepository } from '$lib/services/repository';
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
+  import { workFilterTag } from '$lib/stores/workFilter.svelte';
   import type { User } from '@supabase/supabase-js';
 
   let { user }: { user: User | null } = $props();
@@ -11,7 +12,7 @@
     { href: '/dashboard', label: 'Dashboard', icon: '◈' },
     { href: '/goals', label: 'Visión & Metas', icon: '⊶' },
     { href: '/projects', label: 'Proyectos', icon: '◉' },
-    { href: '/work', label: 'Trabajo', icon: '⌘' },
+    { href: '/work', label: workFilterTag.value, icon: '⌘' },
     { href: '/partner', label: 'Partner', icon: '♥' },
     { href: '/profile', label: 'Perfil & XP', icon: '◎' }
   ];
@@ -209,6 +210,10 @@
     font-size: 16px;
     width: 20px;
     text-align: center;
+  }
+
+  .nav-label {
+    text-transform: capitalize;
   }
 
   .sidebar-bottom {

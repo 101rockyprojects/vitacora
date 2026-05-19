@@ -125,7 +125,7 @@
             {/if}
           </div>
         </div>
-        <button class="btn btn-ghost" onclick={disconnectPartner}>Desconectar</button>
+        <button class="btn btn-danger" onclick={disconnectPartner}>Desconectar</button>
       </div>
     {:else}
       <div class="disconnected-section">
@@ -182,6 +182,7 @@
 
   .partner-connection-status {
     flex: 1;
+    padding: 15px;
   }
   
   .connect-form {
@@ -198,7 +199,7 @@
 
   .connected-section {
     display: flex;
-    justify-content: space-between;
+    flex-direction: column;
     align-items: center;
     gap: 12px;
   }

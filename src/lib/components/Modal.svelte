@@ -71,7 +71,7 @@
 
 <style>
   .modal-dialog {
-    background: var(--bg-primary);
+    background: var(--bg);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
     padding: 0;
