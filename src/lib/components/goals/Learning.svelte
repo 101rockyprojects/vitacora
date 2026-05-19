@@ -54,22 +54,26 @@
   </div>
   <div class="learn-list">
     {#each learning as item}
-      <div class="learn-card card">
-        <div class="learn-main">
-          <div class="learn-topic">{item.topic}</div>
-          {#if item.resource_link}
-            <a href={item.resource_link} target="_blank" class="learn-link">🔗 Recurso</a>
-          {/if}
-          {#if item.notes}
-            <div class="learn-notes">{item.notes}</div>
-          {/if}
-        </div>
+      <div class="learn-card card responsive-card">
         {#if item.image_url}
-          <img src={item.image_url} alt="screenshot" class="learn-thumb" />
+          <div class="rc-image">
+            <img src={item.image_url} alt="screenshot" />
+          </div>
         {/if}
-        <div class="card-actions-inline">
-          <button class="small-btn btn-secondary" onclick={() => editLearn(item)}>🖋</button>
-          <button class="small-btn btn-ghost" onclick={() => deleteLearn(item.id!)}>✕</button>
+        <div class="rc-content">
+          <div class="learn-main">
+            <div class="learn-topic">{item.topic}</div>
+            {#if item.resource_link}
+              <a href={item.resource_link} target="_blank" class="learn-link">🔗 Recurso</a>
+            {/if}
+            {#if item.notes}
+              <div class="learn-notes">{item.notes}</div>
+            {/if}
+          </div>
+          <div class="rc-actions card-actions-inline">
+            <button class="small-btn btn-secondary" onclick={() => editLearn(item)}>🖋</button>
+            <button class="small-btn btn-ghost" onclick={() => deleteLearn(item.id!)}>✕</button>
+          </div>
         </div>
       </div>
     {/each}
@@ -117,14 +121,6 @@
 <style>
   .learn-list { display: flex; flex-direction: column; gap: 12px; }
 
-  .learn-card {
-    display: flex;
-    gap: 14px;
-    align-items: flex-start;
-  }
-
-  .learn-main { flex: 1; min-width: 0; }
-
   .learn-topic {
     font-size: 14px;
     font-weight: 600;
@@ -143,21 +139,5 @@
     color: var(--text2);
     margin-top: 6px;
     line-height: 1.5;
-  }
-
-  .learn-thumb {
-    width: 80px;
-    height: 60px;
-    object-fit: cover;
-    border-radius: 6px;
-    flex-shrink: 0;
-  }
-
-  .empty-state {
-    color: var(--text3);
-    font-size: 13px;
-    font-family: var(--font-mono);
-    text-align: center;
-    padding: 24px 0;
   }
 </style>

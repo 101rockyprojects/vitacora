@@ -102,21 +102,27 @@
   </div>
   <div class="success-list">
     {#each successes as s}
-      <div class="success-card card" class:done={s.done}>
-        <button class="success-check" class:checked={s.done} onclick={() => toggleSuccess(s)} disabled={s.done} aria-label="Marcar como completado">
-          {s.done ? '✓' : ''}
-        </button>
-        <div class="success-info">
-          <div class="success-goal">{s.goal_description}</div>
-          {#if s.reflection}
-            <div class="success-reflection">"{s.reflection}"</div>
-          {/if}
-          {#if s.completed_date}
-            <div class="success-date">Completado: {new Date(s.completed_date).toLocaleDateString('es-ES')}</div>
-          {/if}
+      <div class="success-card card responsive-success" class:done={s.done}>
+        <div class="rc-icon">
+          <button class="success-check" class:checked={s.done} onclick={() => toggleSuccess(s)} disabled={s.done} aria-label="Marcar como completado">
+            {s.done ? '✓' : ''}
+          </button>
         </div>
-        <button class="small-btn btn-ghost" onclick={() => openEditSuccess(s)}>🖋</button>
-        <button class="small-btn btn-ghost" onclick={() => deleteSuccess(s.id!)}>✕</button>
+        <div class="rc-content">
+          <div class="success-info">
+            <div class="success-goal">{s.goal_description}</div>
+            {#if s.reflection}
+              <div class="success-reflection">"{s.reflection}"</div>
+            {/if}
+            {#if s.completed_date}
+              <div class="success-date">Completado: {new Date(s.completed_date).toLocaleDateString('es-ES')}</div>
+            {/if}
+          </div>
+          <div class="rc-actions">
+            <button class="small-btn btn-ghost" onclick={() => openEditSuccess(s)}>🖋</button>
+            <button class="small-btn btn-ghost" onclick={() => deleteSuccess(s.id!)}>✕</button>
+          </div>
+        </div>
       </div>
     {/each}
     {#if successes.length === 0}
@@ -155,13 +161,7 @@
 <style>
   .success-list { display: flex; flex-direction: column; gap: 12px; }
 
-  .success-card {
-    display: flex;
-    gap: 12px;
-    align-items: flex-start;
-  }
-
-  .success-card.done { border-color: var(--accent-yellow); }
+  .responsive-success.done { border-color: var(--accent-yellow); }
 
   .success-check {
     width: 24px;
@@ -181,10 +181,15 @@
 
   .success-check:hover:not(:disabled) { border-color: var(--accent-green); }
 
-  .success-check.checked {
-    background: var(--accent-green);
+  .success-check.checked:not(:disabled) {
+    background: transparent;
     border-color: var(--accent-green);
-    color: var(--bg-primary);
+    color: var(--accent-green);
+  }
+  .success-check.checked:disabled {
+    background: transparent;
+    border-color: var(--text3);
+    color: var(--accent-yellow);
   }
 
   .success-info { flex: 1; min-width: 0; }
@@ -209,11 +214,21 @@
     margin-top: 6px;
   }
 
-  .empty-state {
-    color: var(--text3);
-    font-size: 13px;
-    font-family: var(--font-mono);
-    text-align: center;
-    padding: 24px 0;
+  @media (min-width: 769px) {
+    .responsive-success { display: flex; gap: 12px; align-items: flex-start; }
+    .responsive-success .rc-content { flex: 1; display: flex; gap: 12px; align-items: flex-start; }
+    .responsive-success .rc-actions { display: flex; gap: 4px; margin-left: auto; }
+  }
+
+  @media (max-width: 768px) {
+    .responsive-success { display: flex; gap: 12px; align-items: flex-start; }
+    .responsive-success .rc-content { flex: 1; display: flex; gap: 12px; align-items: flex-start; }
+    .responsive-success .rc-actions { display: flex; gap: 4px; margin-left: auto; }
+  }
+
+  @media (max-width: 480px) {
+    .responsive-success { display: flex; flex-direction: column; gap: 10px; }
+    .responsive-success .rc-content { flex-direction: column; gap: 8px; padding: 0 4px; }
+    .responsive-success .rc-actions { justify-content: flex-end; }
   }
 </style>

@@ -167,7 +167,7 @@
                 <div class="mem-date">{new Date(mem.date).toLocaleDateString('es-ES')}</div>
                 <div class="mem-desc">{mem.description}</div>
               </div>
-              <button class="mem-delete btn btn-ghost" onclick={() => deleteMem(mem.id!)}>✕</button>
+              <button class="mem-delete btn" onclick={() => deleteMem(mem.id!)}>✕</button>
             </div>
           </div>
         </div>
@@ -255,14 +255,14 @@
     bottom: 0;
     left: 0;
     right: 0;
-    padding: 8px;
-    background: linear-gradient(transparent, rgba(0,0,0,0.7));
+    padding: 25px 10px 15px;
+    background: linear-gradient(transparent, rgb(36, 43, 61, 0.75), rgb(36, 43, 61));
     border-radius: 0 0 8px 8px;
   }
 
   .mem-date {
-    font-size: 11px;
-    color: rgba(255,255,255,0.8);
+    font-size: 12px;
+    color: var(--text);
     font-family: var(--font-mono);
   }
 
@@ -270,26 +270,23 @@
     font-size: 12px;
     color: white;
     font-weight: 500;
-    white-space: nowrap;
     overflow: hidden;
+    line-height: normal;
     text-overflow: ellipsis;
+    line-clamp: 2;
   }
 
   .mem-delete {
     position: absolute;
+    padding: 5px 8px;
     top: 4px;
     right: 4px;
-    opacity: 0;
-    transition: opacity var(--transition);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    color: var(--accent-green);
   }
 
-  .mem-card:hover .mem-delete { opacity: 1; }
-
-  .empty-state {
-    color: var(--text3);
-    font-size: 13px;
-    font-family: var(--font-mono);
-    text-align: center;
-    padding: 24px 0;
+  @media (min-width: 600px) {
+    .mem-card { height: 50%; }
   }
 </style>
