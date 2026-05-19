@@ -604,14 +604,6 @@
     margin-bottom: 4px;
   }
 
-  .empty-state {
-    color: var(--text3);
-    font-size: 13px;
-    text-align: center;
-    padding: 32px;
-    font-family: var(--font-mono);
-  }
-
   @media (max-width: 1000px) {
     .week-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .week-event-list { grid-template-columns: repeat(2, 1fr); }

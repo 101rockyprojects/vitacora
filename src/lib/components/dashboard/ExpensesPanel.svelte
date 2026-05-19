@@ -85,12 +85,4 @@
     color: var(--accent-yellow);
     font-size: 16px;
   }
-
-  .empty-state {
-    color: var(--text3);
-    font-size: 13px;
-    font-family: var(--font-mono);
-    text-align: center;
-    padding: 24px 0;
-  }
 </style>

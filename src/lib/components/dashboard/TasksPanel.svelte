@@ -102,14 +102,6 @@
     white-space: nowrap;
   }
 
-  .empty-state {
-    color: var(--text3);
-    font-size: 13px;
-    font-family: var(--font-mono);
-    text-align: center;
-    padding: 24px 0;
-  }
-
   .placeholder-list { display: flex; flex-direction: column; gap: 8px; }
   .placeholder-item {
     height: 40px;

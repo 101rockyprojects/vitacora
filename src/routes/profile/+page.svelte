@@ -639,14 +639,6 @@
     font-family: var(--font-mono);
   }
 
-  .empty-state {
-    color: var(--text3);
-    font-size: 13px;
-    text-align: center;
-    padding: 24px;
-    font-family: var(--font-mono);
-  }
-
   @media (max-width: 900px) {
     .area-grid { grid-template-columns: 1fr 1fr; }
   }
