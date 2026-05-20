@@ -1,9 +1,9 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
-const UPSTREAM = 'https://meloday.rockybarrios10.workers.dev/api/v1';
+const UPSTREAM = 'https://meloday.rockybarrios10.workers.dev/api/v1/';
 
-export const GET: RequestHandler = async ({ fetch }) => {
+export const GET: RequestHandler = async () => {
   try {
     const res = await fetch(UPSTREAM, {
       headers: {
