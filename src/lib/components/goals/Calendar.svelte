@@ -19,7 +19,38 @@
   let calForm = $state<CalendarEvent>({ event_name: '', event_date: '', type: 'event' });
 
   let todoInput = $state('');
-  let todoDateInput = $state(new Date().toISOString().split('T')[0]);
+  function toIsoDateLocal(d: Date): string {
+    return d.toLocaleDateString('en-CA');
+  }
+
+  function toDdMmYyyy(value: string): string {
+    const v = normalizeDate(value);
+    if (!v) return '';
+    const [yyyy, mm, dd] = v.split('-');
+    return `${dd}-${mm}-${yyyy}`;
+  }
+
+  function normalizeDate(value: string): string {
+    const v = value?.trim();
+    if (!v) return '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+    if (/^\d{2}-\d{2}-\d{4}$/.test(v)) {
+      const [dd, mm, yyyy] = v.split('-');
+      return `${yyyy}-${mm}-${dd}`;
+    }
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(v)) {
+      const [dd, mm, yyyy] = v.split('/');
+      return `${yyyy}-${mm}-${dd}`;
+    }
+    return v.length >= 10 ? v.slice(0, 10) : v;
+  }
+
+  function coerceDateInput(node: HTMLInputElement) {
+    const next = normalizeDate(node.value);
+    if (next && next !== node.value) node.value = next;
+  }
+
+  let todoDateInput = $state(toIsoDateLocal(new Date()));
   let editingTodoId = $state<string | null>(null);
   let editTodoName = $state('');
   let editTodoDate = $state('');
@@ -30,9 +61,9 @@
     const name = todoInput.trim();
     if (!name || !todoDateInput) return;
     saving = true;
-    await repo.calendarTodos.insert({ name, todo_date: todoDateInput });
+    await repo.calendarTodos.insert({ name, todo_date: normalizeDate(todoDateInput) });
     todoInput = '';
-    todoDateInput = new Date().toISOString().split('T')[0];
+    todoDateInput = toIsoDateLocal(new Date());
     const { data } = await repo.calendarTodos.list();
     calendarTodos = data || [];
     saving = false;
@@ -41,13 +72,16 @@
   function startEditTodo(todo: CalendarTodo) {
     editingTodoId = todo.id || null;
     editTodoName = todo.name;
-    editTodoDate = todo.todo_date;
+    editTodoDate = normalizeDate(todo.todo_date);
   }
 
   async function saveEditTodo() {
     if (!editingTodoId || !editTodoName.trim() || !editTodoDate) return;
     saving = true;
-    await repo.calendarTodos.update(editingTodoId, { name: editTodoName.trim(), todo_date: editTodoDate });
+    await repo.calendarTodos.update(editingTodoId, {
+      name: editTodoName.trim(),
+      todo_date: normalizeDate(editTodoDate)
+    });
     editingTodoId = null;
     editTodoName = '';
     editTodoDate = '';
@@ -96,6 +130,10 @@
         <input
           type="date"
           bind:value={todoDateInput}
+          oninput={(e) => {
+            coerceDateInput(e.currentTarget as HTMLInputElement);
+            todoDateInput = (e.currentTarget as HTMLInputElement).value;
+          }}
           class="todo-date"
         />
         <button class="btn btn-primary" onclick={addTodo} disabled={!todoInput.trim()}>+</button>
@@ -118,6 +156,10 @@
                 <input
                   type="date"
                   bind:value={editTodoDate}
+                  oninput={(e) => {
+                    coerceDateInput(e.currentTarget as HTMLInputElement);
+                    editTodoDate = (e.currentTarget as HTMLInputElement).value;
+                  }}
                   class="todo-edit-date"
                 />
                 <button class="btn btn-primary" onclick={saveEditTodo}>Guardar</button>
@@ -125,7 +167,7 @@
               </div>
             {:else}
               <span class="todo-name">{todo.name}</span>
-              <span class="todo-date-label">{new Date(todo.todo_date).toLocaleDateString('es-ES')}</span>
+              <span class="todo-date-label">{toDdMmYyyy(todo.todo_date)}</span>
               <div class="todo-actions">
                 <button class="small-btn btn-secondary" onclick={() => startEditTodo(todo)}>🖋</button>
                 <button class="small-btn btn-ghost" onclick={() => deleteTodo(todo.id!)}>✕</button>
@@ -203,7 +245,7 @@
   }
 
   .todo-date {
-    width: 140px;
+    width: 150px;
   }
 
   .empty-todos {
@@ -258,6 +300,6 @@
   }
 
   .todo-edit-date {
-    width: 140px;
+    width: 150px;
   }
 </style>
