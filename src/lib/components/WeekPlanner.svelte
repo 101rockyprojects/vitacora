@@ -21,6 +21,25 @@
     return d.toLocaleDateString('en-CA');
   }
 
+  function normalizeDate(value: string): string {
+    const v = value?.trim();
+    if (!v) return '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+    if (/^\d{2}-\d{2}-\d{4}$/.test(v)) {
+      const [dd, mm, yyyy] = v.split('-');
+      return `${yyyy}-${mm}-${dd}`;
+    }
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(v)) {
+      const [dd, mm, yyyy] = v.split('/');
+      return `${yyyy}-${mm}-${dd}`;
+    }
+    return v.length >= 10 ? v.slice(0, 10) : v;
+  }
+
+  function dateFromIso(iso: string): Date {
+    return new Date(`${normalizeDate(iso)}T00:00:00`);
+  }
+
   function startOfWeekSunday(d: Date): Date {
     const start = new Date(d);
     start.setHours(0, 0, 0, 0);
@@ -62,6 +81,38 @@
 
   let showPastEvents = $state(false);
   let showFutureEvents = $state(false);
+  let saving = $state(false);
+
+  let editingEventId = $state<string | null>(null);
+  let editEventName = $state('');
+  let editEventDate = $state('');
+  let editEventType = $state<CalendarEvent['type']>('event');
+
+  function startEditEvent(ev: CalendarEvent) {
+    editingEventId = ev.id || null;
+    editEventName = ev.event_name;
+    editEventDate = normalizeDate(ev.event_date);
+    editEventType = ev.type;
+  }
+
+  function cancelEditEvent() {
+    editingEventId = null;
+    editEventName = '';
+    editEventDate = '';
+    editEventType = 'event';
+  }
+
+  async function saveEditEvent() {
+    if (!editingEventId) return;
+    const name = editEventName.trim();
+    const date = normalizeDate(editEventDate);
+    if (!name || !date) return;
+    saving = true;
+    await repo.calendar.update(editingEventId, { event_name: name, event_date: date, type: editEventType });
+    await load();
+    cancelEditEvent();
+    saving = false;
+  }
 
   type EventGroup = {
     iso: string;
@@ -233,7 +284,7 @@
               {#if g.isToday}
                 <span class="cal-pill">Hoy</span>
               {/if}
-              <span class="cal-count">{g.events.length}</span>
+              <span class="cal-count">{g.events.length} eventos</span>
             </div>
           </div>
           <div class="week-event-list">
@@ -249,18 +300,36 @@
               </div>
             {/each}
             {#each g.events as ev (ev.id)}
-              {@const evDate = new Date(ev.event_date)}
+              {@const evDate = dateFromIso(ev.event_date)}
               {@const isToday = toIsoDateLocal(evDate) === todayIso}
               {@const expired = toIsoDateLocal(evDate) < todayIso}
               <div class="cal-card card" id="event-{slugify(ev.event_name)}" class:today={isToday} class:expired={expired}>
-                <div class="cal-info">
-                  <div class="cal-name">{ev.event_name}</div>
-                  <div class="cal-date">{new Date(ev.event_date).toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
-                  {#if !expired}
-                    <span class="tag" style="background:var(--accent-green);color:var(--text-dark)">{ev.type === 'special_day' ? 'Dia especial' : 'Evento'}</span>
-                  {/if}
-                </div>
-                <button class="small-btn btn-ghost" onclick={() => deleteCal(ev.id!)}>✕</button>
+                {#if editingEventId === ev.id}
+                  <div class="cal-info">
+                    <input class="todo-edit-input" type="text" bind:value={editEventName} onkeydown={(e) => e.key === 'Enter' && saveEditEvent()} />
+                    <input class="todo-edit-date" type="date" bind:value={editEventDate} oninput={(e) => (editEventDate = normalizeDate((e.currentTarget as HTMLInputElement).value))} />
+                    <select class="todo-edit-date" bind:value={editEventType}>
+                      <option value="event">Evento</option>
+                      <option value="special_day">Día especial</option>
+                    </select>
+                  </div>
+                  <div class="cal-actions">
+                    <button class="small-btn btn-primary" onclick={saveEditEvent} disabled={saving}>Guardar</button>
+                    <button class="small-btn btn-secondary" onclick={cancelEditEvent} disabled={saving}>Cancelar</button>
+                  </div>
+                {:else}
+                  <div class="cal-info">
+                    <div class="cal-name">{ev.event_name}</div>
+                    <div class="cal-date">{evDate.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
+                    {#if !expired}
+                      <span class="tag" style="background:{ev.type === 'special_day' ? 'var(--accent-purple)' : 'var(--accent-green)'};color:var(--text-dark)">{ev.type === 'special_day' ? 'Dia especial' : 'Evento'}</span>
+                    {/if}
+                  </div>
+                  <div class="cal-actions">
+                    <button class="small-btn btn-secondary" onclick={() => startEditEvent(ev)}>🖋</button>
+                    <button class="small-btn btn-ghost" onclick={() => deleteCal(ev.id!)}>✕</button>
+                  </div>
+                {/if}
               </div>
             {/each}
           </div>
@@ -276,7 +345,7 @@
             onclick={() => (showFutureEvents = !showFutureEvents)}
           >
             <span>
-              Eventos futuros (más de 30 días) <span class="cal-count">{futureEventGroups.reduce((n, g) => n + g.events.length, 0)}</span>
+              Eventos futuros (más de 30 días) <span class="cal-count">{futureEventGroups.reduce((n, g) => n + g.events.length, 0)} eventos</span>
             </span>
             <span class="cal-chevron" class:open={showFutureEvents}>▾</span>
           </button>
@@ -290,7 +359,7 @@
                       {g.date.toLocaleDateString('es-ES', { year: 'numeric', month: 'long' })}
                     </div>
                     <div class="cal-group-meta">
-                      <span class="cal-count">{g.events.length}</span>
+                      <span class="cal-count">{g.events.length} eventos</span>
                     </div>
                   </div>
                   <div class="week-event-list">
@@ -306,18 +375,36 @@
                       </div>
                     {/each}
                     {#each g.events as ev (ev.id)}
-                      {@const evDate = new Date(ev.event_date)}
+                      {@const evDate = dateFromIso(ev.event_date)}
                       {@const isToday = toIsoDateLocal(evDate) === todayIso}
                       {@const expired = toIsoDateLocal(evDate) < todayIso}
                       <div class="cal-card card" id="event-{slugify(ev.event_name)}" class:today={isToday} class:expired={expired}>
-                        <div class="cal-info">
-                          <div class="cal-name">{ev.event_name}</div>
-                          <div class="cal-date">{new Date(ev.event_date).toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
-                          {#if !expired}
-                            <span class="tag" style="background:var(--accent-green);color:var(--text-dark)">{ev.type === 'special_day' ? 'Dia especial' : 'Evento'}</span>
-                          {/if}
-                        </div>
-                        <button class="small-btn btn-ghost" onclick={() => deleteCal(ev.id!)}>✕</button>
+                        {#if editingEventId === ev.id}
+                          <div class="cal-info">
+                            <input class="todo-edit-input" type="text" bind:value={editEventName} onkeydown={(e) => e.key === 'Enter' && saveEditEvent()} />
+                            <input class="todo-edit-date" type="date" bind:value={editEventDate} oninput={(e) => (editEventDate = normalizeDate((e.currentTarget as HTMLInputElement).value))} />
+                            <select class="todo-edit-date" bind:value={editEventType}>
+                              <option value="event">Evento</option>
+                              <option value="special_day">Día especial</option>
+                            </select>
+                          </div>
+                          <div class="cal-actions">
+                            <button class="small-btn btn-primary" onclick={saveEditEvent} disabled={saving}>Guardar</button>
+                            <button class="small-btn btn-secondary" onclick={cancelEditEvent} disabled={saving}>Cancelar</button>
+                          </div>
+                        {:else}
+                          <div class="cal-info">
+                            <div class="cal-name">{ev.event_name}</div>
+                            <div class="cal-date">{evDate.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
+                            {#if !expired}
+                              <span class="tag" style="background:{ev.type === 'special_day' ? 'var(--accent-purple)' : 'var(--accent-green)'};;color:var(--text-dark)">{ev.type === 'special_day' ? 'Dia especial' : 'Evento'}</span>
+                            {/if}
+                          </div>
+                          <div class="cal-actions">
+                            <button class="small-btn btn-secondary" onclick={() => startEditEvent(ev)}>🖋</button>
+                            <button class="small-btn btn-ghost" onclick={() => deleteCal(ev.id!)}>✕</button>
+                          </div>
+                        {/if}
                       </div>
                     {/each}
                   </div>
@@ -337,7 +424,7 @@
             onclick={() => (showPastEvents = !showPastEvents)}
           >
             <span>
-              Eventos pasados <span class="cal-count">{pastEventGroups.reduce((n, g) => n + g.events.length, 0)}</span>
+              Eventos pasados <span class="cal-count">{pastEventGroups.reduce((n, g) => n + g.events.length, 0)} eventos</span>
             </span>
             <span class="cal-chevron" class:open={showPastEvents}>▾</span>
           </button>
@@ -351,7 +438,7 @@
                       {g.date.toLocaleDateString('es-ES', { year: 'numeric', month: 'long' })}
                     </div>
                     <div class="cal-group-meta">
-                      <span class="cal-count">{g.events.length}</span>
+                      <span class="cal-count">{g.events.length} eventos</span>
                     </div>
                   </div>
                   <div class="week-event-list">
@@ -365,18 +452,33 @@
                       </div>
                     {/each}
                     {#each g.events as ev (ev.id)}
-                      {@const evDate = new Date(ev.event_date)}
+                      {@const evDate = dateFromIso(ev.event_date)}
                       {@const isToday = toIsoDateLocal(evDate) === todayIso}
                       {@const expired = toIsoDateLocal(evDate) < todayIso}
                       <div class="cal-card card" id="event-{slugify(ev.event_name)}" class:today={isToday} class:expired={expired}>
-                        <div class="cal-info">
-                          <div class="cal-name">{ev.event_name}</div>
-                          <div class="cal-date">{new Date(ev.event_date).toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
-                          {#if !expired}
-                            <span class="tag" style="background:var(--bg);color:var(--text2)">{ev.type === 'special_day' ? 'Dia especial' : 'Evento'}</span>
-                          {/if}
-                        </div>
-                        <button class="small-btn btn-ghost" onclick={() => deleteCal(ev.id!)}>✕</button>
+                        {#if editingEventId === ev.id}
+                          <div class="cal-info">
+                            <input class="todo-edit-input" type="text" bind:value={editEventName} onkeydown={(e) => e.key === 'Enter' && saveEditEvent()} />
+                            <input class="todo-edit-date" type="date" bind:value={editEventDate} oninput={(e) => (editEventDate = normalizeDate((e.currentTarget as HTMLInputElement).value))} />
+                            <select class="todo-edit-date" bind:value={editEventType}>
+                              <option value="event">Evento</option>
+                              <option value="special_day">Día especial</option>
+                            </select>
+                          </div>
+                          <div class="cal-actions">
+                            <button class="small-btn btn-primary" onclick={saveEditEvent} disabled={saving}>Guardar</button>
+                            <button class="small-btn btn-secondary" onclick={cancelEditEvent} disabled={saving}>Cancelar</button>
+                          </div>
+                        {:else}
+                          <div class="cal-info">
+                            <div class="cal-name">{ev.event_name}</div>
+                            <div class="cal-date">{evDate.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
+                          </div>
+                          <div class="cal-actions">
+                            <button class="small-btn btn-secondary" onclick={() => startEditEvent(ev)}>🖋</button>
+                            <button class="small-btn btn-ghost" onclick={() => deleteCal(ev.id!)}>✕</button>
+                          </div>
+                        {/if}
                       </div>
                     {/each}
                   </div>
@@ -495,6 +597,11 @@
   .cal-info { flex: 1; }
   .cal-name { font-weight: 700; font-size: 15px; line-height: 1.2; }
   .cal-date { font-size: 13px; color: var(--text2); text-transform: capitalize; margin: 3px 0; }
+  .cal-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
 
   .week-title {
     font-family: var(--font-mono);

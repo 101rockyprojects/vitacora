@@ -155,6 +155,8 @@ export function createRepository(
         client.from('calendar_events').select('*').eq('user_id', uid()).order('event_date', { ascending: true }),
       insert: (item: Omit<CalendarEvent, 'id' | 'user_id'>) =>
         client.from('calendar_events').insert({ ...item, user_id: uid() }),
+      update: (id: string, values: Partial<CalendarEvent>) =>
+        client.from('calendar_events').update(values).eq('id', id),
       remove: (id: string) => client.from('calendar_events').delete().eq('id', id)
     },
 
