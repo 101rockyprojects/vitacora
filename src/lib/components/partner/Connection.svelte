@@ -204,6 +204,13 @@
     gap: 12px;
   }
 
+  @media (min-width: 600px) {
+    .connected-section {
+      flex-direction: row;
+      justify-content: space-between;
+    }
+  }
+
   .partner-info {
     display: flex;
     align-items: center;
