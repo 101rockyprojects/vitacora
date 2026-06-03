@@ -2,6 +2,8 @@ import { supabase } from '$lib/supabase';
 import type {
   Badge,
   Book,
+  BookCategoryRating,
+  BookRatingCategory,
   CalendarEvent,
   CalendarTodo,
   DateIdea,
@@ -128,6 +130,48 @@ export function createRepository(
       update: (id: string, values: Partial<Book>) =>
         client.from('books').update(values).eq('id', id),
       remove: (id: string) => client.from('books').delete().eq('id', id)
+    },
+
+    bookRatingCategories: {
+      list: () =>
+        client.from('book_rating_categories').select('*').eq('user_id', uid()).order('sort_order', { ascending: true }),
+      create: (name: string) =>
+        client.from('book_rating_categories').insert({ name, user_id: uid() }).select().single(),
+      update: (id: string, values: Partial<BookRatingCategory>) =>
+        client.from('book_rating_categories').update(values).eq('id', id),
+      remove: (id: string) =>
+        client.from('book_rating_categories').delete().eq('id', id),
+      reorder: async (ids: string[]) => {
+        const updates = ids.map((id, i) => 
+          client.from('book_rating_categories').update({ sort_order: i }).eq('id', id)
+        );
+        return Promise.all(updates);
+      }
+    },
+
+    bookCategoryRatings: {
+      listByBook: (bookId: string) =>
+        client.from('book_category_ratings').select('*').eq('book_id', bookId),
+      upsert: (bookId: string, categoryId: string, rating: number) =>
+        client.from('book_category_ratings').upsert({
+          book_id: bookId,
+          category_id: categoryId,
+          user_id: uid(),
+          rating,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'book_id,category_id' }).select().single(),
+      upsertMany: (bookId: string, ratings: { category_id: string; rating: number }[]) => {
+        const rows = ratings.map(r => ({
+          book_id: bookId,
+          category_id: r.category_id,
+          user_id: uid(),
+          rating: r.rating,
+          updated_at: new Date().toISOString()
+        }));
+        return client.from('book_category_ratings').upsert(rows, { onConflict: 'book_id,category_id' });
+      },
+      deleteByBook: (bookId: string) =>
+        client.from('book_category_ratings').delete().eq('book_id', bookId)
     },
 
     learning: {

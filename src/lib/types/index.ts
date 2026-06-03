@@ -6,8 +6,33 @@ export interface Book {
   total_pages: number;
   notes?: string;
   cover_url?: string;
+  rating?: number;
+  rating_mode?: 'default' | 'calculated';
   created_at?: string;
   updated_at?: string;
+}
+
+export interface BookRatingCategory {
+  id?: string;
+  user_id?: string;
+  name: string;
+  sort_order?: number;
+  created_at?: string;
+}
+
+export interface BookCategoryRating {
+  id?: string;
+  book_id: string;
+  category_id: string;
+  user_id?: string;
+  rating: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface BookWithRating extends Book {
+  display_rating?: number;
+  category_ratings?: { category_id: string; name: string; rating: number }[];
 }
 
 export interface LearningItem {
