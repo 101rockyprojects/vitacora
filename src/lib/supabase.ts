@@ -8,7 +8,7 @@ export function getSupabaseClient() {
     supabaseInstance = createBrowserClient(
       env.PUBLIC_SUPABASE_URL || '',
       env.PUBLIC_SUPABASE_ANON_KEY || '',
-      { db: { schema: 'vitacora' } }
+      { db: { schema: 'vitacora' }, cookieOptions: { maxAge: 604800 } }
     );
   }
   return supabaseInstance;

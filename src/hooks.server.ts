@@ -19,7 +19,7 @@ export const handle: Handle = async ({ event, resolve }) => {
           },
           setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
             cookiesToSet.forEach(({ name, value, options }) => {
-              event.cookies.set(name, value, { ...options, path: '/' });
+              event.cookies.set(name, value, { ...options, path: '/', maxAge: 604800 });
             });
           },
         },
