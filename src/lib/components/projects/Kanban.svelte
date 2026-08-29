@@ -2,6 +2,7 @@
   import type { Task } from '$lib/types';
   import { awardXP, XP_VALUES } from '$lib/utils/xp';
   import { createRepository } from '$lib/services/repository';
+  import { renderMd } from '$lib/utils/markdown';
   import { page } from '$app/state';
   import { workFilterTag } from '$lib/stores/workFilter.svelte';
 
@@ -145,6 +146,29 @@
 
   function onDragStart(task: Task) { draggedTask = task; }
 
+  async function onCheckboxChange(task: Task, e: Event) {
+    const input = e.target as HTMLInputElement;
+    const idx = Number(input.dataset.idx);
+    if (isNaN(idx)) return;
+    const lines = (task.description ?? '').split('\n');
+    let checkboxIdx = 0;
+    for (let i = 0; i < lines.length; i++) {
+      if (/^\s*- \[( |x|X)\]\s+/.test(lines[i])) {
+        if (checkboxIdx === idx) {
+          lines[i] = input.checked
+            ? lines[i].replace(/^(\s*- \[) \](\s+)/, '$1x]$2')
+            : lines[i].replace(/^(\s*- \[)x\]/i, '$1 ]');
+          break;
+        }
+        checkboxIdx++;
+      }
+    }
+    const newDesc = lines.join('\n');
+    await repo.tasks.update(task.id!, { description: newDesc, updated_at: new Date().toISOString() });
+    const { data } = await repo.tasks.list();
+    tasks = data || [];
+  }
+
   async function onDrop(sta: Task['status']) {
     if (draggedTask && draggedTask.status !== sta) {
       await moveTask(draggedTask, sta);
@@ -240,7 +264,7 @@
                   {/if}
                 </div>
                 {#if task.description && expandedTaskDescSet.has(key)}
-                  <div class="kcard-desc" id={descId}>{task.description}</div>
+                  <div class="kcard-desc" id={descId} onchange={(e) => onCheckboxChange(task, e)}>{@html renderMd(task.description)}</div>
                 {/if}
                 {#if task.tags?.length && expandedTaskDescSet.has(key)}
                   <div class="kcard-tags">
@@ -517,6 +541,29 @@
 
   .kcard-title { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 4px; line-height: 1.3; }
   .kcard-desc { font-size: 12px; color: var(--text2); margin-bottom: 6px; }
+  :global(.md-checkbox-row) {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    line-height: 1.4;
+  }
+  :global(.md-checkbox-row input[type='checkbox']) {
+    width: 12px;
+    height: 12px;
+    accent-color: var(--accent-green);
+    margin: 0;
+    flex-shrink: 0;
+  }
+  :global(.md-checkbox-row span) {
+    display: inline-block;
+  }
+  :global(.md-checkbox-list) {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 4px 0;
+  }
   .kcard-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
   .kcard-due { font-size: 11px; color: var(--text3); font-family: var(--font-mono); margin-bottom: 8px; }
 

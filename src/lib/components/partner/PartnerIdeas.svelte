@@ -2,6 +2,7 @@
   import Toast from '$lib/components/Toast.svelte';
   import type { DateIdea } from '$lib/types';
   import { createRepository } from '$lib/services/repository';
+  import { awardXP, XP_VALUES } from '$lib/utils/xp';
 
   interface Props {
     userId: string;
@@ -89,6 +90,7 @@
   async function addIdea() {
     saving = true;
     await repo.dateIdeas.insert(newIdea);
+    await awardXP(userId, 'social', 'date_idea_added', XP_VALUES.date_idea_added);
     newIdea = { idea_text: '', status: 'pending' };
     showForm = false;
     await loadIdeas();

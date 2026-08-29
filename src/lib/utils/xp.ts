@@ -1,21 +1,24 @@
 import { createRepository } from '$lib/services/repository';
 
 export const XP_VALUES = {
-  task_done: 10,
-  book_finished: 50,
-  book_page_update: 2,
-  success_experience: 30,
-  learning_added: 15,
-  memory_added: 5,
-  daily_login: 5,
-  reward_earned: 20,
-  standup_note_added: 5,
-  project_created: 15,
-  useful_link_added: 5,
-  skill_document_updated: 10,
-  calendar_event_added: 5,
-  expense_logged: 3,
-  streak_7_days: 50
+  task_done: 50,
+  book_finished: 250,
+  book_page_update: 10,
+  success_experience: 150,
+  learning_added: 75,
+  memory_added: 25,
+  daily_login: 25,
+  reward_earned: 100,
+  standup_note_added: 25,
+  project_created: 75,
+  useful_link_added: 25,
+  skill_document_updated: 50,
+  calendar_event_added: 25,
+  calendar_todo_added: 25,
+  date_idea_added: 25,
+  movie_added: 25,
+  expense_logged: 15,
+  streak_7_days: 250
 };
 
 export const AREAS = [

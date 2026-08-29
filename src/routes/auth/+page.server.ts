@@ -9,10 +9,16 @@ export const actions = {
     const password = data.get('password') as string;
     try {
       const repo = createRepository(undefined, locals.supabase);
-      const { error } = await repo.auth.signInWithPassword(email, password);
+      const { error, data } = await repo.auth.signInWithPassword(email, password);
       if (error) {
         return { success: false, error: error.message };
       }
+
+      const { data: sessionData, error: sessionError } = await locals.supabase.auth.getSession();
+      if (sessionError || !sessionData.session || !data.user) {
+        return { success: false, error: 'No se pudo confirmar la sesión tras el inicio de sesión.' };
+      }
+
       return { success: true, action: 'login' };
     } catch (e) {
       const errMsg = e instanceof Error ? e.message : 'Error de conexión. Intenta más tarde.';

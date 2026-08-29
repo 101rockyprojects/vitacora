@@ -23,7 +23,7 @@
   let totalXP = $derived(Object.values(areaXP).reduce((a, b) => a + b, 0));
   let globalLevel = $derived(levelFromXp(totalXP));
   let loading = $state(true);
-  const userId = $derived(page.data.user?.id ?? '');
+  const userId = $derived(page.data.user?.id ?? page.data.session?.user?.id ?? '');
   const repo = $derived(createRepository(userId));
   let initialized = $state(false);
   let userBadgesCount = $state(0);

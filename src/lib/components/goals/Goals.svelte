@@ -16,7 +16,7 @@
   const GOALS_TABS = ['calendar', 'vision', 'books', 'learning', 'memories', 'successes', 'rewards', 'expenses'] as const;
   type GoalsTab = typeof GOALS_TABS[number];
 
-  const userId = $derived(page.data.user?.id ?? '');
+  const userId = $derived(page.data.user?.id ?? page.data.session?.user?.id ?? '');
   const repo = $derived(createRepository(userId));
   let initialized = $state(false);
   let url = new URL(page.url.href);

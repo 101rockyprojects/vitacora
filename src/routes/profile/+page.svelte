@@ -5,8 +5,8 @@
   import type { UserBadge } from '$lib/types';
   import html2canvas from 'html2canvas';
 
-  const userId = $derived(page.data.user?.id ?? '');
-  const userEmail = $derived(page.data.user?.email ?? '');
+  const userId = $derived(page.data.user?.id ?? page.data.session?.user?.id ?? '');
+  const userEmail = $derived(page.data.user?.email ?? page.data.session?.user?.email ?? '');
   const repo = $derived(createRepository(userId));
   let initialized = $state(false);
   let areaXP: Record<string, number> = $state({});

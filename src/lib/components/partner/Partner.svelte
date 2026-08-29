@@ -2,14 +2,14 @@
   import { page } from '$app/state';
   import { browser } from '$app/environment';
   import Connection from './Connection.svelte';
-  import Meloday from './Meloday.svelte';
   import MovieRoulette from './MovieRoulette.svelte';
   import PartnerIdeas from './PartnerIdeas.svelte';
+  import UsefulLinks from './UsefulLinks.svelte';
 
-  const PARTNER_TABS = ['connection', 'meloday', 'movies', 'ideas'] as const;
+  const PARTNER_TABS = ['connection', 'movies', 'ideas', 'links'] as const;
   type PartnerTab = typeof PARTNER_TABS[number];
 
-  const userId = $derived(page.data.user?.id ?? '');
+  const userId = $derived(page.data.user?.id ?? page.data.session?.user?.id ?? '');
 
   let url = new URL(page.url.href);
   if (browser) {
@@ -21,9 +21,9 @@
 
   const tabs = [
     { id: 'connection', label: 'Conexión', icon: '♥' },
-    { id: 'meloday', label: 'Meloday', icon: '♪' },
     { id: 'movies', label: 'Películas', icon: '🎬' },
-    { id: 'ideas', label: 'Ideas', icon: '💡' }
+    { id: 'ideas', label: 'Ideas', icon: '💡' },
+    { id: 'links', label: 'Enlaces útiles', icon: '🔗' }
   ] as const;
 
   $effect(() => {
@@ -61,12 +61,12 @@
 
   {#if activeTab === 'connection'}
     <Connection userId={userId} />
-  {:else if activeTab === 'meloday'}
-    <Meloday />
   {:else if activeTab === 'movies'}
     <MovieRoulette />
   {:else if activeTab === 'ideas'}
     <PartnerIdeas userId={userId} />
+  {:else if activeTab === 'links'}
+    <UsefulLinks userId={userId} />
   {/if}
 </div>
 

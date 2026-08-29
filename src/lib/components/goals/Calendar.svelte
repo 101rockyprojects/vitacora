@@ -62,6 +62,7 @@
     if (!name || !todoDateInput) return;
     saving = true;
     await repo.calendarTodos.insert({ name, todo_date: normalizeDate(todoDateInput) });
+    await awardXP(userId, 'selfcare', 'calendar_todo_added', XP_VALUES.calendar_todo_added);
     todoInput = '';
     todoDateInput = toIsoDateLocal(new Date());
     const { data } = await repo.calendarTodos.list();
@@ -96,8 +97,16 @@
     editTodoDate = '';
   }
 
+  async function completeTodo(id: string) {
+    if (!confirm('¿Marcar tarea como completada?')) return;
+    await awardXP(userId, 'selfcare', 'calendar_todo_added', XP_VALUES.calendar_todo_added);
+    await repo.calendarTodos.remove(id);
+    const { data } = await repo.calendarTodos.list();
+    calendarTodos = data || [];
+  }
+
   async function deleteTodo(id: string) {
-    if (!confirm('¿Eliminar tarea?')) return;
+    if (!confirm('¿Eliminar tarea sin completar?')) return;
     await repo.calendarTodos.remove(id);
     const { data } = await repo.calendarTodos.list();
     calendarTodos = data || [];
@@ -170,7 +179,8 @@
               <span class="todo-date-label">{toDdMmYyyy(todo.todo_date)}</span>
               <div class="todo-actions">
                 <button class="small-btn btn-secondary" onclick={() => startEditTodo(todo)}>🖋</button>
-                <button class="small-btn btn-ghost" onclick={() => deleteTodo(todo.id!)}>✕</button>
+                <button class="small-btn btn-primary" onclick={() => completeTodo(todo.id!)} title="Marcar como completada">✓</button>
+                <button class="small-btn btn-ghost" onclick={() => deleteTodo(todo.id!)} title="Eliminar">✕</button>
               </div>
             {/if}
           </div>

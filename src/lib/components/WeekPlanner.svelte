@@ -3,7 +3,7 @@
   import type { CalendarEvent, CalendarTodo } from '$lib/types';
   import { createRepository } from '$lib/services/repository';
 
-  const userId = $derived(page.data.user?.id ?? '');
+  const userId = $derived(page.data.user?.id ?? page.data.session?.user?.id ?? '');
   const repo = $derived(createRepository(userId));
 
   let { events, todos = [], title = 'Semana actual', showEventList = true }: {

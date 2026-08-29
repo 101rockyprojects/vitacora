@@ -213,3 +213,13 @@ export interface MovieWithRatings extends MovieWatchlist {
   avg_rating?: number;
   total_ratings?: number;
 }
+
+export interface CoupleLink {
+  id?: string;
+  user_id?: string;
+  url: string;
+  title?: string;
+  description?: string;
+  og_image?: string;
+  created_at?: string;
+}

@@ -3,10 +3,11 @@
   import { createRepository } from '$lib/services/repository';
   import Toast from '$lib/components/Toast.svelte';
   import type { MovieWithRatings } from '$lib/types';
+  import { awardXP, XP_VALUES } from '$lib/utils/xp';
   import { renderMd, formatLinks } from '$lib/utils/markdown';
 
-  const userId = $derived(page.data.user?.id ?? '');
-  const repo = $derived(createRepository(userId));
+  const userId = $derived(page.data.user?.id ?? page.data.session?.user?.id ?? '');
+  const repo = $derived(userId ? createRepository(userId) : null);
 
   let initialized = $state(false);
   let movies = $state<MovieWithRatings[]>([]);
@@ -56,6 +57,7 @@
   }
 
   async function loadData() {
+    if (!userId || !repo) return;
     const { data } = await repo.movieRatings.listFused();
     movies = (data as MovieWithRatings[]) || [];
   }
@@ -71,12 +73,26 @@
   }
 
   async function addMovies() {
-    const lines = addText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-    if (!lines.length) return;
+    if (!userId || !repo) {
+      showToast('La sesión no está lista');
+      return;
+    }
+
+    const parsedTitles = Array.from(
+      new Set(
+        addText
+          .split(/[\n,]+/)
+          .map(title => title.replace(/^[-•*\s]+/, '').trim())
+          .filter(Boolean)
+          .map(title => title.replace(/\s+/g, ' '))
+      )
+    );
+
+    if (!parsedTitles.length) return;
 
     const existing = new Set(movies.map(m => m.title.toLowerCase().trim()));
-    const toAdd = lines.filter(l => !existing.has(l.toLowerCase().trim()));
-    const skipped = lines.length - toAdd.length;
+    const toAdd = parsedTitles.filter(title => !existing.has(title.toLowerCase().trim()));
+    const skipped = parsedTitles.length - toAdd.length;
 
     if (!toAdd.length) {
       showToast('Todas las películas ya están en la lista');
@@ -88,7 +104,10 @@
     if (error) {
       showToast('Error al agregar películas');
     } else {
-      const newItems = Array.isArray(data) ? data : [data];
+      const newItems = Array.isArray(data) ? data : data ? [data] : [];
+      if (newItems.length) {
+        await awardXP(userId, 'social', 'movie_added', XP_VALUES.movie_added);
+      }
       if (skipped > 0) showToast(`${skipped} película(s) omitida(s) por duplicado`);
       else showToast(`${toAdd.length} película(s) agregada(s)`);
       addText = '';

@@ -17,7 +17,7 @@ export function renderMd(md: string): string {
 
   const lines = md.split('\n');
   const processedLines: string[] = [];
-  
+
   for (const line of lines) {
     let processedLine = line;
     if (processedLine.match(/^### /)) {
@@ -26,49 +26,46 @@ export function renderMd(md: string): string {
       processedLine = processedLine.replace(/^## (.+)$/, '<h2>$1</h2>');
     } else if (processedLine.match(/^# /)) {
       processedLine = processedLine.replace(/^# (.+)$/, '<h1>$1</h1>');
-    }
-    else if (processedLine.match(/^(---|\*\*\*|___)$/)) {
+    } else if (processedLine.match(/^(---|\*\*\*|___)$/)) {
       processedLine = '<hr/>';
-    }
-    else if (processedLine.match(/^> /)) {
+    } else if (processedLine.match(/^> /)) {
       processedLine = processedLine.replace(/^> (.+)/, '<blockquote>$1</blockquote>');
-    }
-    else {
+    } else if (/^\s*- \[( |x|X)\]\s+(.+)$/.test(processedLine)) {
+      const idx = processedLines.filter(l => /md-checkbox-row/.test(l)).length;
+      const checked = /^\s*- \[(x|X)\]\s+(.+)$/.test(processedLine);
+      const text = processedLine.replace(/^\s*- \[(?: |x|X)\]\s+/, '');
+      processedLine = `<label class="md-checkbox-row"><input type="checkbox" data-idx="${idx}" ${checked ? 'checked' : ''} /><span>${text}</span></label>`;
+    } else {
       processedLine = processedLine.replace(
         /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
         '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>'
       );
       processedLine = processedLine.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
     }
-    
+
     processedLines.push(processedLine);
   }
-  
+
   let result = processedLines.join('\n');
-  result = result.replace(/^(\s*)(\d+)\.\s+(.+)$/gm, (_, spaces, num, content) => {
-    const indent = (spaces.length + 1) * (spaces.length > 0 ? 0.5 : 1);
-    return `<li style="margin-left:${indent}rem">${num}. ${content}</li>`;
-  });
-  
+  result = result.replace(/^\s*(\d+)\.\s+(.+)$/gm, (_, __, content) => `<li>${content}</li>`);
   result = result.replace(/^(\s*)- (.+)$/gm, (_, spaces, content) => {
     const indent = (spaces.length + 1) * (spaces.length > 0 ? 0.5 : 1);
     return `<li style="margin-left:${indent}rem">${content}</li>`;
   });
-  result = result.replace(/(<li.*<\/li>(?:\n<li.*<\/li>)*)/g, '<ul>$1</ul>');
+  result = result.replace(/(?:<li>.*<\/li>(?:\n<li>.*<\/li>)*)/g, '<ul>$&</ul>');
+  result = result.replace(/(<label class="md-checkbox-row">.*<\/label>(?:\n<label class="md-checkbox-row">.*<\/label>)*)/g, '<div class="md-checkbox-list">$&</div>');
   result = result.replace(/__INLINECODE_(\d+)__/g, (_, idx) => inlineCodes[idx]);
   result = result.replace(/__CODEBLOCK_(\d+)__/g, (_, idx) => codeblockMd[idx]);
-  
-  // Line breaks (except <pre> or <code>)
+
   const preservedBlocks: string[] = [];
   result = result.replace(/(<(?:pre|code)[^>]*>[\s\S]*?<\/\1>)/g, (match) => {
     preservedBlocks.push(match);
     return `__PRESERVED_${preservedBlocks.length - 1}__`;
   });
-  
+
   result = result.replace(/\n/g, '<br/>');
-  // Restore preserved blocks of code
   result = result.replace(/__PRESERVED_(\d+)__/g, (_, idx) => preservedBlocks[idx]);
-  
+
   return result;
 }
 

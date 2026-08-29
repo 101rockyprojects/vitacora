@@ -6,7 +6,7 @@
   import { workFilterTag } from '$lib/stores/workFilter.svelte';
   import Toast from '$lib/components/Toast.svelte';
 
-  const userId = $derived(page.data.user?.id ?? '');
+  const userId = $derived(page.data.user?.id ?? page.data.session?.user?.id ?? '');
   const repo = $derived(createRepository(userId));
   
   let tasks = $state<Task[]>([]);

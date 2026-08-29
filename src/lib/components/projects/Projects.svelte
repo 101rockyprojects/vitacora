@@ -12,7 +12,7 @@
   const WORK_TABS = ['kanban', 'projects', 'links', 'skills'] as const;
   type WorkTab = typeof WORK_TABS[number];
 
-  const userId = $derived(page.data.user?.id ?? '');
+  const userId = $derived(page.data.user?.id ?? page.data.session?.user?.id ?? '');
   const repo = $derived(createRepository(userId));
   let initialized = $state(false);
   let url = new URL(page.url.href);

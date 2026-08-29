@@ -6,6 +6,7 @@ import type {
   BookRatingCategory,
   CalendarEvent,
   CalendarTodo,
+  CoupleLink,
   DateIdea,
   Expense,
   LearningItem,
@@ -559,6 +560,16 @@ export function createRepository(
           partner_since: relation.connected_at ? new Date(relation.connected_at).toISOString() : undefined
         };
       }
+    },
+
+    coupleLinks: {
+      list: () =>
+        client.from('couple_links').select('*').eq('user_id', uid()).order('created_at', { ascending: false }),
+      insert: (link: Omit<CoupleLink, 'id' | 'user_id'>) =>
+        client.from('couple_links').insert({ ...link, user_id: uid() }),
+      update: (id: string, values: Partial<CoupleLink>) =>
+        client.from('couple_links').update(values).eq('id', id),
+      remove: (id: string) => client.from('couple_links').delete().eq('id', id)
     }
   };
 }
