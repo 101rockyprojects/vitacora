@@ -35,13 +35,14 @@
     links = data || [];
   }
 
-  async function fetchMetadata() {
-    if (!newLinkUrl.trim()) return;
+  async function fetchMetadata(url?: string) {
+    const target = (url || newLinkUrl).trim();
+    if (!target) return;
     fetching = true;
     try {
-      const response = await fetch(`/api/og?url=${encodeURIComponent(newLinkUrl)}`);
+      const response = await fetch(`/api/og?url=${encodeURIComponent(target)}`);
       const metadata = await response.json();
-      newLinkTitle = metadata.title || newLinkUrl;
+      newLinkTitle = metadata.title || target;
       newLinkDescription = metadata.description || '';
       newLinkImage = metadata.image || '';
     } catch (error) {
@@ -50,9 +51,25 @@
     fetching = false;
   }
 
+  let fetchDebounce: ReturnType<typeof setTimeout> | null = null;
+
+  function onUrlInput(value: string) {
+    newLinkUrl = value;
+    newLinkTitle = '';
+    newLinkDescription = '';
+    newLinkImage = '';
+    if (fetchDebounce) clearTimeout(fetchDebounce);
+    if (value.trim().startsWith('http')) {
+      fetchDebounce = setTimeout(() => fetchMetadata(value), 800);
+    }
+  }
+
   async function saveLink() {
     if (!newLinkUrl.trim()) return;
     saving = true;
+    if (!newLinkTitle && !fetching) {
+      await fetchMetadata();
+    }
     const { error } = await repo.coupleLinks.insert({
       url: newLinkUrl.trim(),
       title: newLinkTitle || newLinkUrl,
@@ -137,13 +154,14 @@
           <div class="url-input-group">
             <input
               id="link-url"
-              bind:value={newLinkUrl}
+              value={newLinkUrl}
+              oninput={(e) => onUrlInput((e.target as HTMLInputElement).value)}
               placeholder="https://example.com"
               type="url"
             />
             <button
               class="btn btn-secondary"
-              onclick={fetchMetadata}
+              onclick={() => fetchMetadata()}
               disabled={fetching || !newLinkUrl.trim()}
             >
               {fetching ? '...' : 'Obtener'}
