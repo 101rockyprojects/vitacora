@@ -147,7 +147,7 @@
   </div>
 
   {#if links.length === 0}
-    <div class="empty-state card">
+    <div class="empty-state card p-0">
       Comiencen a compartir enlaces importantes ✨
     </div>
   {:else}
@@ -199,7 +199,7 @@
               onclick={() => fetchMetadata()}
               disabled={fetching || !newLinkUrl.trim()}
             >
-              {fetching ? '...' : 'Obtener'}
+              {fetching ? 'Cargando...' : 'Obtener datos'}
             </button>
           </div>
         </div>
