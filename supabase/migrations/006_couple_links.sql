@@ -14,16 +14,11 @@ CREATE TABLE IF NOT EXISTS vitacora.couple_links (
 ALTER TABLE vitacora.couple_links ENABLE ROW LEVEL SECURITY;
 
 -- RLS policy: users can only see their own couple links
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_policies WHERE policyname = 'couple_links_user_access' AND tablename = 'couple_links'
-  ) THEN
-    CREATE POLICY couple_links_user_access ON vitacora.couple_links
-      FOR ALL
-      USING (auth.uid() = user_id);
-  END IF;
-END $$;
+DROP POLICY IF EXISTS couple_links_user_access ON vitacora.couple_links;
+CREATE POLICY couple_links_user_access ON vitacora.couple_links
+  FOR ALL
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
 
 -- Index for performance
 CREATE INDEX IF NOT EXISTS couple_links_user_id_idx ON vitacora.couple_links(user_id);
