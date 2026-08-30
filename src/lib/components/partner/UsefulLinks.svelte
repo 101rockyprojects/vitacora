@@ -13,6 +13,7 @@
   let links = $state<CoupleLink[]>([]);
   let initialized = $state(false);
   let showForm = $state(false);
+  let editingLink = $state<CoupleLink | null>(null);
   let newLinkUrl = $state('');
   let newLinkTitle = $state('');
   let newLinkDescription = $state('');
@@ -70,24 +71,57 @@
     if (!newLinkTitle && !fetching) {
       await fetchMetadata();
     }
-    const { error } = await repo.coupleLinks.insert({
-      url: newLinkUrl.trim(),
-      title: newLinkTitle || newLinkUrl,
-      description: newLinkDescription,
-      og_image: newLinkImage
-    });
-    if (error) {
-      console.error('Error saving link:', error);
-      saving = false;
-      return;
+    if (editingLink?.id) {
+      const { error } = await repo.coupleLinks.update(editingLink.id, {
+        url: newLinkUrl.trim(),
+        title: newLinkTitle || newLinkUrl,
+        description: newLinkDescription,
+        og_image: newLinkImage
+      });
+      if (error) {
+        console.error('Error updating link:', error);
+        saving = false;
+        return;
+      }
+    } else {
+      const { error } = await repo.coupleLinks.insert({
+        url: newLinkUrl.trim(),
+        title: newLinkTitle || newLinkUrl,
+        description: newLinkDescription,
+        og_image: newLinkImage
+      });
+      if (error) {
+        console.error('Error saving link:', error);
+        saving = false;
+        return;
+      }
     }
     newLinkUrl = '';
     newLinkTitle = '';
     newLinkDescription = '';
     newLinkImage = '';
+    editingLink = null;
     showForm = false;
     await loadLinks();
     saving = false;
+  }
+
+  function editLink(link: CoupleLink) {
+    editingLink = link;
+    newLinkUrl = link.url;
+    newLinkTitle = link.title || '';
+    newLinkDescription = link.description || '';
+    newLinkImage = link.og_image || '';
+    showForm = true;
+  }
+
+  function openNewForm() {
+    editingLink = null;
+    newLinkUrl = '';
+    newLinkTitle = '';
+    newLinkDescription = '';
+    newLinkImage = '';
+    showForm = true;
   }
 
   async function deleteLink(id: string) {
@@ -109,7 +143,7 @@
       <h2 class="section-title">🔗 Couple Links</h2>
       <div class="section-subtitle">Enlaces compartidos</div>
     </div>
-    <button class="btn btn-primary" onclick={() => showForm = true}>+ Nuevo enlace</button>
+    <button class="btn btn-primary" onclick={openNewForm}>+ Nuevo enlace</button>
   </div>
 
   {#if links.length === 0}
@@ -136,6 +170,7 @@
           </div>
           <div class="link-actions">
             <button class="action-btn" onclick={() => copyShareUrl(link)} title="Copiar enlace compartible">🔗</button>
+            <button class="action-btn" onclick={() => editLink(link)} title="Editar">🖋</button>
             <button class="action-btn delete" onclick={() => deleteLink(link.id!)} title="Eliminar">✕</button>
           </div>
         </div>
@@ -148,7 +183,7 @@
       if (e.target === e.currentTarget) showForm = false;
     }}>
       <div class="modal" role="dialog">
-        <h3>Nuevo enlace compartido</h3>
+        <h3>{editingLink ? 'Editar enlace' : 'Nuevo enlace compartido'}</h3>
         <div class="form-group">
           <label for="link-url">URL</label>
           <div class="url-input-group">
@@ -194,7 +229,7 @@
           </div>
         {/if}
         <div class="form-actions">
-          <button class="btn btn-secondary" onclick={() => showForm = false}>Cancelar</button>
+          <button class="btn btn-secondary" onclick={() => { showForm = false; editingLink = null; }}>Cancelar</button>
           <button
             class="btn btn-primary"
             onclick={saveLink}
@@ -217,7 +252,7 @@
 
   .links-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(min(500px, 100%), 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(250px, 100%), 1fr));
     gap: 16px;
   }
 
