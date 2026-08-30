@@ -28,7 +28,10 @@
   });
 
   async function loadLinks() {
-    const { data } = await repo.coupleLinks.list();
+    const { data, error } = await repo.coupleLinks.list();
+    if (error) {
+      console.error('Error loading couple links:', error);
+    }
     links = data || [];
   }
 
@@ -50,12 +53,17 @@
   async function saveLink() {
     if (!newLinkUrl.trim()) return;
     saving = true;
-    await repo.coupleLinks.insert({
+    const { error } = await repo.coupleLinks.insert({
       url: newLinkUrl.trim(),
       title: newLinkTitle || newLinkUrl,
       description: newLinkDescription,
       og_image: newLinkImage
     });
+    if (error) {
+      console.error('Error saving link:', error);
+      saving = false;
+      return;
+    }
     newLinkUrl = '';
     newLinkTitle = '';
     newLinkDescription = '';
