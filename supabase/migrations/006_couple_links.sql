@@ -1,5 +1,5 @@
 -- Couple Links table for shared URLs with OG metadata
-CREATE TABLE couple_links (
+CREATE TABLE IF NOT EXISTS vitacora.couple_links (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   url TEXT NOT NULL,
@@ -11,13 +11,20 @@ CREATE TABLE couple_links (
 );
 
 -- Enable RLS
-ALTER TABLE couple_links ENABLE ROW LEVEL SECURITY;
+ALTER TABLE vitacora.couple_links ENABLE ROW LEVEL SECURITY;
 
 -- RLS policy: users can only see their own couple links
-CREATE POLICY couple_links_user_access ON couple_links
-  FOR ALL
-  USING (auth.uid() = user_id);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE policyname = 'couple_links_user_access' AND tablename = 'couple_links'
+  ) THEN
+    CREATE POLICY couple_links_user_access ON vitacora.couple_links
+      FOR ALL
+      USING (auth.uid() = user_id);
+  END IF;
+END $$;
 
 -- Index for performance
-CREATE INDEX couple_links_user_id_idx ON couple_links(user_id);
-CREATE INDEX couple_links_created_at_idx ON couple_links(created_at DESC);
+CREATE INDEX IF NOT EXISTS couple_links_user_id_idx ON vitacora.couple_links(user_id);
+CREATE INDEX IF NOT EXISTS couple_links_created_at_idx ON vitacora.couple_links(created_at DESC);

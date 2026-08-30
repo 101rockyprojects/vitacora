@@ -564,12 +564,12 @@ export function createRepository(
 
     coupleLinks: {
       list: () =>
-        client.from('couple_links').select('*').eq('user_id', uid()).order('created_at', { ascending: false }),
+        client.from('vitacora.couple_links').select('*').eq('user_id', uid()).order('created_at', { ascending: false }),
       insert: (link: Omit<CoupleLink, 'id' | 'user_id'>) =>
-        client.from('couple_links').insert({ ...link, user_id: uid() }),
+        client.from('vitacora.couple_links').insert({ ...link, user_id: uid() }),
       update: (id: string, values: Partial<CoupleLink>) =>
-        client.from('couple_links').update(values).eq('id', id),
-      remove: (id: string) => client.from('couple_links').delete().eq('id', id)
+        client.from('vitacora.couple_links').update(values).eq('id', id),
+      remove: (id: string) => client.from('vitacora.couple_links').delete().eq('id', id)
     }
   };
 }
