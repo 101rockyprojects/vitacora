@@ -147,18 +147,16 @@
   </div>
 
   {#if links.length === 0}
-    <div class="empty-state card p-0">
+    <div class="empty-state card">
       Comiencen a compartir enlaces importantes ✨
     </div>
   {:else}
     <div class="links-grid">
       {#each links as link (link.id)}
-        <div class="link-card card">
-          {#if link.og_image}
+        <div class="card link-card">
             <div class="link-image">
-              <img src={link.og_image} alt={link.title} />
+              <img src={link.og_image || '/placeholder.png'} alt={link.title} />
             </div>
-          {/if}
           <div class="link-content">
             <h3 class="link-title">{link.title}</h3>
             {#if link.description}
@@ -261,6 +259,7 @@
     flex-direction: column;
     overflow: hidden;
     cursor: pointer;
+    padding: 0px;
     transition: transform 0.2s, box-shadow 0.2s;
   }
 
