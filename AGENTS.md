@@ -43,6 +43,12 @@ npm run build    # Production build
 npm run check    # Type checking
 ```
 
+### Deployment Policy
+- **NEVER run deploy commands.** Only commit and push to master.
+- After completing changes: `git add -A && git commit -m "..." && git push origin master`
+- Do not run `npm run deploy`, `wrangler deploy`, or any deployment commands.
+- User handles deployment separately.
+
 ### MCP Tools Available
 - Flowbite-Svelte component discovery: `findComponent`, `getComponentList`, `getComponentDoc`, `searchDocs`
 - Use for discovering Flowbite components and getting documentation
