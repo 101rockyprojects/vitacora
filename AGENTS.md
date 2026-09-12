@@ -44,10 +44,11 @@ npm run check    # Type checking
 ```
 
 ### Deployment Policy
-- **NEVER run deploy commands.** Only commit and push to master.
-- After completing changes: `git add -A && git commit -m "..." && git push origin master`
-- Do not run `npm run deploy`, `wrangler deploy`, or any deployment commands.
-- User handles deployment separately.
+- When user says "deploy", use the deploy skill (trigger: "deploy", "push to production")
+- Requires `CLOUDFLARE_API_TOKEN` env var
+- Build: `npm run build` (takes 1-3 min)
+- Deploy: `npx wrangler pages deploy .svelte-kit/cloudflare --project-name vitacora`
+- After code changes: commit and push to master first, then offer to deploy
 
 ### MCP Tools Available
 - Flowbite-Svelte component discovery: `findComponent`, `getComponentList`, `getComponentDoc`, `searchDocs`

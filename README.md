@@ -127,42 +127,31 @@ To embed your Canva vision board, edit `src/routes/goals/+page.svelte` and repla
 
 ---
 
-## Deploy with adapter-node
+## Deploy to Cloudflare Pages
 
-### Build
+### Prerequisites
+
+Set your Cloudflare API token:
+```bash
+export CLOUDFLARE_API_TOKEN="your-token-here"
+```
+
+Get one at: https://dash.cloudflare.com/profile/api-tokens → Create Token → "Edit Cloudflare Workers" template.
+
+### Build & Deploy
 
 ```bash
 npm run build
+npx wrangler pages deploy .svelte-kit/cloudflare --project-name vitacora
 ```
 
-The output is in `build/`. Run it with Node.js:
+Or just say **"deploy"** and the agent will handle it.
 
-```bash
-node build/index.js
-```
+### Environment Variables (Cloudflare)
 
-Set the `PORT` environment variable if needed (default: 3000).
-
-### Deploy to a VPS / Railway / Render
-
-1. Push your code to a Git repo
-2. Set environment variables on your hosting platform:
-   - `PUBLIC_SUPABASE_URL`
-   - `PUBLIC_SUPABASE_ANON_KEY`
-3. Build command: `npm run build`
-4. Start command: `node build/index.js`
-
-### Deploy to Railway
-
-```bash
-npm install -g railway
-railway login
-railway init
-railway add
-railway up
-```
-
-Set env vars in Railway dashboard.
+Set these in Cloudflare Dashboard → Pages → vitacora → Settings → Environment variables:
+- `PUBLIC_SUPABASE_URL`
+- `PUBLIC_SUPABASE_ANON_KEY`
 
 ---
 
