@@ -38,6 +38,26 @@
     to_review: true
   });
   let saving = $state(false);
+  let taskPriorities = $state<Record<string, 'low' | 'medium' | 'high'>>({});
+
+  const PRIORITY_KEY = 'vitacora_task_priorities';
+  const PRIORITY_ORDER: Record<string, number> = { high: 0, medium: 1, low: 2 };
+  const PRIORITY_ICONS: Record<string, string> = { high: '🔴', medium: '🟡', low: '🟢' };
+  const PRIORITY_COLORS: Record<string, string> = { high: 'var(--accent-red)', medium: 'var(--accent-yellow)', low: 'var(--accent-green)' };
+
+  function loadPriorities() {
+    if (typeof window === 'undefined') return;
+    try { taskPriorities = JSON.parse(localStorage.getItem(PRIORITY_KEY) || '{}'); } catch { taskPriorities = {}; }
+  }
+
+  function savePriority(taskId: string, priority: 'low' | 'medium' | 'high') {
+    taskPriorities = { ...taskPriorities, [taskId]: priority };
+    localStorage.setItem(PRIORITY_KEY, JSON.stringify(taskPriorities));
+  }
+
+  function getPriority(taskId: string): string { return taskPriorities[taskId] || 'medium'; }
+
+  $effect(() => { if (typeof window !== 'undefined') loadPriorities(); });
 
   const selectedTagSet = $derived(new Set(selectedTags));
   const expandedTaskDescSet = $derived(new Set(expandedTaskDescKeys));
@@ -89,7 +109,9 @@
   const filteredTasks = $derived(workFilteredTasks.filter((t) => matchesTagFilters(t, selectedTags)));
 
   function staTasks(sta: Task['status']) {
-    return filteredTasks.filter(t => t.status === sta);
+    return filteredTasks
+      .filter(t => t.status === sta)
+      .sort((a, b) => (PRIORITY_ORDER[getPriority(a.id!)] ?? 1) - (PRIORITY_ORDER[getPriority(b.id!)] ?? 1));
   }
 
   function getTaskKey(task: Task): string {
@@ -107,17 +129,26 @@
     else expandedTaskDescKeys = [...expandedTaskDescKeys, key];
   }
 
-  function resetTaskForm() { taskForm = { title: '', status: 'to_do' }; editingTask = null; }
+  let taskFormPriority = $state<'low' | 'medium' | 'high'>('medium');
+
+  function resetTaskForm() {
+    const tags = (useWorkFilter && filterTag) ? [filterTag] : [];
+    taskForm = { title: '', status: 'to_do', tags };
+    editingTask = null;
+    taskFormPriority = 'medium';
+  }
 
   async function saveTask() {
     saving = true;
     if (editingTask?.id) {
       await repo.tasks.update(editingTask.id, { ...taskForm, updated_at: new Date().toISOString() });
+      savePriority(editingTask.id, taskFormPriority);
       if (taskForm.status === 'done' && editingTask.status !== 'done') {
         await awardXP(userId, 'work', 'task_done', XP_VALUES.task_done, editingTask.id);
       }
     } else {
-      await repo.tasks.insert(taskForm);
+      const { data } = await repo.tasks.insert(taskForm);
+      if (data?.id) savePriority(data.id, taskFormPriority);
     }
     const { data } = await repo.tasks.list();
     tasks = data || [];
@@ -142,7 +173,7 @@
     tasks = data || [];
   }
 
-  function editTask(t: Task) { editingTask = t; taskForm = { ...t }; showTaskForm = true; }
+  function editTask(t: Task) { editingTask = t; taskForm = { ...t }; taskFormPriority = getPriority(t.id!) as 'low' | 'medium' | 'high'; showTaskForm = true; }
 
   function onDragStart(task: Task) { draggedTask = task; }
 
@@ -235,15 +266,24 @@
             {#each staTasks(sta.id) as task}
               {@const key = getTaskKey(task)}
               {@const descId = getTaskDescDomId(key)}
+              {@const taskPriority = getPriority(task.id!)}
               <div
                 id={`card-${task.id ?? key}`}
                 class="kanban-card"
                 class:wide={sta.id === 'to_review'}
+                class:priority-high={taskPriority === 'high'}
+                class:priority-medium={taskPriority === 'medium'}
+                class:priority-low={taskPriority === 'low'}
                 draggable="true"
                 role="application"
                 ondragstart={() => onDragStart(task)}
               >
                 <div class="kcard-header">
+                  {#if taskPriority}
+                    <span class="kcard-priority" title={`Prioridad: ${taskPriority}`}>
+                      {PRIORITY_ICONS[taskPriority]}
+                    </span>
+                  {/if}
                   <div class="kcard-title">{task.title}</div>
                   {#if task.description && task.description.trim() !== ''}
                     <button
@@ -332,6 +372,14 @@
             oninput={(e) => { taskForm.tags = (e.target as HTMLInputElement).value.split(',').map(t => t.trim()).filter(Boolean); }}
             placeholder="ej: urgente, trabajo, personal"
           />
+        </div>
+        <div class="form-group">
+          <label for="task-priority">Prioridad</label>
+          <select id="task-priority" bind:value={taskFormPriority}>
+            <option value="high">🔴 Alta</option>
+            <option value="medium">🟡 Media</option>
+            <option value="low">🟢 Baja</option>
+          </select>
         </div>
         <div class="form-actions">
           <button type="button" class="btn btn-secondary" onclick={() => { showTaskForm = false; resetTaskForm(); }}>Cancelar</button>
@@ -538,6 +586,12 @@
     justify-content: space-between;
     margin-bottom: 4px;
   }
+
+  .kcard-priority { font-size: 12px; flex-shrink: 0; margin-right: 4px; }
+
+  .kanban-card.priority-high { border-left: 3px solid var(--accent-red); }
+  .kanban-card.priority-medium { border-left: 3px solid var(--accent-yellow); }
+  .kanban-card.priority-low { border-left: 3px solid var(--accent-green); }
 
   .kcard-title { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 4px; line-height: 1.3; }
   .kcard-desc { font-size: 12px; color: var(--text2); margin-bottom: 6px; }
