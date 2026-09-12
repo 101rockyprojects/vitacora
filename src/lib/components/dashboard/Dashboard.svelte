@@ -3,7 +3,7 @@
   import { browser } from '$app/environment';
   import { createRepository } from '$lib/services/repository';
   import WeekPlanner from '$lib/components/WeekPlanner.svelte';
-  import type { Book, CalendarEvent, Task, Expense, CalendarTodo } from '$lib/types';
+  import type { Book, CalendarEvent, Task, Expense, CalendarTodo, Subscription } from '$lib/types';
   import { levelFromXp, getAreaXP } from '$lib/utils/xp';
   import { checkAndCreateNotifications } from '$lib/utils/notifications';
   import Stats from './Stats.svelte';
@@ -19,6 +19,7 @@
   let calEvents = $state<CalendarEvent[]>([]);
   let calendarTodos = $state<CalendarTodo[]>([]);
   let expenses = $state<Expense[]>([]);
+  let subscriptions = $state<Subscription[]>([]);
   let areaXP: Record<string, number> = $state({});
   let totalXP = $derived(Object.values(areaXP).reduce((a, b) => a + b, 0));
   let globalLevel = $derived(levelFromXp(totalXP));
@@ -39,13 +40,14 @@
   });
 
   async function loadDashboard() {
-    const [tasksRes, booksRes, badgesRes, calRes, expRes, calTodosRes] = await Promise.all([
+    const [tasksRes, booksRes, badgesRes, calRes, expRes, calTodosRes, subRes] = await Promise.all([
       repo.tasks.list(),
       repo.books.list(),
       repo.userBadges.listIds(),
       repo.calendar.list(),
       repo.expenses.list(),
-      repo.calendarTodos.list()
+      repo.calendarTodos.list(),
+      repo.subscriptions.listActive()
     ]);
 
     tasks = tasksRes.data || [];
@@ -53,11 +55,12 @@
     calEvents = calRes.data || [];
     calendarTodos = calTodosRes.data || [];
     expenses = expRes.data || [];
+    subscriptions = subRes.data || [];
     userBadgesCount = badgesRes.data?.length || 0;
     areaXP = await getAreaXP(userId);
     loading = false;
 
-    checkAndCreateNotifications(tasks, calEvents, calendarTodos);
+    checkAndCreateNotifications(tasks, calEvents, calendarTodos, subscriptions);
 
     if (browser && localStorage.getItem('vitacora_just_logged_in')) {
       localStorage.removeItem('vitacora_just_logged_in');
@@ -193,5 +196,10 @@
   @media (min-width: 1151px) {
     .dash-grid { grid-template-columns: 1fr 1fr 1fr; }
     .week-card { grid-column: span 3; }
+  }
+
+  @media (min-width: 1280px) {
+    .dash-grid { grid-template-columns: 1fr 1fr 1fr 1fr; }
+    .week-card { grid-column: span 4; }
   }
 </style>
