@@ -5,7 +5,8 @@
   import PieChart from '$lib/components/PieChart.svelte';
   import { page } from '$app/state';
 
-  let { userId = $derived(page.data.user?.id ?? page.data.session?.user?.id ?? '') } = $props();
+  let props: { userId?: string } = $props();
+  const userId = $derived(props.userId ?? page.data.user?.id ?? page.data.session?.user?.id ?? '');
 
   const repo = $derived(createRepository(userId));
 
@@ -79,7 +80,7 @@
 
   const usedCategories = $derived([...new Set(expenses.map(e => e.category))].filter(Boolean));
 
-  const filteredExpenses = $derived(() => {
+  const filteredExpenses = $derived.by(() => {
     let result = [...expenses];
     if (expenseFilterCategory) {
       result = result.filter(e => e.category === expenseFilterCategory);
@@ -93,11 +94,11 @@
     return result;
   });
 
-  const expensesTotal = $derived(filteredExpenses().reduce((sum, e) => sum + (e.cost || 0), 0));
+  const expensesTotal = $derived(filteredExpenses.reduce((sum, e) => sum + (e.cost || 0), 0));
 
-  const expensesByCategory = $derived(() => {
+  const expensesByCategory = $derived.by(() => {
     const categories: Record<string, number> = {};
-    for (const e of filteredExpenses()) {
+    for (const e of filteredExpenses) {
       const cat = e.category || 'Sin categoría';
       categories[cat] = (categories[cat] || 0) + (e.cost || 0);
     }
@@ -107,9 +108,9 @@
       .sort((a, b) => b.total - a.total);
   });
 
-  const expensesByMonth = $derived(() => {
+  const expensesByMonth = $derived.by(() => {
     const months: Record<string, Expense[]> = {};
-    for (const e of filteredExpenses()) {
+    for (const e of filteredExpenses) {
       const monthKey = e.expense_date.substring(0, 7);
       if (!months[monthKey]) months[monthKey] = [];
       months[monthKey].push(e);
@@ -256,15 +257,15 @@
     {/if}
   </div>
 
-  {#if !expenseFilterCategory && expensesByCategory().length > 0}
+  {#if !expenseFilterCategory && expensesByCategory.length > 0}
     <div class="card expenses-chart-card">
-      <PieChart data={expensesByCategory()} type="pie" title="Gastos Totales" />
+      <PieChart data={expensesByCategory} type="pie" title="Gastos Totales" />
       <div class="expenses-total">
         Total: <span class="total-amount">{formatCurrency(expensesTotal)}</span>
       </div>
     </div>
-  {:else if expenseFilterCategory && expensesByMonth().length > 0}
-    {@const monthData = expensesByMonth()}
+  {:else if expenseFilterCategory && expensesByMonth.length > 0}
+    {@const monthData = expensesByMonth}
     {@const grandTotal = monthData.reduce((sum, m) => sum + m.total, 0)}
     <div class="card expenses-total-card">
       <PieChart data={monthData.map(m => ({ name: m.monthLabel, total: m.total, percentage: grandTotal > 0 ? (m.total / grandTotal) * 100 : 0 }))} type="pie" title="Gastos en {expenseFilterCategory}" />
@@ -274,11 +275,11 @@
     </div>
   {/if}
 
-  {#if expensesByMonth().length === 0}
+  {#if expensesByMonth.length === 0}
     <div class="empty-state card">Agrega tus primeros gastos 💰</div>
   {:else}
     <div class="expenses-groups">
-      {#each expensesByMonth() as monthGroup}
+      {#each expensesByMonth as monthGroup}
         <div class="expense-month-group">
           <div class="expense-month-header">
             <span class="month-label">{monthGroup.monthLabel}</span>
