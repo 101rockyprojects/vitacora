@@ -3,7 +3,7 @@
   import { browser } from '$app/environment';
   import { createRepository } from '$lib/services/repository';
   import { onDestroy } from 'svelte';
-  import type { Book, LearningItem, SuccessExperience, Reward, MemoryPhoto, CalendarEvent, UsefulLink, CalendarTodo, Expense } from '$lib/types';
+  import type { Book, LearningItem, SuccessExperience, Reward, MemoryPhoto, CalendarEvent, UsefulLink, CalendarTodo } from '$lib/types';
   import Vision from './Vision.svelte';
   import Books from './Books.svelte';
   import Learning from './Learning.svelte';
@@ -11,9 +11,8 @@
   import Calendar from './Calendar.svelte';
   import Successes from './Successes.svelte';
   import Rewards from './Rewards.svelte';
-  import Expenses from './Expenses.svelte';
 
-  const GOALS_TABS = ['calendar', 'vision', 'books', 'learning', 'memories', 'successes', 'rewards', 'expenses'] as const;
+  const GOALS_TABS = ['calendar', 'vision', 'books', 'learning', 'memories', 'successes', 'rewards'] as const;
   type GoalsTab = typeof GOALS_TABS[number];
 
   const userId = $derived(page.data.user?.id ?? page.data.session?.user?.id ?? '');
@@ -41,7 +40,6 @@
   let calendarTodos = $state<CalendarTodo[]>([]);
   let successes = $state<SuccessExperience[]>([]);
   let rewards = $state<Reward[]>([]);
-  let expenses = $state<Expense[]>([]);
 
   let saving = $state(false);
 
@@ -52,8 +50,7 @@
     { id: 'learning', label: 'Aprendizaje', icon: '🧠' },
     { id: 'memories', label: 'Memorias', icon: '📸' },
     { id: 'successes', label: 'Logros', icon: '🏆' },
-    { id: 'rewards', label: 'Recompensas', icon: '🎁' },
-    { id: 'expenses', label: 'Gastos', icon: '💰' }
+    { id: 'rewards', label: 'Recompensas', icon: '🎁' }
   ] as const;
 
   $effect(() => {
@@ -85,7 +82,7 @@
 
   async function loadAll() {
     if (!userId) return;
-    const [b, l, m, c, s, r, vb, ct, e] = await Promise.all([
+    const [b, l, m, c, s, r, vb, ct] = await Promise.all([
       repo.books.list(),
       repo.learning.list(),
       repo.memories.list(),
@@ -93,8 +90,7 @@
       repo.successes.list(),
       repo.rewards.list(),
       repo.links.getVisionBoard(),
-      repo.calendarTodos.list(),
-      repo.expenses.list()
+      repo.calendarTodos.list()
     ]);
     books = b.data || [];
     learning = l.data || [];
@@ -104,7 +100,6 @@
     rewards = r.data || [];
     visionBoardLink = vb.data?.[0] || null;
     calendarTodos = ct.data || [];
-    expenses = e.data || [];
     if (visionBoardLink?.link_type === 'vision_board_canva') visionLinkMode = 'canva';
     if (visionBoardLink?.link_type === 'vision_board_image') visionLinkMode = 'image';
     visionLinkInput = visionBoardLink?.url || '';
@@ -187,8 +182,6 @@
     <Successes userId={userId} bind:successes onRefresh={loadAll} />
   {:else if activeTab === 'rewards'}
     <Rewards userId={userId} bind:rewards onRefresh={loadAll} />
-  {:else if activeTab === 'expenses'}
-    <Expenses userId={userId} bind:expenses onRefresh={loadAll} />
   {/if}
 </div>
 

@@ -13,6 +13,7 @@
     { href: '/goals', label: 'Visión & Metas', icon: '⊶' },
     { href: '/projects', label: 'Proyectos', icon: '◉' },
     { href: '/work', label: workFilterTag.value, icon: '⌘' },
+    { href: '/expenses', label: 'Gastos', icon: '💰' },
     { href: '/partner', label: 'Partner', icon: '♥' },
     { href: '/profile', label: 'Perfil & XP', icon: '◎' }
   ];
