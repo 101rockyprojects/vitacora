@@ -195,6 +195,7 @@ export interface MovieWatchlist {
   title: string;
   poster_url?: string;
   resources?: string;
+  media_type?: 'movie' | 'series';
   created_at?: string;
 }
 
@@ -221,5 +222,18 @@ export interface CoupleLink {
   title?: string;
   description?: string;
   og_image?: string;
+  created_at?: string;
+}
+
+export interface Subscription {
+  id?: string;
+  user_id?: string;
+  name: string;
+  category: string;
+  cost: number;
+  start_date: string;
+  period_months: number;
+  is_active: boolean;
+  last_paid_date?: string;
   created_at?: string;
 }

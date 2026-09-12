@@ -17,6 +17,7 @@ import type {
   Project,
   Reward,
   SkillsMd,
+  Subscription,
   SuccessExperience,
   Task,
   UsefulLink,
@@ -225,6 +226,18 @@ export function createRepository(
       remove: (id: string) => client.from('expenses').delete().eq('id', id)
     },
 
+    subscriptions: {
+      list: () =>
+        client.from('subscriptions').select('*').eq('user_id', uid()).order('created_at', { ascending: false }),
+      listActive: () =>
+        client.from('subscriptions').select('*').eq('user_id', uid()).eq('is_active', true),
+      insert: (item: Omit<Subscription, 'id' | 'user_id'>) =>
+        client.from('subscriptions').insert({ ...item, user_id: uid() }).select().single(),
+      update: (id: string, values: Partial<Subscription>) =>
+        client.from('subscriptions').update(values).eq('id', id),
+      remove: (id: string) => client.from('subscriptions').delete().eq('id', id)
+    },
+
     successes: {
       list: () =>
         client.from('success_experiences').select('*').eq('user_id', uid()).order('created_at', { ascending: false }),
@@ -276,8 +289,8 @@ export function createRepository(
 
         return client.from('movie_watchlist').select('*').eq('added_by', uid()).order('created_at', { ascending: false });
       },
-      insertMany: (titles: string[]) =>
-        client.from('movie_watchlist').insert(titles.map(t => ({ title: t.trim(), added_by: uid() }))).select(),
+      insertMany: (titles: string[], mediaType: 'movie' | 'series' = 'movie') =>
+        client.from('movie_watchlist').insert(titles.map(t => ({ title: t.trim(), added_by: uid(), media_type: mediaType }))).select(),
       insert: (movie: Omit<MovieWatchlist, 'id' | 'added_by'>) =>
         client.from('movie_watchlist').insert({ ...movie, added_by: uid() }).select().single(),
       updateTitle: (id: string, title: string) =>
@@ -286,6 +299,8 @@ export function createRepository(
         client.from('movie_watchlist').update({ poster_url: posterUrl }).eq('id', id),
       updateResources: (id: string, resources: string) =>
         client.from('movie_watchlist').update({ resources }).eq('id', id),
+      updateMediaType: (id: string, mediaType: 'movie' | 'series') =>
+        client.from('movie_watchlist').update({ media_type: mediaType }).eq('id', id),
       remove: (id: string) => client.from('movie_watchlist').delete().eq('id', id)
     },
 

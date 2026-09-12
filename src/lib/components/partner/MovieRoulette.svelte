@@ -11,7 +11,10 @@
 
   let initialized = $state(false);
   let movies = $state<MovieWithRatings[]>([]);
-  let moviesWithoutRatings = $derived(movies.filter(m => !m.user_rating));
+  let activeTab = $state<'movie' | 'series'>('movie');
+
+  let filteredMovies = $derived(movies.filter(m => (m.media_type || 'movie') === activeTab));
+  let moviesWithoutRatings = $derived(filteredMovies.filter(m => !m.user_rating));
 
   let addText = $state('');
   let addSaving = $state(false);
@@ -26,6 +29,7 @@
   let modalTitle = $state('');
   let modalPoster = $state('');
   let modalResources = $state('');
+  let modalMediaType = $state<'movie' | 'series'>('movie');
   let modalUserRating = $state(0);
   let modalSaving = $state(false);
   let modalTextarea: HTMLTextAreaElement | null = $state(null);
@@ -100,16 +104,16 @@
     }
 
     addSaving = true;
-    const { data, error } = await repo.movieWatchlist.insertMany(toAdd);
+    const { data, error } = await repo.movieWatchlist.insertMany(toAdd, activeTab);
     if (error) {
-      showToast('Error al agregar películas');
+      showToast('Error al agregar');
     } else {
       const newItems = Array.isArray(data) ? data : data ? [data] : [];
       if (newItems.length) {
         await awardXP(userId, 'social', 'movie_added', XP_VALUES.movie_added);
       }
-      if (skipped > 0) showToast(`${skipped} película(s) omitida(s) por duplicado`);
-      else showToast(`${toAdd.length} película(s) agregada(s)`);
+      if (skipped > 0) showToast(`${skipped} título(s) omitido(s) por duplicado`);
+      else showToast(`${toAdd.length} título(s) agregado(s)`);
       addText = '';
     }
     addSaving = false;
@@ -117,7 +121,7 @@
   }
 
   async function deleteMovie(id: string) {
-    if (!confirm('¿Eliminar esta película?')) return;
+    if (!confirm('¿Eliminar este título?')) return;
     await repo.movieWatchlist.remove(id);
     await loadData();
   }
@@ -147,6 +151,7 @@
     modalTitle = movie.title;
     modalPoster = movie.poster_url || '';
     modalResources = movie.resources || '';
+    modalMediaType = (movie.media_type as 'movie' | 'series') || 'movie';
     modalUserRating = movie.user_rating || 0;
     modalSaving = false;
   }
@@ -164,6 +169,7 @@
     const prevTitle = modalMovie.title;
     const prevPoster = modalMovie.poster_url || '';
     const prevResources = formatLinks(modalMovie.resources || '');
+    const prevMediaType = modalMovie.media_type || 'movie';
     const prevUserRating = modalMovie.user_rating || 0;
 
     if (modalTitle !== prevTitle) {
@@ -176,6 +182,10 @@
 
     if (modalResources !== prevResources) {
       await repo.movieWatchlist.updateResources(movieId, modalResources.trim());
+    }
+
+    if (modalMediaType !== prevMediaType) {
+      await repo.movieWatchlist.updateMediaType(movieId, modalMediaType);
     }
 
     if (modalUserRating > 0 && modalUserRating !== prevUserRating) {
@@ -258,9 +268,18 @@
 <section class="movie-roulette fade-in">
   <div class="section-header">
     <div>
-      <h2 class="section-title">🎬 Movie Roulette</h2>
+      <h2 class="section-title">🎬 Películas & Series</h2>
       <span class="section-subtitle">Gira la ruleta y elijan qué ver</span>
     </div>
+  </div>
+
+  <div class="media-tabs">
+    <button class="media-tab" class:active={activeTab === 'movie'} onclick={() => activeTab = 'movie'}>
+      🎬 Películas
+    </button>
+    <button class="media-tab" class:active={activeTab === 'series'} onclick={() => activeTab = 'series'}>
+      📺 Series
+    </button>
   </div>
 
   <div class="roulette-layout">
@@ -290,14 +309,11 @@
 
     <div class="roulette-sidebar">
       <div class="add-panel card">
-        <h4>Agregar pelis</h4>
+        <h4>Agregar {activeTab === 'movie' ? 'pelis' : 'series'}</h4>
         <textarea
           class="md-editor"
           bind:value={addText}
-          placeholder="Película 1
-Película 2
-Película 3
-..."
+          placeholder={activeTab === 'movie' ? 'Película 1\nPelícula 2\n...' : 'Serie 1\nSerie 2\n...'}
           rows="5"
         ></textarea>
         <button class="btn btn-primary" onclick={addMovies} disabled={addSaving || !addText.trim()}>
@@ -307,11 +323,11 @@ Película 3
     </div>
   </div>
 
-  {#if movies.length > 0}
+  {#if filteredMovies.length > 0}
     <div class="ratings-section">
-      <h3 class="ideas-group-label">Lista de Pelis ({movies.length})</h3>
+      <h3 class="ideas-group-label">Lista ({filteredMovies.length})</h3>
       <div class="ratings-grid">
-        {#each movies as movie (movie.id)}
+        {#each filteredMovies as movie (movie.id)}
           {@const avg = movie.avg_rating || 0}
           {@const isRated = movie.total_ratings && movie.total_ratings > 0}
           <button type="button" class="rating-card card" onclick={() => openMovieModal(movie)}>
@@ -372,8 +388,16 @@ Película 3
         type="text"
         class="title-input movie-modal-title"
         bind:value={modalTitle}
-        placeholder="Título de la película"
+        placeholder="Título"
       />
+
+      <div class="form-group">
+        <label for="movie-media-type">Tipo</label>
+        <select id="movie-media-type" bind:value={modalMediaType}>
+          <option value="movie">Película</option>
+          <option value="series">Serie</option>
+        </select>
+      </div>
       
       {#if modalPoster}
         <img src={modalPoster} alt={modalMovie.title} class="rating-modal-poster" />
@@ -446,6 +470,39 @@ Película 3
 
 <style>
   .movie-roulette { max-width: inherit; }
+
+  .media-tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 4px;
+    margin-bottom: 20px;
+    width: fit-content;
+  }
+
+  .media-tab {
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text3);
+    transition: all var(--transition);
+    border: none;
+    background: none;
+    cursor: pointer;
+  }
+
+  .media-tab.active {
+    background: var(--surface2);
+    color: var(--text);
+  }
+
+  .media-tab:hover:not(.active) {
+    background: var(--surface);
+    color: var(--text2);
+  }
 
   .roulette-layout {
     display: grid;
