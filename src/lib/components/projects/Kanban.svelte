@@ -65,6 +65,14 @@
   const expandedTaskDescSet = $derived(new Set(expandedTaskDescKeys));
   let showArchive = $state(false);
 
+  const workFilteredTasks = $derived(
+    useWorkFilter
+      ? (filterTag ? tasks.filter(t => t.tags?.includes(filterTag)) : tasks)
+      : tasks.filter(t => !t.tags?.includes(workFilterTag.value))
+  );
+
+  const filteredTasks = $derived(workFilteredTasks.filter((t) => matchesTagFilters(t, selectedTags)));
+
   function isArchived(task: Task): boolean {
     if (!task.created_at) return false;
     const cutoff = new Date();
@@ -74,7 +82,7 @@
   }
   const tagCounts = $derived((() => {
     const counts = new Map<string, number>();
-    for (const task of tasks) {
+    for (const task of workFilteredTasks) {
       for (const tag of task.tags ?? []) {
         const normalized = tag.trim();
         if (!normalized) continue;
@@ -112,12 +120,6 @@
     const tags = task.tags ?? [];
     return filters.some((filter) => tags.includes(filter));
   }
-
-  const workFilteredTasks = $derived(
-    filterTag ? tasks.filter(t => t.tags?.includes(filterTag)) : tasks
-  );
-
-  const filteredTasks = $derived(workFilteredTasks.filter((t) => matchesTagFilters(t, selectedTags)));
 
   function priorityRank(task: Task): number {
     const p = hasPriority(task.id!);
@@ -259,6 +261,7 @@
             <button class="tag-filter-clear" type="button" onclick={clearTagFilters}>Limpiar</button>
           {/if}
         </div>
+        <p>|</p>
       {/if}
       <button
         class="kanban-archive-toggle"
@@ -267,7 +270,7 @@
         aria-pressed={showArchive}
         onclick={() => showArchive = !showArchive}
       >
-        🗄 Archivo{archivedTasks.length > 0 ? ` (${archivedTasks.length})` : ''}
+        ⊟ ARCHIVADOS{archivedTasks.length > 0 ? ` (${archivedTasks.length})` : ''}
       </button>
     </div>
   </div>
@@ -499,18 +502,21 @@
     border-radius: 8px;
     background: var(--bg2);
     border: 1px solid var(--border);
-    color: var(--text2);
+    background: var(--surface);
+    color: var(--text);
     transition: all var(--transition);
     cursor: pointer;
   }
 
-  .kanban-archive-toggle:hover { border-color: var(--text3); color: var(--text); }
+  .kanban-archive-toggle:hover { border-color: var(--accent-purple); color: var(--text); }
 
   .kanban-archive-toggle.active {
-    background: rgba(147, 148, 245, 0.12);
-    border-color: rgba(147, 148, 245, 0.45);
+    background: rgba(168,230,207,0.12);
+    border-color: rgba(168,230,207,0.45);
     color: var(--text);
   }
+
+  .kanban-archive-toggle.active:hover { border-color: var(--accent-purple); color: var(--accent-purple); }
 
   .kanban-archive {
     display: flex;
