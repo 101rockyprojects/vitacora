@@ -43,7 +43,11 @@
   const PRIORITY_KEY = 'vitacora_task_priorities';
   const PRIORITY_ORDER: Record<string, number> = { high: 0, medium: 1, low: 2 };
   const PRIORITY_ICONS: Record<string, string> = { high: '🔴', medium: '🟡', low: '🟢' };
-  const PRIORITY_COLORS: Record<string, string> = { high: 'var(--accent-red)', medium: 'var(--accent-yellow)', low: 'var(--accent-green)' };
+  const ARCHIVE_DAYS = 90;
+
+  function hasPriority(taskId: string): string | undefined {
+    return taskPriorities[taskId];
+  }
 
   function loadPriorities() {
     if (typeof window === 'undefined') return;
@@ -55,12 +59,19 @@
     localStorage.setItem(PRIORITY_KEY, JSON.stringify(taskPriorities));
   }
 
-  function getPriority(taskId: string): string { return taskPriorities[taskId] || 'medium'; }
-
   $effect(() => { if (typeof window !== 'undefined') loadPriorities(); });
 
   const selectedTagSet = $derived(new Set(selectedTags));
   const expandedTaskDescSet = $derived(new Set(expandedTaskDescKeys));
+  let showArchive = $state(false);
+
+  function isArchived(task: Task): boolean {
+    if (!task.created_at) return false;
+    const cutoff = new Date();
+    cutoff.setHours(0, 0, 0, 0);
+    cutoff.setDate(cutoff.getDate() - ARCHIVE_DAYS);
+    return new Date(task.created_at) < cutoff;
+  }
   const tagCounts = $derived((() => {
     const counts = new Map<string, number>();
     for (const task of tasks) {
@@ -108,11 +119,18 @@
 
   const filteredTasks = $derived(workFilteredTasks.filter((t) => matchesTagFilters(t, selectedTags)));
 
+  function priorityRank(task: Task): number {
+    const p = hasPriority(task.id!);
+    return p ? (PRIORITY_ORDER[p] ?? 1) : 3;
+  }
+
   function staTasks(sta: Task['status']) {
     return filteredTasks
-      .filter(t => t.status === sta)
-      .sort((a, b) => (PRIORITY_ORDER[getPriority(a.id!)] ?? 1) - (PRIORITY_ORDER[getPriority(b.id!)] ?? 1));
+      .filter(t => t.status === sta && !isArchived(t))
+      .sort((a, b) => priorityRank(a) - priorityRank(b));
   }
+
+  const archivedTasks = $derived(filteredTasks.filter(isArchived).sort((a, b) => (a.created_at ?? '').localeCompare(b.created_at ?? '')));
 
   function getTaskKey(task: Task): string {
     if (task.id) return task.id;
@@ -173,7 +191,13 @@
     tasks = data || [];
   }
 
-  function editTask(t: Task) { editingTask = t; taskForm = { ...t }; taskFormPriority = getPriority(t.id!) as 'low' | 'medium' | 'high'; showTaskForm = true; }
+  function editTask(t: Task) {
+    const stored = t.id ? hasPriority(t.id) : undefined;
+    editingTask = t;
+    taskForm = { ...t };
+    taskFormPriority = (stored as 'low' | 'medium' | 'high') ?? 'medium';
+    showTaskForm = true;
+  }
 
   function onDragStart(task: Task) { draggedTask = task; }
 
@@ -216,122 +240,180 @@
 <div class="fade-in">
   <div class="tab-actions kanban-actions">
     <button class="btn btn-primary" onclick={() => { resetTaskForm(); showTaskForm = true; }}>+ Nueva tarea</button>
-    {#if !useWorkFilter && tagCounts.length > 0}
-      <div class="tag-filters" aria-label="Filtrar por tags">
-        <span class="tag-filter-label">Tags:</span>
-        {#each tagCounts as t}
-          <button
-            class="tag-filter"
-            class:active={selectedTagSet.has(t.tag)}
-            type="button"
-            onclick={() => toggleTagFilter(t.tag)}
-            aria-pressed={selectedTagSet.has(t.tag)}
-          >
-            {t.tag} <span class="tag-filter-count">({t.count})</span>
-          </button>
-        {/each}
-        {#if selectedTags.length > 0}
-          <button class="tag-filter-clear" type="button" onclick={clearTagFilters}>Limpiar</button>
-        {/if}
-      </div>
-    {/if}
-  </div>
-  <div class="kanban-board">
-    {#each statuses as sta}
-      {@const isCollapsed = collapsedColumns[sta.id]}
-      <div
-        class="kanban-sta"
-        class:collapsed={isCollapsed}
-        class:wide={sta.id === 'to_review'}
-        ondragover={(e) => e.preventDefault()}
-        ondrop={() => onDrop(sta.id)}
-        role="region"
-        aria-label={sta.label}
+    <div class="kanban-actions-end">
+      {#if !useWorkFilter && tagCounts.length > 0}
+        <div class="tag-filters" aria-label="Filtrar por tags">
+          <span class="tag-filter-label">Tags:</span>
+          {#each tagCounts as t}
+            <button
+              class="tag-filter"
+              class:active={selectedTagSet.has(t.tag)}
+              type="button"
+              onclick={() => toggleTagFilter(t.tag)}
+              aria-pressed={selectedTagSet.has(t.tag)}
+            >
+              {t.tag} <span class="tag-filter-count">({t.count})</span>
+            </button>
+          {/each}
+          {#if selectedTags.length > 0}
+            <button class="tag-filter-clear" type="button" onclick={clearTagFilters}>Limpiar</button>
+          {/if}
+        </div>
+      {/if}
+      <button
+        class="kanban-archive-toggle"
+        class:active={showArchive}
+        type="button"
+        aria-pressed={showArchive}
+        onclick={() => showArchive = !showArchive}
       >
-        <button
-          class="kanban-sta-header"
-          type="button"
-          onclick={() => collapsedColumns[sta.id] = !collapsedColumns[sta.id]}
-          aria-expanded={!isCollapsed}
-        >
-          <span class="sta-toggle" class:collapsed={isCollapsed}>❯</span>
-          <span class="sta-dot" style="background:{sta.color}"></span>
-          <span class="sta-label">{sta.label}</span>
-          <span class="sta-count" class:active={staTasks(sta.id).length > 0} style="--status-color: {sta.color}">
-            {staTasks(sta.id).length}
-            </span>
-        </button>
-        {#if !isCollapsed}
-          <div class="kanban-cards">
-            {#each staTasks(sta.id) as task}
-              {@const key = getTaskKey(task)}
-              {@const descId = getTaskDescDomId(key)}
-              {@const taskPriority = getPriority(task.id!)}
-              <div
-                id={`card-${task.id ?? key}`}
-                class="kanban-card"
-                class:wide={sta.id === 'to_review'}
-                class:priority-high={taskPriority === 'high'}
-                class:priority-medium={taskPriority === 'medium'}
-                class:priority-low={taskPriority === 'low'}
-                draggable="true"
-                role="application"
-                ondragstart={() => onDragStart(task)}
-              >
-                <div class="kcard-header">
-                  {#if taskPriority}
-                    <span class="kcard-priority" title={`Prioridad: ${taskPriority}`}>
-                      {PRIORITY_ICONS[taskPriority]}
-                    </span>
-                  {/if}
-                  <div class="kcard-title">{task.title}</div>
-                  {#if task.description && task.description.trim() !== ''}
-                    <button
-                      class="kcard-desc-toggle"
-                      type="button"
-                      draggable="false"
-                      aria-expanded={expandedTaskDescSet.has(key)}
-                      aria-controls={descId}
-                      onpointerdown={(e) => e.stopPropagation()}
-                      onclick={(e) => { e.stopPropagation(); toggleTaskDescription(key); }}
-                      ondragstart={(e) => e.preventDefault()}
-                    >
-                      <span class="kcard-desc-toggle-label">
-                        {expandedTaskDescSet.has(key) ? 'Ocultar' : 'Ver más'}
-                      </span>
-                      <span class="kcard-desc-toggle-icon" class:open={expandedTaskDescSet.has(key)}>▾</span>
-                    </button>
-                  {/if}
+        🗄 Archivo{archivedTasks.length > 0 ? ` (${archivedTasks.length})` : ''}
+      </button>
+    </div>
+  </div>
+  {#if showArchive}
+    <div class="kanban-archive">
+      {#each statuses as sta}
+        {@const group = archivedTasks.filter(t => t.status === sta.id)}
+        {#if group.length > 0}
+          <div class="kanban-archive-group card">
+            <div class="kanban-archive-head">
+              <span class="sta-dot" style="background:{sta.color}"></span>
+              <span class="sta-label">{sta.label}</span>
+              <span class="sta-count">{group.length}</span>
+            </div>
+            <div class="kanban-archive-list">
+              {#each group as task (task.id)}
+                <div class="kanban-archive-item">
+                  <div class="ka-main">
+                    <div class="ka-title">{task.title}</div>
+                    <div class="ka-meta">
+                      {#if task.tags?.length}
+                        <span class="ka-tags">{task.tags.join(' · ')}</span>
+                      {/if}
+                      {#if task.created_at}
+                        <span class="ka-date">creada {new Date(task.created_at).toLocaleDateString('es-ES')}</span>
+                      {/if}
+                    </div>
+                  </div>
+                  <div class="kcard-actions">
+                    <select class="kcard-move" onchange={(e) => moveTask(task, (e.target as HTMLSelectElement).value as Task['status'])} value={task.status}>
+                      {#each statuses as s}
+                        <option value={s.id}>{s.label}</option>
+                      {/each}
+                    </select>
+                    <button class="btn btn-secondary" style="font-size:11px;padding:3px 6px;" onclick={() => editTask(task)}>Editar</button>
+                    <button class="btn btn-ghost" style="font-size:11px;color:var(--accent-red);padding:3px 6px;" onclick={() => deleteTask(task.id!)}>✕</button>
+                  </div>
                 </div>
-                {#if task.description && expandedTaskDescSet.has(key)}
-                  <div class="kcard-desc" id={descId} onchange={(e) => onCheckboxChange(task, e)}>{@html renderMd(task.description)}</div>
-                {/if}
-                {#if task.tags?.length && expandedTaskDescSet.has(key)}
+              {/each}
+            </div>
+          </div>
+        {/if}
+      {/each}
+      {#if archivedTasks.length === 0}
+        <div class="kanban-archive-empty card">No hay tareas con más de 3 meses 🗄</div>
+      {/if}
+    </div>
+  {:else}
+    <div class="kanban-board">
+      {#each statuses as sta}
+        {@const isCollapsed = collapsedColumns[sta.id]}
+        <div
+          class="kanban-sta"
+          class:collapsed={isCollapsed}
+          class:wide={sta.id === 'to_review'}
+          ondragover={(e) => e.preventDefault()}
+          ondrop={() => onDrop(sta.id)}
+          role="region"
+          aria-label={sta.label}
+        >
+          <button
+            class="kanban-sta-header"
+            type="button"
+            onclick={() => collapsedColumns[sta.id] = !collapsedColumns[sta.id]}
+            aria-expanded={!isCollapsed}
+          >
+            <span class="sta-toggle" class:collapsed={isCollapsed}>❯</span>
+            <span class="sta-dot" style="background:{sta.color}"></span>
+            <span class="sta-label">{sta.label}</span>
+            <span class="sta-count" class:active={staTasks(sta.id).length > 0} style="--status-color: {sta.color}">
+              {staTasks(sta.id).length}
+              </span>
+          </button>
+          {#if !isCollapsed}
+            <div class="kanban-cards">
+              {#each staTasks(sta.id) as task}
+                {@const key = getTaskKey(task)}
+                {@const descId = getTaskDescDomId(key)}
+                {@const taskPriority = task.id ? hasPriority(task.id) : undefined}
+                <div
+                  id={`card-${task.id ?? key}`}
+                  class="kanban-card"
+                  class:wide={sta.id === 'to_review'}
+                  class:priority-high={taskPriority === 'high'}
+                  class:priority-medium={taskPriority === 'medium'}
+                  class:priority-low={taskPriority === 'low'}
+                  draggable="true"
+                  role="application"
+                  ondragstart={() => onDragStart(task)}
+                >
+                  <div class="kcard-header">
+                    {#if taskPriority}
+                      <span class="kcard-priority" title={`Prioridad: ${taskPriority}`}>
+                        {PRIORITY_ICONS[taskPriority]}
+                      </span>
+                    {/if}
+                    <div class="kcard-title">{task.title}</div>
+                    {#if task.description && task.description.trim() !== ''}
+                      <button
+                        class="kcard-desc-toggle"
+                        type="button"
+                        draggable="false"
+                        aria-expanded={expandedTaskDescSet.has(key)}
+                        aria-controls={descId}
+                        onpointerdown={(e) => e.stopPropagation()}
+                        onclick={(e) => { e.stopPropagation(); toggleTaskDescription(key); }}
+                        ondragstart={(e) => e.preventDefault()}
+                      >
+                        <span class="kcard-desc-toggle-label">
+                          {expandedTaskDescSet.has(key) ? 'Ocultar' : 'Ver más'}
+                        </span>
+                        <span class="kcard-desc-toggle-icon" class:open={expandedTaskDescSet.has(key)}>▾</span>
+                      </button>
+                    {/if}
+                  </div>
+                  {#if task.description && expandedTaskDescSet.has(key)}
+                    <div class="kcard-desc" id={descId} onchange={(e) => onCheckboxChange(task, e)}>{@html renderMd(task.description)}</div>
+                  {/if}
                   <div class="kcard-tags">
-                    {#each task.tags as tag}
+                    {#each task.tags ?? [] as tag}
                       <span class="tag">{tag}</span>
                     {/each}
                   </div>
-                {/if}
-                {#if task.due_date}
-                  <div class="kcard-due">📅 {new Date(task.due_date).toLocaleDateString('es-ES')}</div>
-                {/if}
-                <div class="kcard-actions">
-                  <select class="kcard-move" onchange={(e) => moveTask(task, (e.target as HTMLSelectElement).value as Task['status'])} value={task.status}>
-                    {#each statuses as s}
-                      <option value={s.id}>{s.label}</option>
-                    {/each}
-                  </select>
-                  <button class="btn btn-secondary" style="font-size:11px;padding:3px 6px;" onclick={() => editTask(task)}>Editar</button>
-                  <button class="btn btn-ghost" style="font-size:11px;color:var(--accent-red);padding:3px 6px;" onclick={() => deleteTask(task.id!)}>✕</button>
+                  {#if task.description && !expandedTaskDescSet.has(key)}
+                    <div class="kcard-desc kcard-desc-preview">{task.description}</div>
+                  {/if}
+                  {#if task.due_date}
+                    <div class="kcard-due">📅 {new Date(task.due_date).toLocaleDateString('es-ES')}</div>
+                  {/if}
+                  <div class="kcard-actions">
+                    <select class="kcard-move" onchange={(e) => moveTask(task, (e.target as HTMLSelectElement).value as Task['status'])} value={task.status}>
+                      {#each statuses as s}
+                        <option value={s.id}>{s.label}</option>
+                      {/each}
+                    </select>
+                    <button class="btn btn-secondary" style="font-size:11px;padding:3px 6px;" onclick={() => editTask(task)}>Editar</button>
+                    <button class="btn btn-ghost" style="font-size:11px;color:var(--accent-red);padding:3px 6px;" onclick={() => deleteTask(task.id!)}>✕</button>
+                  </div>
                 </div>
-              </div>
-            {/each}
-          </div>
-        {/if}
-      </div>
-    {/each}
-  </div>
+              {/each}
+            </div>
+          {/if}
+        </div>
+      {/each}
+    </div>
+  {/if}
 </div>
 
 {#if showTaskForm}
@@ -397,6 +479,105 @@
     justify-content: space-between;
     gap: 12px;
     flex-wrap: wrap;
+  }
+
+  .kanban-actions-end {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .kanban-archive-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-family: var(--font-mono);
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 8px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    color: var(--text2);
+    transition: all var(--transition);
+    cursor: pointer;
+  }
+
+  .kanban-archive-toggle:hover { border-color: var(--text3); color: var(--text); }
+
+  .kanban-archive-toggle.active {
+    background: rgba(147, 148, 245, 0.12);
+    border-color: rgba(147, 148, 245, 0.45);
+    color: var(--text);
+  }
+
+  .kanban-archive {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .kanban-archive-group {
+    padding: 14px;
+  }
+
+  .kanban-archive-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .kanban-archive-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .kanban-archive-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg2);
+  }
+
+  .kanban-archive-item .kcard-actions {
+    border-top: none;
+    padding-top: 0;
+    margin-top: 0;
+  }
+
+  .ka-main { flex: 1; min-width: 200px; }
+
+  .ka-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .ka-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 3px;
+    font-size: 11px;
+    color: var(--text3);
+    font-family: var(--font-mono);
+  }
+
+  .ka-tags { color: var(--text2); }
+
+  .kanban-archive-empty {
+    text-align: center;
+    color: var(--text3);
+    font-size: 13px;
+    padding: 24px;
   }
 
   .tag-filters {
@@ -619,7 +800,32 @@
     margin: 4px 0;
   }
   .kcard-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
-  .kcard-due { font-size: 11px; color: var(--text3); font-family: var(--font-mono); margin-bottom: 8px; }
+
+  .kcard-tags:empty { display: none; }
+
+  .kcard-desc-preview {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    white-space: normal;
+    font-family: var(--font-mono);
+  }
+
+  .kcard-due {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    color: var(--text2);
+    font-family: var(--font-mono);
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 2px 8px;
+    margin-bottom: 8px;
+  }
 
   .kcard-desc-toggle {
     display: inline-flex;
