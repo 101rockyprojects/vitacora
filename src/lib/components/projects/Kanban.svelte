@@ -164,7 +164,7 @@
       await repo.tasks.update(editingTask.id, { ...taskForm, updated_at: new Date().toISOString() });
       savePriority(editingTask.id, taskFormPriority);
       if (taskForm.status === 'done' && editingTask.status !== 'done') {
-        await awardXP(userId, 'work', 'task_done', XP_VALUES.task_done, editingTask.id);
+        await awardXP(userId, 'work', 'task_done', XP_VALUES.task_done, editingTask.id, taskForm.title);
       }
     } else {
       const { data } = await repo.tasks.insert(taskForm);
@@ -181,7 +181,7 @@
     if (task.status === sta) return;
     const wasDone = task.status === 'done';
     await repo.tasks.update(task.id!, { status: sta, updated_at: new Date().toISOString() });
-    if (sta === 'done' && !wasDone) await awardXP(userId, 'work', 'task_done', XP_VALUES.task_done, task.id);
+    if (sta === 'done' && !wasDone) await awardXP(userId, 'work', 'task_done', XP_VALUES.task_done, task.id, task.title);
     const { data } = await repo.tasks.list();
     tasks = data || [];
   }

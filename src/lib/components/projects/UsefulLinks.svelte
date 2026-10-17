@@ -23,7 +23,7 @@
       await repo.links.update(editingLinkId, linkForm);
     } else {
       await repo.links.insert(linkForm);
-      await awardXP(userId, 'work', 'useful_link_added', XP_VALUES.useful_link_added);
+      await awardXP(userId, 'work', 'useful_link_added', XP_VALUES.useful_link_added, undefined, linkForm.title || linkForm.url);
     }
     linkForm = { title: '', url: '' };
     editingLinkId = null;

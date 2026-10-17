@@ -174,6 +174,8 @@
         "selfcare",
         "expense_logged",
         XP_VALUES.expense_logged,
+        undefined,
+        expenseForm.name,
       );
     }
 

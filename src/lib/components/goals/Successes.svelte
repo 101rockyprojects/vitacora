@@ -43,14 +43,14 @@
         done: wasDone ? true : wantsDone,
         completed_date: wasDone ? editingSuccess?.completed_date ?? new Date().toISOString() : (wantsDone ? new Date().toISOString() : null)
       });
-      if (wantsDone && !wasDone) await awardXP(userId, 'selfcare', 'success_experience', XP_VALUES.success_experience, editingSuccessId);
+      if (wantsDone && !wasDone) await awardXP(userId, 'selfcare', 'success_experience', XP_VALUES.success_experience, editingSuccessId, successForm.goal_description);
     } else {
       const { data } = await repo.successes.insert({
         ...successForm,
         done: wantsDone,
         completed_date: wantsDone ? new Date().toISOString() : null
       });
-      if (wantsDone && data) await awardXP(userId, 'selfcare', 'success_experience', XP_VALUES.success_experience, data.id);
+      if (wantsDone && data) await awardXP(userId, 'selfcare', 'success_experience', XP_VALUES.success_experience, data.id, successForm.goal_description);
     }
     successForm = { goal_description: '', done: false };
     editingSuccessId = null;
@@ -65,7 +65,7 @@
     const ok = confirm('¿Marcar como completado? Esto no se podrá deshacer.');
     if (!ok) return;
     await repo.successes.update(s.id!, { done: true, completed_date: new Date().toISOString() });
-    await awardXP(userId, 'selfcare', 'success_experience', XP_VALUES.success_experience, s.id);
+    await awardXP(userId, 'selfcare', 'success_experience', XP_VALUES.success_experience, s.id, s.goal_description);
     const { data } = await repo.successes.list();
     successes = data || [];
   }

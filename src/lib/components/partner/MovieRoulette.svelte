@@ -110,7 +110,7 @@
     } else {
       const newItems = Array.isArray(data) ? data : data ? [data] : [];
       if (newItems.length) {
-        await awardXP(userId, 'social', 'movie_added', XP_VALUES.movie_added);
+        await awardXP(userId, 'social', 'movie_added', XP_VALUES.movie_added, undefined, `${newItems.length} nuevo${newItems.length === 1 ? '' : 's'} en la lista`);
       }
       if (skipped > 0) showToast(`${skipped} título(s) omitido(s) por duplicado`);
       else showToast(`${toAdd.length} título(s) agregado(s)`);

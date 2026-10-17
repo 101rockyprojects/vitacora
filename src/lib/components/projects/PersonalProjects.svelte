@@ -23,7 +23,7 @@
       await repo.projects.update(editingProjectId, projectForm);
     } else {
       await repo.projects.insert(projectForm);
-      await awardXP(userId, 'work', 'project_created', XP_VALUES.project_created);
+      await awardXP(userId, 'work', 'project_created', XP_VALUES.project_created, undefined, projectForm.name);
     }
     projectForm = { name: '' };
     editingProjectId = null;

@@ -4,6 +4,7 @@
   import { onMount } from 'svelte';
   import Sidebar from '$lib/components/Sidebar.svelte';
   import NotificationContainer from '$lib/components/NotificationContainer.svelte';
+  import XpToasts from '$lib/components/XpToasts.svelte';
   
   let { data, children } = $props();
   
@@ -66,6 +67,7 @@
   </main>
   {#if data.session && !isAuthPage}
     <NotificationContainer />
+    <XpToasts />
   {/if}
 </div>
 

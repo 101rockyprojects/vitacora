@@ -62,7 +62,7 @@
     if (!name || !todoDateInput) return;
     saving = true;
     await repo.calendarTodos.insert({ name, todo_date: normalizeDate(todoDateInput) });
-    await awardXP(userId, 'selfcare', 'calendar_todo_added', XP_VALUES.calendar_todo_added);
+    await awardXP(userId, 'selfcare', 'calendar_todo_added', XP_VALUES.calendar_todo_added, undefined, name);
     todoInput = '';
     todoDateInput = toIsoDateLocal(new Date());
     const { data } = await repo.calendarTodos.list();
@@ -99,7 +99,8 @@
 
   async function completeTodo(id: string) {
     if (!confirm('¿Marcar tarea como completada?')) return;
-    await awardXP(userId, 'selfcare', 'calendar_todo_added', XP_VALUES.calendar_todo_added);
+    const todoName = calendarTodos.find((t) => t.id === id)?.name;
+    await awardXP(userId, 'selfcare', 'calendar_todo_added', XP_VALUES.calendar_todo_added, undefined, todoName);
     await repo.calendarTodos.remove(id);
     const { data } = await repo.calendarTodos.list();
     calendarTodos = data || [];
@@ -115,7 +116,7 @@
   async function saveCal() {
     saving = true;
     await repo.calendar.insert(calForm);
-    await awardXP(userId, 'selfcare', 'calendar_event_added', XP_VALUES.calendar_event_added);
+    await awardXP(userId, 'selfcare', 'calendar_event_added', XP_VALUES.calendar_event_added, undefined, calForm.event_name);
     calForm = { event_name: '', event_date: '', type: 'event' };
     showCalForm = false;
     const { data } = await repo.calendar.list();
