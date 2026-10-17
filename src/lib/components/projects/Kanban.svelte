@@ -27,10 +27,10 @@
 
   let showTaskForm = $state(false);
   let editingTask = $state<Task | null>(null);
+  let taskModalMode = $state<'view' | 'edit'>('edit');
   let taskForm = $state<Task>({ title: '', status: 'to_do' });
   let draggedTask = $state<Task | null>(null);
   let selectedTags = $state<string[]>(page.data.selectedTags ?? []);
-  let expandedTaskDescKeys = $state<string[]>([]);
   let collapsedColumns = $state<Record<string, boolean>>({
     to_do: false,
     doing: false,
@@ -62,7 +62,6 @@
   $effect(() => { if (typeof window !== 'undefined') loadPriorities(); });
 
   const selectedTagSet = $derived(new Set(selectedTags));
-  const expandedTaskDescSet = $derived(new Set(expandedTaskDescKeys));
   let showArchive = $state(false);
 
   const workFilteredTasks = $derived(
@@ -140,13 +139,9 @@
     return `${task.title}::${createdAt}`;
   }
 
-  function getTaskDescDomId(key: string): string {
-    return `task-desc-${key.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
-  }
-
-  function toggleTaskDescription(key: string) {
-    if (expandedTaskDescSet.has(key)) expandedTaskDescKeys = expandedTaskDescKeys.filter((k) => k !== key);
-    else expandedTaskDescKeys = [...expandedTaskDescKeys, key];
+  function openTaskDetail(t: Task) {
+    editTask(t);
+    taskModalMode = 'view';
   }
 
   let taskFormPriority = $state<'low' | 'medium' | 'high'>('medium');
@@ -156,6 +151,7 @@
     taskForm = { title: '', status: 'to_do', tags };
     editingTask = null;
     taskFormPriority = 'medium';
+    taskModalMode = 'edit';
   }
 
   async function saveTask() {
@@ -198,6 +194,7 @@
     editingTask = t;
     taskForm = { ...t };
     taskFormPriority = (stored as 'low' | 'medium' | 'high') ?? 'medium';
+    taskModalMode = 'edit';
     showTaskForm = true;
   }
 
@@ -348,7 +345,6 @@
             <div class="kanban-cards">
               {#each staTasks(sta.id) as task}
                 {@const key = getTaskKey(task)}
-                {@const descId = getTaskDescDomId(key)}
                 {@const taskPriority = task.id ? hasPriority(task.id) : undefined}
                 <div
                   id={`card-${task.id ?? key}`}
@@ -373,28 +369,21 @@
                         class="kcard-desc-toggle"
                         type="button"
                         draggable="false"
-                        aria-expanded={expandedTaskDescSet.has(key)}
-                        aria-controls={descId}
                         onpointerdown={(e) => e.stopPropagation()}
-                        onclick={(e) => { e.stopPropagation(); toggleTaskDescription(key); }}
+                        onclick={(e) => { e.stopPropagation(); openTaskDetail(task); }}
                         ondragstart={(e) => e.preventDefault()}
                       >
-                        <span class="kcard-desc-toggle-label">
-                          {expandedTaskDescSet.has(key) ? 'Ocultar' : 'Ver más'}
-                        </span>
-                        <span class="kcard-desc-toggle-icon" class:open={expandedTaskDescSet.has(key)}>▾</span>
+                        <span class="kcard-desc-toggle-label">Ver más</span>
+                        <span class="kcard-desc-toggle-icon">↗</span>
                       </button>
                     {/if}
                   </div>
-                  {#if task.description && expandedTaskDescSet.has(key)}
-                    <div class="kcard-desc" id={descId} onchange={(e) => onCheckboxChange(task, e)}>{@html renderMd(task.description)}</div>
-                  {/if}
                   <div class="kcard-tags">
                     {#each task.tags ?? [] as tag}
                       <span class="tag">{tag}</span>
                     {/each}
                   </div>
-                  {#if task.description && !expandedTaskDescSet.has(key)}
+                  {#if task.description && task.description.trim() !== ''}
                     <div class="kcard-desc kcard-desc-preview">{task.description}</div>
                   {/if}
                   {#if task.due_date}
@@ -427,15 +416,77 @@
     role="presentation"
   >
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="task-form-title">
-      <h3 id="task-form-title">{editingTask ? 'Editar tarea' : 'Nueva tarea'}</h3>
-      <form onsubmit={(e) => { e.preventDefault(); saveTask(); }}>
+      <div class="task-modal-header">
+        <h3 id="task-form-title">
+          {taskModalMode === 'view' ? 'Detalles de la tarea' : editingTask ? 'Editar tarea' : 'Nueva tarea'}
+        </h3>
+        <div class="task-modal-header-actions">
+          {#if taskModalMode === 'view'}
+            <button class="btn btn-secondary" style="font-size:12px;padding:5px 10px;" type="button" onclick={() => (taskModalMode = 'edit')}>Editar</button>
+          {/if}
+          <button
+            class="task-modal-close"
+            type="button"
+            aria-label="Cerrar"
+            onclick={() => { showTaskForm = false; resetTaskForm(); }}
+          >✕</button>
+        </div>
+      </div>
+      {#if taskModalMode === 'view'}
+        <div class="task-detail">
+          <div class="task-detail-row">
+            <span class="task-detail-label">Título</span>
+            <span class="task-detail-value">{taskForm.title}</span>
+          </div>
+          <div class="task-detail-row">
+            <span class="task-detail-label">Status</span>
+            <span class="task-detail-value">{statuses.find((sta) => sta.id === taskForm.status)?.label ?? taskForm.status}</span>
+          </div>
+          <div class="task-detail-row">
+            <span class="task-detail-label">Prioridad</span>
+            <span class="task-detail-value">
+              {#if editingTask?.id && hasPriority(editingTask.id)}
+                {PRIORITY_ICONS[hasPriority(editingTask.id) as 'high' | 'medium' | 'low']}
+                {hasPriority(editingTask.id) === 'high' ? 'Alta' : hasPriority(editingTask.id) === 'medium' ? 'Media' : 'Baja'}
+              {:else}
+                —
+              {/if}
+            </span>
+          </div>
+          {#if taskForm.due_date}
+            <div class="task-detail-row">
+              <span class="task-detail-label">Fecha límite</span>
+              <span class="task-detail-value">{new Date(taskForm.due_date).toLocaleDateString('es-ES')}</span>
+            </div>
+          {/if}
+          {#if taskForm.tags && taskForm.tags.length > 0}
+            <div class="task-detail-row">
+              <span class="task-detail-label">Tags</span>
+              <span class="task-detail-tags">
+                {#each taskForm.tags as tag}
+                  <span class="tag">{tag}</span>
+                {/each}
+              </span>
+            </div>
+          {/if}
+          <div class="task-detail-desc">
+            <span class="task-detail-label">Descripción</span>
+            {#if taskForm.description && taskForm.description.trim() !== ''}
+              {@html renderMd(taskForm.description)}
+            {:else}
+              <p class="task-detail-empty">Sin descripción</p>
+            {/if}
+          </div>
+        </div>
+      {:else}
+        <form onsubmit={(e) => { e.preventDefault(); saveTask(); }}>
         <div class="form-group">
           <label for="task-title">Título</label>
           <input id="task-title" bind:value={taskForm.title} placeholder="¿Qué hay que hacer?" />
         </div>
         <div class="form-group">
           <label for="task-desc">Descripción</label>
-          <textarea id="task-desc" bind:value={taskForm.description} rows="2"></textarea>
+          <textarea id="task-desc" bind:value={taskForm.description} rows="8"></textarea>
         </div>
         <div class="form-group">
           <label for="task-status">Status</label>
@@ -471,6 +522,7 @@
           <button type="submit" class="btn btn-primary" disabled={saving}>{saving ? '...' : 'Guardar'}</button>
         </div>
       </form>
+      {/if}
     </div>
   </div>
 {/if}
@@ -911,5 +963,97 @@
 
   @media (max-width: 600px) {
     .kanban-board { grid-template-columns: 1fr; }
+  }
+
+  .task-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .task-modal-header h3 {
+    margin: 0;
+  }
+
+  .task-modal-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .task-modal-close {
+    background: none;
+    border: none;
+    color: var(--text3);
+    font-size: 18px;
+    line-height: 1;
+    padding: 4px 8px;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: color var(--transition);
+  }
+
+  .task-modal-close:hover {
+    color: var(--text);
+  }
+
+  #task-desc {
+    resize: vertical;
+    min-height: 160px;
+    width: 100%;
+  }
+
+  .task-detail {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .task-detail-row {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+
+  .task-detail-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--text3);
+    min-width: 90px;
+    flex-shrink: 0;
+  }
+
+  .task-detail-value {
+    font-size: 14px;
+    color: var(--text);
+  }
+
+  .task-detail-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .task-detail-desc {
+    border-top: 1px solid var(--border);
+    padding-top: 12px;
+    color: var(--text2);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .task-detail-desc .task-detail-label {
+    display: block;
+    margin-bottom: 8px;
+  }
+
+  .task-detail-empty {
+    color: var(--text3);
+    font-style: italic;
   }
 </style>

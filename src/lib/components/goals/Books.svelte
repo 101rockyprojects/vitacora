@@ -270,6 +270,9 @@
       {@const showNotes = expandedBookNotesSet.has(book.id || '')}
       {@const displayRating = getBookDisplayRating(book)}
       <div class="book-card card" class:finished={pct >= 100}>
+        {#if pct >= 100}
+          <span class="book-finished-badge">✓ Terminado</span>
+        {/if}
         <div class="book-cover-info">
           <div class="book-cover-rating">
             <div class="book-cover">
@@ -288,11 +291,13 @@
           </div>
           <div class="book-info">
             <div class="book-title">{book.title}</div>
-            <div class="book-progress-label">{book.current_page} / {book.total_pages} págs</div>
-            <div class="progress-track" style="margin:6px 0;">
-              <div class="progress-fill" style="width:{pct}%;background:{pct>=100?'var(--accent-yellow)':'var(--accent-green)'};"></div>
+            <div class="book-progress">
+              <div class="book-progress-label">{book.current_page} / {book.total_pages} págs</div>
+              <div class="progress-track" style="margin:6px 0;">
+                <div class="progress-fill" style="width:{pct}%;background:{pct>=100?'var(--accent-yellow)':'var(--accent-green)'};"></div>
+              </div>
+              <div class="book-pct">{pct >= 100 ? '100%' : `${pct}%`}</div>
             </div>
-            <div class="book-pct">{pct >= 100 ? 'Terminado' : `${pct}%`}</div>
           </div>
         </div>
         {#if book.notes}
@@ -309,7 +314,7 @@
             <div class="book-notes">{@html renderMd(book.notes)}</div>
           {/if}
         {/if}
-        <div class="card-actions">
+        <div class="card-actions book-card-actions">
           <button class="small-btn btn-ghost" onclick={() => editBook(book)}>🖋</button>
           <button class="small-btn btn-ghost" onclick={() => deleteBook(book.id!)}>✕</button>
         </div>
@@ -493,12 +498,15 @@
 <style>
   .books-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    grid-auto-rows: 1fr;
     gap: 16px;
   }
 
   .book-card {
     position: relative;
+    display: flex;
+    flex-direction: column;
     transition: transform var(--transition);
   }
 
@@ -506,38 +514,70 @@
 
   .book-card.finished { border-color: var(--accent-yellow); }
 
+  .book-finished-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: var(--accent-yellow);
+    color: var(--bg);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    padding: 3px 8px;
+    border-radius: 999px;
+  }
+
+  .book-card-actions {
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+    justify-content: flex-end;
+  }
+
   .book-cover-info {
     display: flex;
     gap: 14px;
+    flex: 1;
+    min-height: 0;
   }
 
   .book-cover-rating {
     display: flex;
     flex-direction: column;
     align-items: center;
-    height: 100%;
+    gap: 6px;
+    flex-shrink: 0;
   }
 
   .book-cover {
-    width: 48px;
-    height: 72px;
-    border-radius: 4px;
+    width: 72px;
+    height: 108px;
+    border-radius: 6px;
     background: var(--surface2);
-    font-size: 20px;
-    font-weight: 800;
+    font-size: 24px;
+    font-weight: 700;
     color: var(--accent-green);
-    flex-shrink: 0;
     overflow: hidden;
   }
 
   .book-cover img { width: 100%; height: 100%; object-fit: cover; }
 
-  .book-info { flex: 1; min-width: 0; }
+  .book-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 
   .book-title {
     font-weight: 700;
     font-size: 14px;
-    margin-bottom: 4px;
+    line-height: 1.3;
+    margin-bottom: 6px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .book-progress {
+    margin-top: auto;
   }
 
   .book-progress-label {
@@ -639,7 +679,7 @@
     border: 1px solid var(--border);
     border-radius: 6px;
     padding: 4px 8px;
-    margin-top: 8px;
+    margin-top: 10px;
     cursor: pointer;
     transition: all var(--transition);
   }

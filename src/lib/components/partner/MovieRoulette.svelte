@@ -324,54 +324,76 @@
   </div>
 
   {#if filteredMovies.length > 0}
-    <div class="ratings-section">
-      <h3 class="ideas-group-label">Lista ({filteredMovies.length})</h3>
-      <div class="ratings-grid">
-        {#each filteredMovies as movie (movie.id)}
-          {@const avg = movie.avg_rating || 0}
-          {@const isRated = movie.total_ratings && movie.total_ratings > 0}
-          <button type="button" class="rating-card card" onclick={() => openMovieModal(movie)}>
-            {#if movie.poster_url}
-              <img src={movie.poster_url} alt={movie.title} class="rating-poster" />
+    {#snippet movieCard(movie: MovieWithRatings)}
+      {@const avg = movie.avg_rating || 0}
+      {@const isRated = movie.total_ratings && movie.total_ratings > 0}
+      <button type="button" class="rating-card card" onclick={() => openMovieModal(movie)}>
+        {#if movie.poster_url}
+          <img src={movie.poster_url} alt={movie.title} class="rating-poster" />
+        {:else}
+          <div class="rating-poster-placeholder">🎬</div>
+        {/if}
+        <div class="rating-info">
+          <div class="rating-title">{movie.title}</div>
+          <div class="rating-stars">
+            {#if isRated}
+              <span class="rating-avg">{avg}</span>
             {:else}
-              <div class="rating-poster-placeholder">🎬</div>
+              <span class="rating-avg">—</span>
             {/if}
-            <div class="rating-info">
-              <div class="rating-title">{movie.title}</div>
-              <div class="rating-stars">
-                {#if isRated}
-                  <span class="rating-avg">{avg}</span>
+            {#each [1,2,3,4,5] as s}
+              <span class="star">
+                {#if s <= avg}
+                  <span class="filled">★</span>
                 {:else}
-                  <span class="rating-avg">—</span>
+                  <span>☆</span>
                 {/if}
-                {#each [1,2,3,4,5] as s}
-                  <span class="star">
-                    {#if s <= avg}
-                      <span class="filled">★</span>
-                    {:else}
-                      <span>☆</span>
-                    {/if}
-                  </span>
-                {/each}
-              </div>
-              <div class="rating-partner-stars">
-                {#if movie.user_rating}
-                  <span class="rating-you">Tú: {movie.user_rating}/5 ⭐</span>
-                {/if}
-                {#if movie.partner_rating}
-                  <span class="rating-partner">Pareja: {movie.partner_rating}/5 ⭐</span>
-                {/if}
-              </div>
-              {#if movie.resources}
-                <div class="md-preview rating-resources">
-                  {@html renderMd(movie.resources)}
-                </div>
-              {/if}
+              </span>
+            {/each}
+          </div>
+          <div class="rating-partner-stars">
+            {#if movie.user_rating}
+              <span class="rating-you">Tú: {movie.user_rating}/5 ⭐</span>
+            {/if}
+            {#if movie.partner_rating}
+              <span class="rating-partner">Pareja: {movie.partner_rating}/5 ⭐</span>
+            {/if}
+          </div>
+          {#if movie.resources}
+            <div class="md-preview rating-resources">
+              {@html renderMd(movie.resources)}
             </div>
-          </button>
-        {/each}
-      </div>
+          {/if}
+        </div>
+      </button>
+    {/snippet}
+
+    <div class="ratings-section">
+      <h3 class="ideas-group-label">Pendientes de ver ({moviesWithoutRatings.length})</h3>
+      {#if moviesWithoutRatings.length > 0}
+        <div class="ratings-grid">
+          {#each moviesWithoutRatings as movie (movie.id)}
+            {@render movieCard(movie)}
+          {/each}
+        </div>
+      {:else}
+        <p class="ratings-empty">Nada pendiente por aquí 🎉</p>
+      {/if}
     </div>
+
+    {@const ratedMovies = filteredMovies
+      .filter((m) => !!m.user_rating)
+      .sort((a, b) => (b.user_rating ?? 0) - (a.user_rating ?? 0) || (b.avg_rating || 0) - (a.avg_rating || 0))}
+    {#if ratedMovies.length > 0}
+      <div class="ratings-section">
+        <h3 class="ideas-group-label">Ya calificadas ({ratedMovies.length})</h3>
+        <div class="ratings-grid">
+          {#each ratedMovies as movie (movie.id)}
+            {@render movieCard(movie)}
+          {/each}
+        </div>
+      </div>
+    {/if}
   {/if}
 </section>
 
@@ -615,6 +637,12 @@
     font-family: var(--font-mono);
     margin-bottom: 12px;
     margin-top: 8px;
+  }
+
+  .ratings-empty {
+    color: var(--text3);
+    font-size: 13px;
+    margin: 0 0 8px;
   }
 
   .ratings-section { margin-top: 32px; }
