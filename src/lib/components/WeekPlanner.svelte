@@ -951,7 +951,7 @@
   .week-title {
     font-family: var(--font-mono);
     font-size: 12px;
-    font-weight: 600;
+    font-weight: 700;
     color: var(--text);
     text-transform: uppercase;
     letter-spacing: 0.08em;

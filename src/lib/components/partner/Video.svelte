@@ -60,7 +60,7 @@
     width: 100%;
     text-align: center;
     font-family: var(--font-mono);
-    font-weight: 600;
+    font-weight: 700;
     background: var(--bg);
     color: var(--text);
     padding: 8px 14px;

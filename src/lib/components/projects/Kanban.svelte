@@ -497,7 +497,7 @@
     gap: 6px;
     font-size: 12px;
     font-family: var(--font-mono);
-    font-weight: 600;
+    font-weight: 700;
     padding: 4px 10px;
     border-radius: 8px;
     background: var(--bg2);
@@ -611,7 +611,7 @@
     color: var(--text2);
     text-transform: uppercase;
     font-family: var(--font-mono);
-    font-weight: 600;
+    font-weight: 700;
     transition: all var(--transition);
     display: inline-flex;
     align-items: center;

@@ -836,7 +836,7 @@
     font-size: 13px;
     color: var(--text3);
     font-family: var(--font-mono);
-    font-weight: 500;
+    font-weight: 400;
   }
 
   .toggle-section {
