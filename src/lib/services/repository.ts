@@ -13,6 +13,7 @@ import type {
   MemoryPhoto,
   MovieRating,
   MovieWatchlist,
+  WorkTodo,
   MovieWithRatings,
   Project,
   Reward,
@@ -214,6 +215,16 @@ export function createRepository(
       update: (id: string, values: Partial<CalendarTodo>) =>
         client.from('calendar_todos').update(values).eq('id', id),
       remove: (id: string) => client.from('calendar_todos').delete().eq('id', id)
+    },
+
+    workTodos: {
+      list: () =>
+        client.from('work_todos').select('*').eq('user_id', uid()).order('created_at', { ascending: true }),
+      insert: (item: Omit<WorkTodo, 'id' | 'user_id'>) =>
+        client.from('work_todos').insert({ ...item, user_id: uid() }),
+      update: (id: string, values: Partial<WorkTodo>) =>
+        client.from('work_todos').update(values).eq('id', id),
+      remove: (id: string) => client.from('work_todos').delete().eq('id', id)
     },
 
     expenses: {

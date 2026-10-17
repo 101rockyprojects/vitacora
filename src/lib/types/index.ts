@@ -165,6 +165,14 @@ export interface CalendarTodo {
   created_at?: string;
 }
 
+export interface WorkTodo {
+  id?: string;
+  user_id?: string;
+  name: string;
+  done: boolean;
+  created_at?: string;
+}
+
 export interface Expense {
   id?: string;
   user_id?: string;
