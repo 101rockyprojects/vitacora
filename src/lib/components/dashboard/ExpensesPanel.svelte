@@ -1,7 +1,7 @@
 <script lang="ts">
-  import type { Expense } from '$lib/types';
-  import PieChart from '$lib/components/PieChart.svelte';
-  import { currencyStore } from '$lib/stores/currency.svelte';
+  import type { Expense } from "$lib/types";
+  import PieChart from "$lib/components/PieChart.svelte";
+  import { currencyStore } from "$lib/stores/currency.svelte";
 
   interface Props {
     expenses?: Expense[];
@@ -12,8 +12,12 @@
   const now = new Date();
   const currentMonth = now.toISOString().substring(0, 7);
 
-  const currentMonthExpenses = $derived(expenses.filter(e => e.expense_date.startsWith(currentMonth)));
-  const currentMonthTotal = $derived(currentMonthExpenses.reduce((sum, e) => sum + (e.cost || 0), 0));
+  const currentMonthExpenses = $derived(
+    expenses.filter((e) => e.expense_date.startsWith(currentMonth)),
+  );
+  const currentMonthTotal = $derived(
+    currentMonthExpenses.reduce((sum, e) => sum + (e.cost || 0), 0),
+  );
 
   const chartFormatter = $derived.by(() => {
     currencyStore.value;
@@ -23,21 +27,35 @@
   const currentMonthByCategory = $derived(() => {
     const categories: Record<string, number> = {};
     for (const e of currentMonthExpenses) {
-      const cat = e.category || 'Sin categoría';
+      const cat = e.category || "Sin categoría";
       categories[cat] = (categories[cat] || 0) + (e.cost || 0);
     }
     const total = Object.values(categories).reduce((a, b) => a + b, 0);
     return Object.entries(categories)
-      .map(([name, total]) => ({ name, total, percentage: total > 0 ? (total / total) * 100 : 0 }))
+      .map(([name, total]) => ({
+        name,
+        total,
+        percentage: total > 0 ? (total / total) * 100 : 0,
+      }))
       .sort((a, b) => b.total - a.total);
   });
 </script>
 
 <div class="card expenses-card">
-  <h3 class="card-title">Gastos del mes <a href="/goals?tab=expenses" class="card-link">Ver gastos →</a></h3>
+  <h3 class="card-title">
+    Gastos del mes <a href="/goals?tab=expenses" class="card-link"
+      >Ver gastos →</a
+    >
+  </h3>
   {#if currentMonthByCategory().length > 0}
     <div class="expenses-chart">
-      <PieChart data={currentMonthByCategory()} type="pie" valueFontSize={18} height={230} moneyFormatter={chartFormatter} />
+      <PieChart
+        data={currentMonthByCategory()}
+        type="pie"
+        valueFontSize={18}
+        height={450}
+        moneyFormatter={chartFormatter}
+      />
     </div>
     <div class="month-expense-total">
       Total: <span>{currencyStore.format(currentMonthTotal)}</span>
@@ -82,7 +100,7 @@
 
   .month-expense-total {
     text-align: center;
-    font-size: 12px;
+    font-size: 15px;
     color: var(--text2);
     font-family: var(--font-mono);
   }
@@ -90,6 +108,6 @@
   .month-expense-total span {
     font-weight: 700;
     color: var(--accent-yellow);
-    font-size: 14px;
+    font-size: 20px;
   }
 </style>
