@@ -75,7 +75,15 @@
     if (!editingSkillId) return;
     mdSaving = true;
     await repo.skillsMd.update(editingSkillId, { content: formatLinks(mdContent), updated_at: new Date().toISOString() });
-    await awardXP(userId, 'education', 'skill_document_updated', XP_VALUES.skill_document_updated, editingSkillId);
+    const skillIndex = Math.max(skills.findIndex((s) => s.id === editingSkillId), 0);
+    await awardXP(
+      userId,
+      'education',
+      'skill_document_updated',
+      XP_VALUES.skill_document_updated,
+      editingSkillId,
+      getSkillName(mdContent, skillIndex)
+    );
     const { data } = await repo.skillsMd.list();
     skills = data || [];
     mdSaving = false;

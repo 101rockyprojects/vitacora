@@ -1,8 +1,8 @@
 <script lang="ts">
   import { page } from '$app/state';
   import { createRepository } from '$lib/services/repository';
-  import { levelFromXp, getAreaXP, AREAS, PREDEFINED_BADGES } from '$lib/utils/xp';
-  import type { UserBadge } from '$lib/types';
+  import { levelFromXp, getAreaXP, AREAS, PREDEFINED_BADGES, xpSourceLabel } from '$lib/utils/xp';
+  import type { UserBadge, XpLog } from '$lib/types';
   import html2canvas from 'html2canvas';
 
   const userId = $derived(page.data.user?.id ?? page.data.session?.user?.id ?? '');
@@ -11,7 +11,7 @@
   let initialized = $state(false);
   let areaXP: Record<string, number> = $state({});
   let userBadges = $state<UserBadge[]>([]);
-  let xpLog = $state<any[]>([]);
+  let xpLog = $state<XpLog[]>([]);
   let loading = $state(true);
   let sharing = $state(false);
 
@@ -324,7 +324,7 @@
         {#each xpLog as log}
           <div class="activity-item">
             <span class="activity-dot" style="background:{areaColor(log.area)}"></span>
-            <span class="activity-source">{log.source_type.replace(/_/g, ' ')}</span>
+            <span class="activity-source">{log.message?.trim() || xpSourceLabel(log.source_type)}</span>
             <span class="activity-area">{areaIcon(log.area)} {areaLabel(log.area)}</span>
             <span class="activity-xp">+{log.xp_gained} XP</span>
             <span class="activity-date">{formatDate(log.date)}</span>

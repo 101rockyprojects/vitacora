@@ -156,8 +156,8 @@
         await repo.bookCategoryRatings.upsertMany(editingBook.id, ratingsToSave);
       }
 
-      if (isFinished && !wasFinished) await awardXP(userId, 'education', 'book_finished', XP_VALUES.book_finished, editingBook.id);
-      else await awardXP(userId, 'education', 'book_page_update', XP_VALUES.book_page_update);
+      if (isFinished && !wasFinished) await awardXP(userId, 'education', 'book_finished', XP_VALUES.book_finished, editingBook.id, bookForm.title);
+      else await awardXP(userId, 'education', 'book_page_update', XP_VALUES.book_page_update, undefined, bookForm.title);
     } else {
       const { data } = await repo.books.insert(bookData);
       if (data) {
@@ -168,7 +168,7 @@
           }));
           await repo.bookCategoryRatings.upsertMany(data.id, ratingsToSave);
         }
-        if (isFinished) await awardXP(userId, 'education', 'book_finished', XP_VALUES.book_finished, data.id);
+        if (isFinished) await awardXP(userId, 'education', 'book_finished', XP_VALUES.book_finished, data.id, bookForm.title);
       }
     }
 

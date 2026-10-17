@@ -1,4 +1,5 @@
 import { createRepository } from '$lib/services/repository';
+import { xpToastStore } from '$lib/stores/xpToast.svelte';
 
 export const XP_VALUES = {
   task_done: 50,
@@ -20,6 +21,31 @@ export const XP_VALUES = {
   expense_logged: 15,
   streak_7_days: 250
 };
+
+export const XP_SOURCE_LABELS: Record<string, string> = {
+  task_done: 'Tarea completada',
+  book_finished: 'Libro terminado',
+  book_page_update: 'Página leída',
+  success_experience: 'Experiencia registrada',
+  learning_added: 'Aprendizaje registrado',
+  memory_added: 'Recuerdo guardado',
+  daily_login: 'Sesión diaria',
+  reward_earned: 'Recompensa canjeada',
+  standup_note_added: 'Nota de standup',
+  project_created: 'Proyecto creado',
+  useful_link_added: 'Enlace guardado',
+  skill_document_updated: 'Skills.md actualizado',
+  calendar_event_added: 'Evento añadido',
+  calendar_todo_added: 'Pendiente añadido',
+  date_idea_added: 'Idea de cita añadida',
+  movie_added: 'Película añadida',
+  expense_logged: 'Gasto registrado',
+  streak_7_days: 'Racha de 7 días'
+};
+
+export function xpSourceLabel(sourceType: string): string {
+  return XP_SOURCE_LABELS[sourceType] ?? sourceType.replace(/_/g, ' ');
+}
 
 export const AREAS = [
   { key: 'education', label: 'Educación', color: '#A8E6CF', icon: '📚' },
@@ -48,19 +74,26 @@ export async function awardXP(
   area: string,
   sourceType: string,
   xpAmount: number,
-  sourceId?: string
+  sourceId?: string,
+  detail?: string
 ) {
   if (!userId) return false;
   const repo = createRepository(userId);
+  const message = detail?.trim() ? detail.trim() : null;
   const { error } = await repo.xp.insertLog({
     source_type: sourceType,
     source_id: sourceId,
     xp_gained: xpAmount,
     area,
-    date: new Date().toISOString()
+    date: new Date().toISOString(),
+    ...(message ? { message } : {})
   });
-  if (error) console.error('XP award error:', error);
-  return !error;
+  if (error) {
+    console.error('XP award error:', error);
+    return false;
+  }
+  xpToastStore.show(xpAmount, detail?.trim() || xpSourceLabel(sourceType));
+  return true;
 }
 
 export async function getAreaXP(userId: string): Promise<Record<string, number>> {
