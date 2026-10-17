@@ -37,7 +37,7 @@
   <h3 class="card-title">Gastos del mes <a href="/goals?tab=expenses" class="card-link">Ver gastos →</a></h3>
   {#if currentMonthByCategory().length > 0}
     <div class="expenses-chart">
-      <PieChart data={currentMonthByCategory()} type="pie" valueFontSize={18} moneyFormatter={chartFormatter} />
+      <PieChart data={currentMonthByCategory()} type="pie" valueFontSize={18} height={230} moneyFormatter={chartFormatter} />
     </div>
     <div class="month-expense-total">
       Total: <span>{currencyStore.format(currentMonthTotal)}</span>
@@ -74,8 +74,10 @@
   .expenses-chart {
     display: flex;
     justify-content: center;
-    margin: 10px 0;
-    min-height: 280px;
+    align-items: center;
+    flex: 1;
+    min-height: 0;
+    margin: 4px 0;
   }
 
   .month-expense-total {

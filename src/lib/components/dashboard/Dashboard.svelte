@@ -213,10 +213,10 @@
 
   @media (min-width: 1151px) {
     .dash-grid {
-      grid-template-columns: repeat(5, minmax(0, 1fr));
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       grid-template-areas:
-        "motive tasks books exp exp"
-        "xp     tasks books exp exp";
+        "motive tasks exp exp"
+        "xp     books exp exp";
     }
     .bento-tasks { grid-area: tasks; }
     .bento-books { grid-area: books; }
