@@ -1,13 +1,15 @@
 <script lang="ts">
-  import type { Expense, Subscription } from '$lib/types';
-  import { createRepository } from '$lib/services/repository';
-  import { awardXP, XP_VALUES } from '$lib/utils/xp';
-  import PieChart from '$lib/components/PieChart.svelte';
-  import { page } from '$app/state';
-  import { currencyStore } from '$lib/stores/currency.svelte';
+  import type { Expense, Subscription } from "$lib/types";
+  import { createRepository } from "$lib/services/repository";
+  import { awardXP, XP_VALUES } from "$lib/utils/xp";
+  import PieChart from "$lib/components/PieChart.svelte";
+  import { page } from "$app/state";
+  import { currencyStore } from "$lib/stores/currency.svelte";
 
   let props: { userId?: string } = $props();
-  const userId = $derived(props.userId ?? page.data.user?.id ?? page.data.session?.user?.id ?? '');
+  const userId = $derived(
+    props.userId ?? page.data.user?.id ?? page.data.session?.user?.id ?? "",
+  );
 
   const repo = $derived(createRepository(userId));
   let expenses = $state<Expense[]>([]);
@@ -16,13 +18,18 @@
 
   let showExpenseForm = $state(false);
   let editingExpenseId = $state<string | null>(null);
-  let expenseForm = $state<Expense>({ name: '', category: '', cost: 0, expense_date: new Date().toISOString().split('T')[0] });
+  let expenseForm = $state<Expense>({
+    name: "",
+    category: "",
+    cost: 0,
+    expense_date: new Date().toISOString().split("T")[0],
+  });
   let isSubscription = $state(false);
   let subscriptionPeriod = $state(1);
 
-  let expenseFilterCategory = $state('');
-  let expenseFilterStartDate = $state('');
-  let expenseFilterEndDate = $state('');
+  let expenseFilterCategory = $state("");
+  let expenseFilterStartDate = $state("");
+  let expenseFilterEndDate = $state("");
   let saving = $state(false);
 
   function formatCurrency(amount: number): string {
@@ -36,12 +43,12 @@
 
   function initDates() {
     const now = new Date();
-    expenseFilterStartDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-    expenseFilterEndDate = '';
+    expenseFilterStartDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+    expenseFilterEndDate = "";
   }
 
   $effect(() => {
-    if (typeof window !== 'undefined' && !expenseFilterStartDate) {
+    if (typeof window !== "undefined" && !expenseFilterStartDate) {
       initDates();
     }
   });
@@ -56,40 +63,48 @@
     if (!userId) return;
     const [expRes, subRes] = await Promise.all([
       repo.expenses.list(),
-      repo.subscriptions.list()
+      repo.subscriptions.list(),
     ]);
     expenses = expRes.data || [];
     subscriptions = subRes.data || [];
     loading = false;
   }
 
-  const usedCategories = $derived([...new Set(expenses.map(e => e.category))].filter(Boolean));
+  const usedCategories = $derived(
+    [...new Set(expenses.map((e) => e.category))].filter(Boolean),
+  );
 
   const filteredExpenses = $derived.by(() => {
     let result = [...expenses];
     if (expenseFilterCategory) {
-      result = result.filter(e => e.category === expenseFilterCategory);
+      result = result.filter((e) => e.category === expenseFilterCategory);
     }
     if (expenseFilterStartDate) {
-      result = result.filter(e => e.expense_date >= expenseFilterStartDate);
+      result = result.filter((e) => e.expense_date >= expenseFilterStartDate);
     }
     if (expenseFilterEndDate) {
-      result = result.filter(e => e.expense_date <= expenseFilterEndDate);
+      result = result.filter((e) => e.expense_date <= expenseFilterEndDate);
     }
     return result;
   });
 
-  const expensesTotal = $derived(filteredExpenses.reduce((sum, e) => sum + (e.cost || 0), 0));
+  const expensesTotal = $derived(
+    filteredExpenses.reduce((sum, e) => sum + (e.cost || 0), 0),
+  );
 
   const expensesByCategory = $derived.by(() => {
     const categories: Record<string, number> = {};
     for (const e of filteredExpenses) {
-      const cat = e.category || 'Sin categoría';
+      const cat = e.category || "Sin categoría";
       categories[cat] = (categories[cat] || 0) + (e.cost || 0);
     }
     const grandTotal = Object.values(categories).reduce((a, b) => a + b, 0);
     return Object.entries(categories)
-      .map(([name, total]) => ({ name, total, percentage: grandTotal > 0 ? (total / grandTotal) * 100 : 0 }))
+      .map(([name, total]) => ({
+        name,
+        total,
+        percentage: grandTotal > 0 ? (total / grandTotal) * 100 : 0,
+      }))
       .sort((a, b) => b.total - a.total);
   });
 
@@ -104,9 +119,12 @@
       .sort(([a], [b]) => b.localeCompare(a))
       .map(([month, items]) => ({
         month,
-        monthLabel: new Date(month + '-01').toLocaleDateString('es-ES', { year: 'numeric', month: 'long' }),
+        monthLabel: new Date(month + "-01").toLocaleDateString("es-ES", {
+          year: "numeric",
+          month: "long",
+        }),
         items,
-        total: items.reduce((sum, e) => sum + (e.cost || 0), 0)
+        total: items.reduce((sum, e) => sum + (e.cost || 0), 0),
       }));
   });
 
@@ -114,7 +132,7 @@
     const base = sub.last_paid_date || sub.start_date;
     const next = new Date(base);
     next.setMonth(next.getMonth() + sub.period_months);
-    return next.toISOString().split('T')[0];
+    return next.toISOString().split("T")[0];
   }
 
   function getDaysUntilPayment(sub: Subscription): number {
@@ -122,40 +140,57 @@
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     next.setHours(0, 0, 0, 0);
-    return Math.ceil((next.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    return Math.ceil(
+      (next.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
+    );
   }
 
   function resetExpenseForm() {
-    expenseForm = { name: '', category: '', cost: 0, expense_date: new Date().toISOString().split('T')[0] };
+    expenseForm = {
+      name: "",
+      category: "",
+      cost: 0,
+      expense_date: new Date().toISOString().split("T")[0],
+    };
     editingExpenseId = null;
     isSubscription = false;
     subscriptionPeriod = 1;
   }
 
   async function saveExpense() {
-    if (!expenseForm.name.trim() || !expenseForm.category.trim() || expenseForm.cost <= 0) return;
+    if (
+      !expenseForm.name.trim() ||
+      !expenseForm.category.trim() ||
+      expenseForm.cost <= 0
+    )
+      return;
     saving = true;
     if (editingExpenseId) {
       await repo.expenses.update(editingExpenseId, { ...expenseForm });
     } else {
       await repo.expenses.insert(expenseForm);
-      await awardXP(userId, 'selfcare', 'expense_logged', XP_VALUES.expense_logged);
+      await awardXP(
+        userId,
+        "selfcare",
+        "expense_logged",
+        XP_VALUES.expense_logged,
+      );
     }
 
     if (isSubscription && !editingExpenseId) {
       const nameKey = expenseForm.name.trim().toLowerCase();
-      const existing = subscriptions.find(
-        (s) => s.is_active === true && s.name.trim().toLowerCase() === nameKey
-      ) ?? subscriptions.find(
-        (s) => s.name.trim().toLowerCase() === nameKey
-      );
+      const existing =
+        subscriptions.find(
+          (s) =>
+            s.is_active === true && s.name.trim().toLowerCase() === nameKey,
+        ) ?? subscriptions.find((s) => s.name.trim().toLowerCase() === nameKey);
       if (existing?.id) {
         await repo.subscriptions.update(existing.id, {
           cost: expenseForm.cost,
           category: expenseForm.category,
           period_months: subscriptionPeriod,
           last_paid_date: expenseForm.expense_date,
-          is_active: true
+          is_active: true,
         });
       } else {
         await repo.subscriptions.insert({
@@ -165,7 +200,7 @@
           start_date: expenseForm.expense_date,
           period_months: subscriptionPeriod,
           is_active: true,
-          last_paid_date: expenseForm.expense_date
+          last_paid_date: expenseForm.expense_date,
         });
       }
     }
@@ -184,25 +219,25 @@
   }
 
   async function deleteExpense(id: string) {
-    if (!confirm('¿Eliminar gasto?')) return;
+    if (!confirm("¿Eliminar gasto?")) return;
     await repo.expenses.remove(id);
     await loadData();
   }
 
   function clearExpenseFilters() {
-    expenseFilterCategory = '';
+    expenseFilterCategory = "";
     initDates();
   }
 
   async function markSubscriptionPaid(sub: Subscription) {
     if (!sub.id) return;
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toISOString().split("T")[0];
     await repo.subscriptions.update(sub.id, { last_paid_date: today });
     await repo.expenses.insert({
       name: sub.name,
       category: sub.category,
       cost: sub.cost,
-      expense_date: today
+      expense_date: today,
     });
     await loadData();
   }
@@ -214,7 +249,7 @@
   }
 
   async function deleteSubscription(id: string) {
-    if (!confirm('¿Eliminar suscripción?')) return;
+    if (!confirm("¿Eliminar suscripción?")) return;
     await repo.subscriptions.remove(id);
     await loadData();
   }
@@ -229,9 +264,19 @@
   </div>
 
   <div class="expenses-toolbar">
-    <button class="btn btn-primary" onclick={() => { resetExpenseForm(); showExpenseForm = true; }}>+ Agregar gasto</button>
-    <button class="currency-toggle" onclick={() => currencyStore.toggle()} title="Cambiar moneda">
-      {currencyStore.value === 'dollar' ? '$ Dólar' : '€ Euro'}
+    <button
+      class="btn btn-primary"
+      onclick={() => {
+        resetExpenseForm();
+        showExpenseForm = true;
+      }}>+ Agregar gasto</button
+    >
+    <button
+      class="currency-toggle"
+      onclick={() => currencyStore.toggle()}
+      title="Cambiar moneda"
+    >
+      {currencyStore.value === "dollar" ? "$ Dólar" : "€ Euro"}
     </button>
   </div>
 
@@ -247,20 +292,35 @@
     </label>
     <label class="filter-label">
       <span>Desde</span>
-      <input type="date" bind:value={expenseFilterStartDate} class="expense-filter-date" />
+      <input
+        type="date"
+        bind:value={expenseFilterStartDate}
+        class="expense-filter-date"
+      />
     </label>
     <label class="filter-label">
       <span>Hasta</span>
-      <input type="date" bind:value={expenseFilterEndDate} class="expense-filter-date" />
+      <input
+        type="date"
+        bind:value={expenseFilterEndDate}
+        class="expense-filter-date"
+      />
     </label>
     {#if expenseFilterCategory || expenseFilterEndDate}
-      <button class="btn btn-ghost" onclick={clearExpenseFilters}>Limpiar</button>
+      <button class="btn btn-ghost" onclick={clearExpenseFilters}
+        >Limpiar</button
+      >
     {/if}
   </div>
 
   {#if !expenseFilterCategory && expensesByCategory.length > 0}
     <div class="card expenses-chart-card">
-      <PieChart data={expensesByCategory} type="pie" title="Gastos Totales" moneyFormatter={chartFormatter} />
+      <PieChart
+        data={expensesByCategory}
+        type="pie"
+        title="Gastos Totales"
+        moneyFormatter={chartFormatter}
+      />
       <div class="expenses-total">
         Total: <span class="total-amount">{formatCurrency(expensesTotal)}</span>
       </div>
@@ -269,7 +329,16 @@
     {@const monthData = expensesByMonth}
     {@const grandTotal = monthData.reduce((sum, m) => sum + m.total, 0)}
     <div class="card expenses-total-card">
-      <PieChart data={monthData.map(m => ({ name: m.monthLabel, total: m.total, percentage: grandTotal > 0 ? (m.total / grandTotal) * 100 : 0 }))} type="pie" title="Gastos en {expenseFilterCategory}" moneyFormatter={chartFormatter} />
+      <PieChart
+        data={monthData.map((m) => ({
+          name: m.monthLabel,
+          total: m.total,
+          percentage: grandTotal > 0 ? (m.total / grandTotal) * 100 : 0,
+        }))}
+        type="pie"
+        title="Gastos en {expenseFilterCategory}"
+        moneyFormatter={chartFormatter}
+      />
       <div class="expenses-total">
         Total: <span class="total-amount">{formatCurrency(expensesTotal)}</span>
       </div>
@@ -277,13 +346,13 @@
   {/if}
 
   {#if expensesByMonth.length === 0}
-    <div class="empty-state card">Agrega tus primeros gastos 💰</div>
+    <div class="empty-state card">Agrega tus primeros gastos</div>
   {:else}
     <div class="expenses-groups">
       {#each expensesByMonth as monthGroup}
         <div class="expense-month-group">
           <div class="expense-month-header">
-            <span class="month-label">{monthGroup.monthLabel}</span>
+            <h4 class="subscriptions-title">{monthGroup.monthLabel}</h4>
             <span class="month-total">{formatCurrency(monthGroup.total)}</span>
           </div>
           <div class="expense-items">
@@ -295,11 +364,19 @@
                 </div>
                 <div class="expense-meta">
                   <div class="expense-cost">{formatCurrency(exp.cost)}</div>
-                  <div class="expense-date">{new Date(exp.expense_date).toLocaleDateString('es-ES')}</div>
+                  <div class="expense-date">
+                    {new Date(exp.expense_date).toLocaleDateString("es-ES")}
+                  </div>
                 </div>
                 <div class="card-actions-inline">
-                  <button class="small-btn btn-secondary" onclick={() => editExpense(exp)}>🖋</button>
-                  <button class="small-btn btn-ghost" onclick={() => deleteExpense(exp.id!)}>✕</button>
+                  <button
+                    class="small-btn btn-secondary"
+                    onclick={() => editExpense(exp)}>🖋</button
+                  >
+                  <button
+                    class="small-btn btn-ghost"
+                    onclick={() => deleteExpense(exp.id!)}>✕</button
+                  >
                 </div>
               </div>
             {/each}
@@ -322,23 +399,37 @@
               <div class="sub-category">{sub.category}</div>
             </div>
             <div class="sub-dates">
-              <div class="sub-next" class:urgent={sub.is_active && daysLeft <= 5}>
-                Próximo: {new Date(nextDate).toLocaleDateString('es-ES')}
+              <div
+                class="sub-next"
+                class:urgent={sub.is_active && daysLeft <= 5}
+              >
+                Próximo: {new Date(nextDate).toLocaleDateString("es-ES")}
                 {#if sub.is_active && daysLeft <= 5}
                   <span class="sub-days-badge">({daysLeft}d)</span>
                 {/if}
               </div>
-              <div class="sub-start">Inicio: {new Date(sub.start_date).toLocaleDateString('es-ES')}</div>
+              <div class="sub-start">
+                Inicio: {new Date(sub.start_date).toLocaleDateString("es-ES")}
+              </div>
             </div>
             <div class="sub-cost">{formatCurrency(sub.cost)}</div>
             <div class="sub-actions">
               {#if sub.is_active}
-                <button class="small-btn btn-primary" onclick={() => markSubscriptionPaid(sub)}>Pagado</button>
+                <button
+                  class="small-btn btn-primary"
+                  onclick={() => markSubscriptionPaid(sub)}>Pagado</button
+                >
               {/if}
-              <button class="small-btn btn-secondary" onclick={() => toggleSubscriptionActive(sub)}>
-                {sub.is_active ? 'Pausar' : 'Activar'}
+              <button
+                class="small-btn btn-secondary"
+                onclick={() => toggleSubscriptionActive(sub)}
+              >
+                {sub.is_active ? "Pausar" : "Activar"}
               </button>
-              <button class="small-btn btn-ghost" onclick={() => deleteSubscription(sub.id!)}>✕</button>
+              <button
+                class="small-btn btn-ghost"
+                onclick={() => deleteSubscription(sub.id!)}>✕</button
+              >
             </div>
           </div>
         {/each}
@@ -348,23 +439,58 @@
 </div>
 
 {#if showExpenseForm}
-  <div class="modal-backdrop" role="presentation" onclick={(e) => {
-    if (e.target === e.currentTarget) { showExpenseForm = false; resetExpenseForm(); }
-  }} onkeydown={(e) => e.key === 'Escape' && (showExpenseForm = false, resetExpenseForm())}>
+  <div
+    class="modal-backdrop"
+    role="presentation"
+    onclick={(e) => {
+      if (e.target === e.currentTarget) {
+        showExpenseForm = false;
+        resetExpenseForm();
+      }
+    }}
+    onkeydown={(e) =>
+      e.key === "Escape" && ((showExpenseForm = false), resetExpenseForm())}
+  >
     <div class="modal" role="document">
-      <h3>{editingExpenseId ? 'Editar gasto' : 'Nuevo gasto'}</h3>
-      <div class="form-group"><label for="expense-name">Nombre</label><input id="expense-name" bind:value={expenseForm.name} placeholder="¿En qué gastaste?" /></div>
+      <h3>{editingExpenseId ? "Editar gasto" : "Nuevo gasto"}</h3>
+      <div class="form-group">
+        <label for="expense-name">Nombre</label><input
+          id="expense-name"
+          bind:value={expenseForm.name}
+          placeholder="¿En qué gastaste?"
+        />
+      </div>
       <div class="form-group">
         <label for="expense-category">Categoría</label>
-        <input id="expense-category" bind:value={expenseForm.category} placeholder="Ej: Comida, Transporte..." list="expense-categories" />
+        <input
+          id="expense-category"
+          bind:value={expenseForm.category}
+          placeholder="Ej: Comida, Transporte..."
+          list="expense-categories"
+        />
         <datalist id="expense-categories">
           {#each usedCategories as cat}
             <option value={cat}></option>
           {/each}
         </datalist>
       </div>
-      <div class="form-group"><label for="expense-cost">Costo ({currencyStore.symbol})</label><input id="expense-cost" type="number" bind:value={expenseForm.cost} min="0" step="0.01" placeholder="0.00" /></div>
-      <div class="form-group"><label for="expense-date">Fecha</label><input id="expense-date" type="date" bind:value={expenseForm.expense_date} /></div>
+      <div class="form-group">
+        <label for="expense-cost">Costo ({currencyStore.symbol})</label><input
+          id="expense-cost"
+          type="number"
+          bind:value={expenseForm.cost}
+          min="0"
+          step="0.01"
+          placeholder="0.00"
+        />
+      </div>
+      <div class="form-group">
+        <label for="expense-date">Fecha</label><input
+          id="expense-date"
+          type="date"
+          bind:value={expenseForm.expense_date}
+        />
+      </div>
       {#if !editingExpenseId}
         <div class="form-group form-check">
           <label class="check-label">
@@ -373,12 +499,33 @@
           </label>
         </div>
         {#if isSubscription}
-          <div class="form-group"><label for="sub-period">Cada cuántos meses</label><input id="sub-period" type="number" bind:value={subscriptionPeriod} min="1" max="24" /></div>
+          <div class="form-group">
+            <label for="sub-period">Cada cuántos meses</label><input
+              id="sub-period"
+              type="number"
+              bind:value={subscriptionPeriod}
+              min="1"
+              max="24"
+            />
+          </div>
         {/if}
       {/if}
       <div class="form-actions">
-        <button class="btn btn-secondary" onclick={() => { showExpenseForm = false; resetExpenseForm(); }}>Cancelar</button>
-        <button class="btn btn-primary" onclick={saveExpense} disabled={saving || !expenseForm.name.trim() || !expenseForm.category.trim() || expenseForm.cost <= 0}>{saving ? '...' : 'Guardar'}</button>
+        <button
+          class="btn btn-secondary"
+          onclick={() => {
+            showExpenseForm = false;
+            resetExpenseForm();
+          }}>Cancelar</button
+        >
+        <button
+          class="btn btn-primary"
+          onclick={saveExpense}
+          disabled={saving ||
+            !expenseForm.name.trim() ||
+            !expenseForm.category.trim() ||
+            expenseForm.cost <= 0}>{saving ? "..." : "Guardar"}</button
+        >
       </div>
     </div>
   </div>
@@ -404,7 +551,10 @@
     transition: all var(--transition);
   }
 
-  .currency-toggle:hover { border-color: var(--accent-green); color: var(--text); }
+  .currency-toggle:hover {
+    border-color: var(--accent-green);
+    color: var(--text);
+  }
 
   .expenses-filters {
     display: flex;
@@ -422,7 +572,8 @@
     color: var(--text3);
   }
 
-  .expense-filter-select, .expense-filter-date {
+  .expense-filter-select,
+  .expense-filter-date {
     padding: 8px 10px;
     border: 1px solid var(--border);
     border-radius: var(--radius);
@@ -449,6 +600,7 @@
     display: flex;
     flex-direction: column;
     gap: 20px;
+    margin-top: 20px;
   }
 
   .expense-month-group {
@@ -490,7 +642,10 @@
     gap: 12px;
   }
 
-  .expense-info { flex: 1; min-width: 0; }
+  .expense-info {
+    flex: 1;
+    min-width: 0;
+  }
 
   .expense-name {
     font-size: 13px;
@@ -504,7 +659,9 @@
     margin-top: 2px;
   }
 
-  .expense-meta { text-align: right; }
+  .expense-meta {
+    text-align: right;
+  }
 
   .expense-cost {
     font-size: 13px;
@@ -529,6 +686,7 @@
     font-weight: 700;
     color: var(--text);
     margin-bottom: 12px;
+    text-transform: capitalize;
   }
 
   .subscriptions-list {
@@ -548,7 +706,10 @@
     opacity: 0.5;
   }
 
-  .sub-info { flex: 1; min-width: 120px; }
+  .sub-info {
+    flex: 1;
+    min-width: 120px;
+  }
 
   .sub-name {
     font-size: 13px;
@@ -568,9 +729,15 @@
     font-family: var(--font-mono);
   }
 
-  .sub-next { margin-bottom: 2px; }
-  .sub-next.urgent { color: var(--accent-red); }
-  .sub-start { color: var(--text3); }
+  .sub-next {
+    margin-bottom: 2px;
+  }
+  .sub-next.urgent {
+    color: var(--accent-red);
+  }
+  .sub-start {
+    color: var(--text3);
+  }
 
   .sub-days-badge {
     font-weight: 700;
