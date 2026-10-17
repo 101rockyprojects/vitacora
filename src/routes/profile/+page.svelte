@@ -1,12 +1,22 @@
 <script lang="ts">
-  import { page } from '$app/state';
-  import { createRepository } from '$lib/services/repository';
-  import { levelFromXp, getAreaXP, AREAS, PREDEFINED_BADGES, xpSourceLabel } from '$lib/utils/xp';
-  import type { UserBadge, XpLog } from '$lib/types';
-  import html2canvas from 'html2canvas';
+  import { page } from "$app/state";
+  import { createRepository } from "$lib/services/repository";
+  import {
+    levelFromXp,
+    getAreaXP,
+    AREAS,
+    PREDEFINED_BADGES,
+    xpSourceLabel,
+  } from "$lib/utils/xp";
+  import type { UserBadge, XpLog } from "$lib/types";
+  import html2canvas from "html2canvas";
 
-  const userId = $derived(page.data.user?.id ?? page.data.session?.user?.id ?? '');
-  const userEmail = $derived(page.data.user?.email ?? page.data.session?.user?.email ?? '');
+  const userId = $derived(
+    page.data.user?.id ?? page.data.session?.user?.id ?? "",
+  );
+  const userEmail = $derived(
+    page.data.user?.email ?? page.data.session?.user?.email ?? "",
+  );
   const repo = $derived(createRepository(userId));
   let initialized = $state(false);
   let areaXP: Record<string, number> = $state({});
@@ -45,7 +55,7 @@
     calendar_events: 0,
     tasks_this_week: 0,
     tasks_same_day: 0,
-    tasks_by_day: {}
+    tasks_by_day: {},
   });
 
   $effect(() => {
@@ -68,7 +78,7 @@
       learnRes,
       linksRes,
       skillsRes,
-      eventsRes
+      eventsRes,
     ] = await Promise.all([
       Promise.resolve(await getAreaXP(userId)),
       repo.userBadges.list(),
@@ -81,7 +91,7 @@
       repo.learning.listIds(),
       repo.links.list(),
       repo.skillsMd.list(),
-      repo.calendar.list()
+      repo.calendar.list(),
     ]);
 
     areaXP = xpRes;
@@ -96,33 +106,35 @@
     // Calculate task counts
     const now = new Date();
     const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const today = now.toISOString().split('T')[0];
+    const today = now.toISOString().split("T")[0];
 
     const tasksThisWeek = (tasksRes.data || []).filter((t: any) => {
-      if (t.status !== 'done') return false;
+      if (t.status !== "done") return false;
       const created = t.updated_at || t.created_at;
       return created && new Date(created) >= weekAgo;
     }).length;
 
     const tasksToday = (tasksRes.data || []).filter((t: any) => {
-      if (t.status !== 'done') return false;
+      if (t.status !== "done") return false;
       const created = t.updated_at || t.created_at;
       return created && created.startsWith(today);
     }).length;
 
     const tasksDoneByDay: Record<string, number> = {};
     for (const t of tasksRes.data || []) {
-      if (t.status === 'done') {
+      if (t.status === "done") {
         const created = t.updated_at || t.created_at;
         if (created) {
-          const day = created.split('T')[0];
+          const day = created.split("T")[0];
           tasksDoneByDay[day] = (tasksDoneByDay[day] || 0) + 1;
         }
       }
     }
 
     stats = {
-      books_finished: books.filter(b => b.current_page >= b.total_pages && b.total_pages > 0).length,
+      books_finished: books.filter(
+        (b) => b.current_page >= b.total_pages && b.total_pages > 0,
+      ).length,
       successes: successRes.data?.length || 0,
       tasks_done: tasksRes.data?.length || 0,
       projects: projectsRes.data?.length || 0,
@@ -133,7 +145,7 @@
       calendar_events: events.length,
       tasks_this_week: tasksThisWeek,
       tasks_same_day: tasksToday,
-      tasks_by_day: tasksDoneByDay
+      tasks_by_day: tasksDoneByDay,
     };
 
     // Check and award badges
@@ -142,7 +154,7 @@
   }
 
   async function checkBadges() {
-    const earnedIds = userBadges.map(ub => ub.badge_id);
+    const earnedIds = userBadges.map((ub) => ub.badge_id);
 
     // Ensure badges exist in DB
     const { data: existingBadges } = await repo.badges.list();
@@ -166,18 +178,42 @@
       const val = badge.condition_value;
 
       switch (badge.condition_type) {
-        case 'books_finished': earned = stats.books_finished >= val; break;
-        case 'successes': earned = stats.successes >= val; break;
-        case 'tasks_done': earned = stats.tasks_done >= val; break;
-        case 'projects': earned = stats.projects >= val; break;
-        case 'global_level': earned = globalLvl >= val; break;
-        case 'memories': earned = stats.memories >= val; break;
-        case 'learning': earned = stats.learning >= val; break;
-        case 'skills_documented': earned = (stats.skills_documented || 0) >= val; break;
-        case 'links_added': earned = (stats.links_added || 0) >= val; break;
-        case 'calendar_events': earned = (stats.calendar_events || 0) >= val; break;
-        case 'tasks_week': earned = (stats.tasks_this_week || 0) >= val; break;
-        case 'tasks_same_day': earned = (stats.tasks_same_day || 0) >= val; break;
+        case "books_finished":
+          earned = stats.books_finished >= val;
+          break;
+        case "successes":
+          earned = stats.successes >= val;
+          break;
+        case "tasks_done":
+          earned = stats.tasks_done >= val;
+          break;
+        case "projects":
+          earned = stats.projects >= val;
+          break;
+        case "global_level":
+          earned = globalLvl >= val;
+          break;
+        case "memories":
+          earned = stats.memories >= val;
+          break;
+        case "learning":
+          earned = stats.learning >= val;
+          break;
+        case "skills_documented":
+          earned = (stats.skills_documented || 0) >= val;
+          break;
+        case "links_added":
+          earned = (stats.links_added || 0) >= val;
+          break;
+        case "calendar_events":
+          earned = (stats.calendar_events || 0) >= val;
+          break;
+        case "tasks_week":
+          earned = (stats.tasks_this_week || 0) >= val;
+          break;
+        case "tasks_same_day":
+          earned = (stats.tasks_same_day || 0) >= val;
+          break;
       }
 
       if (earned) {
@@ -190,50 +226,53 @@
   }
 
   function areaColor(key: string) {
-    return AREAS.find(a => a.key === key)?.color || 'var(--text3)';
+    return AREAS.find((a) => a.key === key)?.color || "var(--text3)";
   }
 
   function areaLabel(key: string) {
-    return AREAS.find(a => a.key === key)?.label || key;
+    return AREAS.find((a) => a.key === key)?.label || key;
   }
 
   function areaIcon(key: string) {
-    return AREAS.find(a => a.key === key)?.icon || '●';
+    return AREAS.find((a) => a.key === key)?.icon || "●";
   }
 
   function formatDate(d: string) {
-    return new Date(d).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+    return new Date(d).toLocaleDateString("es-ES", {
+      day: "numeric",
+      month: "short",
+    });
   }
 
   async function shareAsImage() {
     sharing = true;
     try {
-      const node = document.getElementById('share-card');
+      const node = document.getElementById("share-card");
       if (!node) return;
-      
+
       const canvas = await html2canvas(node, {
         scale: 2,
-        backgroundColor: '#ffffff',
+        backgroundColor: "#ffffff",
         useCORS: true,
         logging: false,
         // Configuración para fuentes
         allowTaint: false,
-        foreignObjectRendering: false
+        foreignObjectRendering: false,
       });
-      
-      const dataUrl = canvas.toDataURL('image/png');
-      const link = document.createElement('a');
-      link.download = 'vitacora-progress.png';
+
+      const dataUrl = canvas.toDataURL("image/png");
+      const link = document.createElement("a");
+      link.download = "vitacora-progress.png";
       link.href = dataUrl;
       link.click();
     } catch (e) {
-      console.error('Share error:', e);
+      console.error("Share error:", e);
     } finally {
       sharing = false;
     }
   }
 
-  const earnedBadgeIds = $derived(userBadges.map(ub => ub.badge_id));
+  const earnedBadgeIds = $derived(userBadges.map((ub) => ub.badge_id));
 </script>
 
 <div class="profile-page fade-in">
@@ -243,7 +282,7 @@
       <div class="section-subtitle">Tu progreso gamificado</div>
     </div>
     <button class="btn btn-secondary" onclick={shareAsImage} disabled={sharing}>
-      {sharing ? '...' : 'Exportar progreso'}
+      {sharing ? "..." : "Exportar progreso"}
     </button>
   </div>
 
@@ -268,12 +307,17 @@
       <div class="global-bar">
         <div class="global-bar-label">
           <span>Nivel {globalLevel.level}</span>
-          <span>{globalLevel.progress} / {globalLevel.nextLevelXp} XP → Nivel {globalLevel.level + 1}</span>
+          <span
+            >{globalLevel.progress} / {globalLevel.nextLevelXp} XP → Nivel {globalLevel.level +
+              1}</span
+          >
         </div>
         <div class="progress-track" style="height:10px;">
-          <div class="progress-fill xp-glow"
-            style="width:{(globalLevel.progress/globalLevel.nextLevelXp)*100}%;background:var(--accent-green);">
-          </div>
+          <div
+            class="progress-fill xp-glow"
+            style="width:{(globalLevel.progress / globalLevel.nextLevelXp) *
+              100}%;background:var(--accent-green);"
+          ></div>
         </div>
       </div>
 
@@ -286,10 +330,16 @@
             <div class="area-card-top">
               <span class="area-card-icon">{area.icon}</span>
               <span class="area-card-name">{area.label}</span>
-              <span class="area-card-lv" style="color:{area.color}">Lv.{lvl.level}</span>
+              <span class="area-card-lv" style="color:{area.color}"
+                >Lv.{lvl.level}</span
+              >
             </div>
             <div class="progress-track" style="margin:8px 0 4px;">
-              <div class="progress-fill" style="width:{(lvl.progress/lvl.nextLevelXp)*100}%;background:{area.color};"></div>
+              <div
+                class="progress-fill"
+                style="width:{(lvl.progress / lvl.nextLevelXp) *
+                  100}%;background:{area.color};"
+              ></div>
             </div>
             <div class="area-card-xp">{xp} XP total</div>
           </div>
@@ -302,7 +352,9 @@
       <h3 class="badges-title">Logros & Medallas</h3>
       <div class="badges-grid">
         {#each PREDEFINED_BADGES as badge}
-          {@const earned = userBadges.some(ub => (ub.badge as any)?.name === badge.name)}
+          {@const earned = userBadges.some(
+            (ub) => (ub.badge as any)?.name === badge.name,
+          )}
           <div class="badge-card" class:earned>
             <div class="badge-icon" class:earned>{badge.icon}</div>
             <div class="badge-name">{badge.name}</div>
@@ -323,11 +375,17 @@
       <div class="activity-list">
         {#each xpLog as log}
           <div class="activity-item">
-            <span class="activity-dot" style="background:{areaColor(log.area)}"></span>
-            <span class="activity-source">{log.message?.trim() || xpSourceLabel(log.source_type)}</span>
-            <span class="activity-area">{areaIcon(log.area)} {areaLabel(log.area)}</span>
+            <span class="activity-dot" style="background:{areaColor(log.area)}"
+            ></span>
+            <span class="activity-source"
+              >{log.message?.trim() ||
+                xpSourceLabel(log.source_type ?? "")}</span
+            >
+            <span class="activity-area"
+              >{areaIcon(log.area)} {areaLabel(log.area)}</span
+            >
             <span class="activity-xp">+{log.xp_gained} XP</span>
-            <span class="activity-date">{formatDate(log.date)}</span>
+            <span class="activity-date">{formatDate(log.date ?? "")}</span>
           </div>
         {/each}
         {#if xpLog.length === 0}
@@ -370,7 +428,9 @@
 </div>
 
 <style>
-  .profile-page { max-width: 1000px; }
+  .profile-page {
+    max-width: 1000px;
+  }
 
   .loading-state {
     color: var(--text3);
@@ -411,8 +471,17 @@
     flex-shrink: 0;
   }
 
-  .share-email { font-size: 14px; font-weight: 600; color: var(--text); }
-  .share-level-text { font-size: 12px; color: var(--text3); font-family: var(--font-mono); margin-top: 2px; }
+  .share-email {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .share-level-text {
+    font-size: 12px;
+    color: var(--text3);
+    font-family: var(--font-mono);
+    margin-top: 2px;
+  }
 
   .share-total-xp {
     margin-left: auto;
@@ -436,7 +505,9 @@
     text-transform: uppercase;
   }
 
-  .global-bar { margin-bottom: 20px; }
+  .global-bar {
+    margin-bottom: 20px;
+  }
 
   .global-bar-label {
     display: flex;
@@ -466,7 +537,9 @@
     margin-bottom: 4px;
   }
 
-  .area-card-icon { font-size: 16px; }
+  .area-card-icon {
+    font-size: 16px;
+  }
 
   .area-card-name {
     flex: 1;
@@ -488,7 +561,9 @@
   }
 
   /* Badges */
-  .badges-section { margin-bottom: 28px; }
+  .badges-section {
+    margin-bottom: 28px;
+  }
 
   .badges-title {
     font-size: 16px;
@@ -518,11 +593,13 @@
   .badge-card.earned {
     filter: none;
     opacity: 1;
-    border-color: rgba(168,230,207,0.3);
+    border-color: rgba(168, 230, 207, 0.3);
     background: var(--surface);
   }
 
-  .badge-card.earned:hover { transform: translateY(-2px); }
+  .badge-card.earned:hover {
+    transform: translateY(-2px);
+  }
 
   .badge-icon {
     font-size: 32px;
@@ -558,7 +635,9 @@
   }
 
   /* Activity */
-  .activity-section { margin-bottom: 28px; }
+  .activity-section {
+    margin-bottom: 28px;
+  }
 
   .activity-title {
     font-size: 16px;
@@ -585,17 +664,44 @@
     transition: background var(--transition);
   }
 
-  .activity-item:last-child { border-bottom: none; }
-  .activity-item:hover { background: var(--bg3); }
+  .activity-item:last-child {
+    border-bottom: none;
+  }
+  .activity-item:hover {
+    background: var(--bg3);
+  }
 
-  .activity-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-  .activity-source { flex: 1; color: var(--text2); text-transform: capitalize; }
-  .activity-area { color: var(--text3); font-size: 12px; }
-  .activity-xp { color: var(--accent-green); font-family: var(--font-mono); font-weight: 700; font-size: 12px; }
-  .activity-date { color: var(--text3); font-family: var(--font-mono); font-size: 11px; }
+  .activity-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .activity-source {
+    flex: 1;
+    color: var(--text2);
+    text-transform: capitalize;
+  }
+  .activity-area {
+    color: var(--text3);
+    font-size: 12px;
+  }
+  .activity-xp {
+    color: var(--accent-green);
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 12px;
+  }
+  .activity-date {
+    color: var(--text3);
+    font-family: var(--font-mono);
+    font-size: 11px;
+  }
 
   /* Stats */
-  .stats-overview { margin-bottom: 0; }
+  .stats-overview {
+    margin-bottom: 0;
+  }
 
   .stats-title {
     font-size: 16px;
@@ -623,7 +729,9 @@
     transition: transform var(--transition);
   }
 
-  .stat-box:hover { transform: translateY(-2px); }
+  .stat-box:hover {
+    transform: translateY(-2px);
+  }
 
   .stat-box-num {
     font-family: var(--font-display);
@@ -640,6 +748,8 @@
   }
 
   @media (max-width: 900px) {
-    .area-grid { grid-template-columns: 1fr 1fr; }
+    .area-grid {
+      grid-template-columns: 1fr 1fr;
+    }
   }
 </style>

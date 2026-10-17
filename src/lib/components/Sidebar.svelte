@@ -1,28 +1,28 @@
 <script lang="ts">
-  import { page } from '$app/state';
-  import { createRepository } from '$lib/services/repository';
-  import { goto } from '$app/navigation';
-  import { onMount } from 'svelte';
-  import { workFilterTag } from '$lib/stores/workFilter.svelte';
-  import type { User } from '@supabase/supabase-js';
+  import { page } from "$app/state";
+  import { createRepository } from "$lib/services/repository";
+  import { goto } from "$app/navigation";
+  import { onMount } from "svelte";
+  import { workFilterTag } from "$lib/stores/workFilter.svelte";
+  import type { User } from "@supabase/supabase-js";
 
   let { user }: { user: User | null } = $props();
 
   const nav = [
-    { href: '/dashboard', label: 'Dashboard', icon: '◈' },
-    { href: '/goals', label: 'Visión & Metas', icon: '⊶' },
-    { href: '/projects', label: 'Proyectos', icon: '◉' },
-    { href: '/work', label: workFilterTag.value, icon: '⌘' },
-    { href: '/expenses', label: 'Gastos', icon: '$' },
-    { href: '/partner', label: 'Partner', icon: '♥' },
-    { href: '/profile', label: 'Perfil & XP', icon: '◎' }
+    { href: "/dashboard", label: "Dashboard", icon: "◈" },
+    { href: "/goals", label: "Visión & Metas", icon: "⊶" },
+    { href: "/projects", label: "Proyectos", icon: "◉" },
+    { href: "/work", label: workFilterTag.value, icon: "⌘" },
+    { href: "/expenses", label: "Gastos", icon: "$" },
+    { href: "/partner", label: "Partner", icon: "♥" },
+    { href: "/profile", label: "Perfil & XP", icon: "◎" },
   ];
 
   const repo = createRepository();
 
   async function signOut() {
     await repo.auth.signOut();
-    goto('/auth');
+    goto("/auth");
   }
 
   const currentPath = $derived(page.url.pathname);
@@ -31,14 +31,14 @@
   let isOpen = $state(true);
 
   onMount(() => {
-    const mq = window.matchMedia('(max-width: 900px)');
+    const mq = window.matchMedia("(max-width: 900px)");
     const sync = () => {
       isMobile = mq.matches;
       if (!isMobile) isOpen = true;
     };
     sync();
-    mq.addEventListener('change', sync);
-    return () => mq.removeEventListener('change', sync);
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
   });
 
   function toggleSidebar() {
@@ -54,11 +54,15 @@
     aria-expanded={isOpen}
     onclick={toggleSidebar}
   >
-    {isOpen ? '←' : '→'}
+    {isOpen ? "←" : "→"}
   </button>
 {/if}
 
-<aside class="sidebar" class:closed={isMobile && !isOpen} aria-label="Navegación principal">
+<aside
+  class="sidebar"
+  class:closed={isMobile && !isOpen}
+  aria-label="Navegación principal"
+>
   <div class="sidebar-logo">
     <span class="logo-icon" aria-hidden="true">◈</span>
     <span class="logo-text">VitaCora</span>
@@ -71,9 +75,12 @@
           <a
             href={item.href}
             class="nav-item"
-            class:active={currentPath === item.href || currentPath.startsWith(item.href + '/')}
-            aria-current={currentPath === item.href ? 'page' : undefined}
-            onclick={() => { if (isMobile) isOpen = false; }}
+            class:active={currentPath === item.href ||
+              currentPath.startsWith(item.href + "/")}
+            aria-current={currentPath === item.href ? "page" : undefined}
+            onclick={() => {
+              if (isMobile) isOpen = false;
+            }}
           >
             <span class="nav-icon" aria-hidden="true">{item.icon}</span>
             <span class="nav-label">{item.label}</span>
@@ -87,7 +94,7 @@
     {#if user}
       <div class="user-info">
         <div class="user-avatar">{user.email?.[0].toUpperCase()}</div>
-        <div class="user-email">{user.email?.replace(/@.*/, '')}</div>
+        <div class="user-email">{user.email?.replace(/@.*/, "")}</div>
       </div>
     {/if}
     <button class="sign-out-btn" onclick={signOut}>
@@ -110,12 +117,17 @@
     z-index: 40;
     padding: 24px 0;
     overflow: hidden;
-    transition: width 0.22s ease, padding 0.22s ease, border-color 0.22s ease;
+    transition:
+      width 0.22s ease,
+      padding 0.22s ease,
+      border-color 0.22s ease;
   }
 
   /* Responsive */
   @media (max-width: 900px) {
-    .sidebar {padding-top: 50px; }
+    .sidebar {
+      padding-top: 50px;
+    }
   }
 
   .sidebar.closed {
@@ -137,16 +149,23 @@
     height: 36px;
     border-radius: 12px;
     border: 1px solid var(--border);
-    background: rgba(22,27,37,0.9);
+    background: rgba(22, 27, 37, 0.9);
     color: var(--text);
     display: flex;
     align-items: center;
     justify-content: center;
     box-shadow: var(--shadow-sm);
-    transition: transform var(--transition), border-color var(--transition), background var(--transition);
+    transition:
+      transform var(--transition),
+      border-color var(--transition),
+      background var(--transition);
   }
 
-  .sidebar-toggle:hover { border-color: var(--accent-green); color: var(--accent-green); transform: translateY(-1px); }
+  .sidebar-toggle:hover {
+    border-color: var(--accent-green);
+    color: var(--accent-green);
+    transform: translateY(-1px);
+  }
 
   .sidebar-logo {
     display: flex;

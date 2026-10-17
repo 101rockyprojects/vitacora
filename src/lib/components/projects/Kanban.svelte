@@ -909,8 +909,6 @@
     transform-origin: center;
   }
 
-  .kcard-desc-toggle-icon.open { transform: rotate(180deg); }
-
   .tag {
     font-size: 11px;
     padding: 2px 7px;
