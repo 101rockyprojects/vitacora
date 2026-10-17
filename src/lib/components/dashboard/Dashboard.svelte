@@ -1,18 +1,25 @@
 <script lang="ts">
-  import { page } from '$app/state';
-  import { browser } from '$app/environment';
-  import { createRepository } from '$lib/services/repository';
-  import WeekPlanner from '$lib/components/WeekPlanner.svelte';
-  import type { Book, CalendarEvent, Task, Expense, CalendarTodo, Subscription } from '$lib/types';
-  import { levelFromXp, getAreaXP } from '$lib/utils/xp';
-  import { checkAndCreateNotifications } from '$lib/utils/notifications';
-  import Stats from './Stats.svelte';
-  import AreaXP from './AreaXP.svelte';
-  import TasksPanel from './TasksPanel.svelte';
-  import BooksPanel from './BooksPanel.svelte';
-  import ExpensesPanel from './ExpensesPanel.svelte';
-  import Motivational from './Motivational.svelte';
-  import { notificationStore } from '$lib/stores/notifications.svelte';
+  import { page } from "$app/state";
+  import { browser } from "$app/environment";
+  import { createRepository } from "$lib/services/repository";
+  import WeekPlanner from "$lib/components/WeekPlanner.svelte";
+  import type {
+    Book,
+    CalendarEvent,
+    Task,
+    Expense,
+    CalendarTodo,
+    Subscription,
+  } from "$lib/types";
+  import { levelFromXp, getAreaXP } from "$lib/utils/xp";
+  import { checkAndCreateNotifications } from "$lib/utils/notifications";
+  import Stats from "./Stats.svelte";
+  import AreaXP from "./AreaXP.svelte";
+  import TasksPanel from "./TasksPanel.svelte";
+  import BooksPanel from "./BooksPanel.svelte";
+  import ExpensesPanel from "./ExpensesPanel.svelte";
+  import Motivational from "./Motivational.svelte";
+  import { notificationStore } from "$lib/stores/notifications.svelte";
 
   let tasks = $state<Task[]>([]);
   let books = $state<Book[]>([]);
@@ -24,13 +31,20 @@
   let totalXP = $derived(Object.values(areaXP).reduce((a, b) => a + b, 0));
   let globalLevel = $derived(levelFromXp(totalXP));
   let loading = $state(true);
-  const userId = $derived(page.data.user?.id ?? page.data.session?.user?.id ?? '');
+  const userId = $derived(
+    page.data.user?.id ?? page.data.session?.user?.id ?? "",
+  );
   const repo = $derived(createRepository(userId));
   let initialized = $state(false);
   let userBadgesCount = $state(0);
 
   const now = new Date();
-  const greeting = now.getHours() < 12 ? 'Buenos días' : now.getHours() < 18 ? 'Buenas tardes' : 'Buenas noches';
+  const greeting =
+    now.getHours() < 12
+      ? "Buenos días"
+      : now.getHours() < 18
+        ? "Buenas tardes"
+        : "Buenas noches";
 
   $effect(() => {
     if (userId && !initialized) {
@@ -40,15 +54,16 @@
   });
 
   async function loadDashboard() {
-    const [tasksRes, booksRes, badgesRes, calRes, expRes, calTodosRes, subRes] = await Promise.all([
-      repo.tasks.list(),
-      repo.books.list(),
-      repo.userBadges.listIds(),
-      repo.calendar.list(),
-      repo.expenses.list(),
-      repo.calendarTodos.list(),
-      repo.subscriptions.listActive()
-    ]);
+    const [tasksRes, booksRes, badgesRes, calRes, expRes, calTodosRes, subRes] =
+      await Promise.all([
+        repo.tasks.list(),
+        repo.books.list(),
+        repo.userBadges.listIds(),
+        repo.calendar.list(),
+        repo.expenses.list(),
+        repo.calendarTodos.list(),
+        repo.subscriptions.listActive(),
+      ]);
 
     tasks = tasksRes.data || [];
     books = booksRes.data || [];
@@ -62,9 +77,13 @@
 
     checkAndCreateNotifications(tasks, calEvents, calendarTodos, subscriptions);
 
-    if (browser && localStorage.getItem('vitacora_just_logged_in')) {
-      localStorage.removeItem('vitacora_just_logged_in');
-      notificationStore.addNotification({ type: 'info', title: '¡Bienvenido/a!', message: 'Has iniciado sesión correctamente.' });
+    if (browser && localStorage.getItem("vitacora_just_logged_in")) {
+      localStorage.removeItem("vitacora_just_logged_in");
+      notificationStore.addNotification({
+        type: "info",
+        title: "¡Bienvenido/a!",
+        message: "Has iniciado sesión correctamente.",
+      });
     }
   }
 </script>
@@ -73,7 +92,14 @@
   <div class="dash-header">
     <div>
       <h1 class="dash-greeting">{greeting} ⊶</h1>
-      <p class="dash-date">{now.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+      <p class="dash-date">
+        {now.toLocaleDateString("es-ES", {
+          weekday: "long",
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        })}
+      </p>
     </div>
     <div class="dash-global-xp">
       <div class="global-level">
@@ -87,9 +113,11 @@
           <span>{globalLevel.nextLevelXp} XP</span>
         </div>
         <div class="progress-track" style="width:160px;">
-          <div class="progress-fill xp-bar-fill"
-            style="width:{(globalLevel.progress / globalLevel.nextLevelXp) * 100}%;background:var(--accent-green);">
-          </div>
+          <div
+            class="progress-fill xp-bar-fill"
+            style="width:{(globalLevel.progress / globalLevel.nextLevelXp) *
+              100}%;background:var(--accent-green);"
+          ></div>
         </div>
       </div>
     </div>
@@ -98,11 +126,11 @@
   <Stats {totalXP} {tasks} {books} {userBadgesCount} />
 
   <div class="dash-grid">
-    <TasksPanel {tasks} {loading} />
-    <BooksPanel {books} />
-    <Motivational />
-    <ExpensesPanel {expenses} />
-    <AreaXP bind:areaXP />
+    <div class="bento-tasks"><TasksPanel {tasks} {loading} /></div>
+    <div class="bento-books"><BooksPanel {books} /></div>
+    <div class="bento-motive"><Motivational /></div>
+    <div class="bento-expenses"><ExpensesPanel {expenses} /></div>
+    <div class="bento-xp"><AreaXP bind:areaXP /></div>
     <div class="card week-card">
       <WeekPlanner events={calEvents} showEventList={false} />
     </div>
@@ -110,7 +138,15 @@
 </div>
 
 <style>
-  .dashboard { max-width: 1100px; }
+  .dashboard {
+    max-width: 1100px;
+  }
+
+  @media (min-width: 1151px) {
+    .dashboard {
+      max-width: 1440px;
+    }
+  }
 
   .dash-header {
     display: flex;
@@ -176,7 +212,9 @@
     gap: 4px;
   }
 
-  .xp-sep { color: var(--text3); }
+  .xp-sep {
+    color: var(--text3);
+  }
 
   .dash-grid {
     display: grid;
@@ -184,22 +222,85 @@
     gap: 16px;
   }
 
-  .week-card { grid-column: 1; }
+  .dash-grid > :global(*) {
+    min-width: 0;
+  }
+
+  .bento-tasks,
+  .bento-books,
+  .bento-motive,
+  .bento-expenses,
+  .bento-xp {
+    display: flex;
+  }
+
+  .bento-tasks > :global(.card),
+  .bento-books > :global(.card),
+  .bento-motive > :global(.card),
+  .bento-expenses > :global(.card),
+  .bento-xp > :global(.card) {
+    width: 100%;
+  }
+
+  .week-card {
+    grid-column: 1;
+  }
 
   @media (min-width: 768px) and (max-width: 1150px) {
-    .dash-grid { grid-template-columns: 1fr 1fr; }
-    .dash-header { flex-direction: column; align-items: flex-start; gap: 12px; }
-    .dash-global-xp { width: 100%; justify-content: space-between; }
-    .week-card { grid-column: span 2; }
+    .dash-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+    .dash-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .dash-global-xp {
+      width: 100%;
+      justify-content: space-between;
+    }
+    .week-card {
+      grid-column: span 2;
+    }
   }
 
   @media (min-width: 1151px) {
-    .dash-grid { grid-template-columns: 1fr 1fr 1fr; }
-    .week-card { grid-column: span 3; }
+    .dash-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-areas:
+        "motive tasks exp exp"
+        "xp     books exp exp";
+    }
+    .bento-tasks {
+      grid-area: tasks;
+    }
+    .bento-books {
+      grid-area: books;
+    }
+    .bento-expenses {
+      grid-area: exp;
+    }
+    .bento-motive {
+      grid-area: motive;
+    }
+    .bento-xp {
+      grid-area: xp;
+    }
+    .week-card {
+      grid-column: 1 / -1;
+    }
   }
 
-  @media (min-width: 1280px) {
-    .dash-grid { grid-template-columns: 1fr 1fr 1fr 1fr; }
-    .week-card { grid-column: span 4; }
+  @media (min-width: 1151px) {
+    .bento-tasks > :global(.card),
+    .bento-books > :global(.card),
+    .bento-expenses > :global(.card),
+    .bento-xp > :global(.card),
+    .bento-motive > :global(.card) {
+      height: 100%;
+    }
+    .week-card {
+      height: 100%;
+    }
   }
 </style>

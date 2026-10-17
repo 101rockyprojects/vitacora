@@ -30,10 +30,6 @@
     min-height: 180px;
   }
 
-  .motive-card {
-    grid-column: span 1;
-  }
-
   .motive-glyph {
     font-size: 32px;
     color: var(--accent-green);

@@ -3,10 +3,20 @@
   import type { ApexOptions } from 'apexcharts';
   import type { ExpenseCategory } from '$lib/types';
 
-  let { data = [], type = 'pie', title = '' }: {
+  let {
+    data = [],
+    type = 'pie',
+    title = '',
+    moneyFormatter,
+    valueFontSize = 25,
+    height = 280
+  }: {
     data: ExpenseCategory[];
     type?: 'pie';
     title?: string;
+    moneyFormatter?: (n: number) => string;
+    valueFontSize?: number;
+    height?: number;
   } = $props();
 
   let chartEl: HTMLDivElement;
@@ -18,7 +28,7 @@
     '#ee8888', '#6bcfcf', '#f5a3b8', '#a3d9a5', '#d4c4fb'
   ];
 
-  async function renderChart() {
+  async function renderChart(money?: (n: number) => string, chartHeight = 280) {
     if (!browser || !chartEl || data.length === 0) return;
 
     // 1. Destruir gráfico anterior si existe
@@ -36,15 +46,16 @@
     const ApexCharts = (await import('apexcharts')).default;
 
     // 4. Crear nueva instancia
-    chart = new ApexCharts(chartEl, getOptions());
+    chart = new ApexCharts(chartEl, getOptions(money, chartHeight));
     await chart.render();
   }
 
-  function getOptions(): ApexOptions {
+  function getOptions(money?: (n: number) => string, chartHeight = 280): ApexOptions {
+    const fmt = money ?? ((n: number) => `$${n.toFixed(2)}`);
     return {
       chart: {
         type: 'donut',
-        height: 280,
+        height: chartHeight,
         fontFamily: 'DM Sans, sans-serif',
         toolbar: { show: false },
         animations: { enabled: true }
@@ -73,12 +84,12 @@
               },
               value: {
                 show: true,
-                fontSize: '25px',
+                fontSize: `${valueFontSize}px`,
                 fontFamily: 'Space Mono, monospace',
                 color: '#c8cdd8',
                 fontWeight: 'bold',
                 offsetY: 10,
-                formatter: (val) => `$${Number(val).toFixed(2)}`
+                formatter: (val) => fmt(Number(val))
               },
               total: {
                 show: true,
@@ -88,7 +99,7 @@
                 fontFamily: 'Space Mono, monospace',
                 formatter: (w) => {
                   const total = w.globals.seriesTotals.reduce((a: number, b: number) => a + b, 0);
-                  return `$${total.toFixed(2)}`;
+                  return fmt(total);
                 }
               }
             }
@@ -98,7 +109,7 @@
       tooltip: {
         theme: 'dark',
         style: { fontSize: '15px', fontFamily: 'Space Mono, monospace' },
-        y: { formatter: (val) => `$${val.toFixed(2)}` }
+        y: { formatter: (val) => fmt(val) }
       },
       stroke: { show: false }
     };
@@ -107,7 +118,7 @@
   // Único efecto reactivo: cuando data o chartEl cambien, recrea el gráfico
   $effect(() => {
     if (browser && chartEl && data.length > 0) {
-      renderChart();
+      void renderChart(moneyFormatter, height);
     }
   });
 
@@ -126,7 +137,7 @@
   {#if title}
     <h3 class="chart-title">{title}</h3>
   {/if}
-  <div bind:this={chartEl} class="chart-element"></div>
+  <div bind:this={chartEl} class="chart-element" style="min-height:{height}px"></div>
   {#if data.length === 0}
     <div class="empty-chart">Sin datos</div>
   {/if}
@@ -135,7 +146,6 @@
 <style>
   .chart-container {
     width: 100%;
-    min-height: 280px;
   }
   .chart-element {
     width: 100%;

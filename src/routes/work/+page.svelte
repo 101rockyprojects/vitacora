@@ -1,7 +1,8 @@
 <script lang="ts">
   import Kanban from '$lib/components/projects/Kanban.svelte';
+  import WorkTodos from '$lib/components/projects/WorkTodos.svelte';
   import { createRepository } from '$lib/services/repository';
-  import type { Task } from '$lib/types';
+  import type { Task, WorkTodo } from '$lib/types';
   import { page } from '$app/state';
   import { workFilterTag } from '$lib/stores/workFilter.svelte';
   import Toast from '$lib/components/Toast.svelte';
@@ -10,6 +11,7 @@
   const repo = $derived(createRepository(userId));
   
   let tasks = $state<Task[]>([]);
+  let workTodos = $state<WorkTodo[]>([]);
   let initialized = $state(false);
   let loading = $state(true);
   let editingFilter = $state(false);
@@ -61,6 +63,7 @@
     if (userId && !initialized) {
       initialized = true;
       loadTasks();
+      loadWorkTodos();
     }
   });
 
@@ -69,6 +72,12 @@
     const { data } = await repo.tasks.list();
     tasks = data || [];
     loading = false;
+  }
+
+  async function loadWorkTodos() {
+    if (!userId) return;
+    const { data } = await repo.workTodos.list();
+    workTodos = data || [];
   }
 
   function handleTasksChange(updatedTasks: Task[]) {
@@ -171,7 +180,17 @@
     {/if}
   </div>
 
-  <article class="resume-section">
+  {#if loading}
+  <div class="loading">Cargando...</div>
+  {:else}
+    <WorkTodos {userId} todos={workTodos} onTodosChange={(t) => (workTodos = t)} />
+    <Kanban 
+      {userId} 
+      tasks={tasks} 
+      onTasksChange={handleTasksChange}
+      useWorkFilter={true}
+    />
+    <article class="resume-section">
     <div class="resume-header">
       <div class="resume-info">
         <h3 class="resume-title">Resumen de la semana</h3>
@@ -202,16 +221,6 @@
       <div class="resume-empty">No hay tareas completadas en este período</div>
     {/if}
   </article>
-
-  {#if loading}
-  <div class="loading">Cargando...</div>
-  {:else}
-    <Kanban 
-      {userId} 
-      tasks={tasks} 
-      onTasksChange={handleTasksChange}
-      useWorkFilter={true}
-    />
   {/if}
 </div>
 
@@ -296,6 +305,7 @@
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
     padding: 16px;
+    margin-top: 16px;
     margin-bottom: 20px;
   }
 

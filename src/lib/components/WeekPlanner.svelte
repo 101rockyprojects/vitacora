@@ -1,12 +1,19 @@
 <script lang="ts">
-  import { page } from '$app/state';
-  import type { CalendarEvent, CalendarTodo } from '$lib/types';
-  import { createRepository } from '$lib/services/repository';
+  import { page } from "$app/state";
+  import type { CalendarEvent, CalendarTodo } from "$lib/types";
+  import { createRepository } from "$lib/services/repository";
 
-  const userId = $derived(page.data.user?.id ?? page.data.session?.user?.id ?? '');
+  const userId = $derived(
+    page.data.user?.id ?? page.data.session?.user?.id ?? "",
+  );
   const repo = $derived(createRepository(userId));
 
-  let { events, todos = [], title = 'Semana actual', showEventList = true }: {
+  let {
+    events,
+    todos = [],
+    title = "Semana actual",
+    showEventList = true,
+  }: {
     events: CalendarEvent[];
     todos?: CalendarTodo[];
     title?: string;
@@ -14,23 +21,26 @@
   } = $props();
 
   function slugify(text: string): string {
-    return text.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]+/g, '');
+    return text
+      .toLowerCase()
+      .replace(/\s+/g, "-")
+      .replace(/[^\w-]+/g, "");
   }
 
   function toIsoDateLocal(d: Date): string {
-    return d.toLocaleDateString('en-CA');
+    return d.toLocaleDateString("en-CA");
   }
 
   function normalizeDate(value: string): string {
     const v = value?.trim();
-    if (!v) return '';
+    if (!v) return "";
     if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
     if (/^\d{2}-\d{2}-\d{4}$/.test(v)) {
-      const [dd, mm, yyyy] = v.split('-');
+      const [dd, mm, yyyy] = v.split("-");
       return `${yyyy}-${mm}-${dd}`;
     }
     if (/^\d{2}\/\d{2}\/\d{4}$/.test(v)) {
-      const [dd, mm, yyyy] = v.split('/');
+      const [dd, mm, yyyy] = v.split("/");
       return `${yyyy}-${mm}-${dd}`;
     }
     return v.length >= 10 ? v.slice(0, 10) : v;
@@ -48,45 +58,49 @@
   }
 
   const todayIso = $derived(toIsoDateLocal(new Date()));
-  const weekDays = $derived((() => {
-    const start = startOfWeekSunday(new Date());
-    const days: Array<{
-      iso: string;
-      date: Date;
-      weekday: string;
-      specialTitles: string[];
-      events: CalendarEvent[];
-      todos: CalendarTodo[];
-    }> = [];
+  const weekDays = $derived(
+    (() => {
+      const start = startOfWeekSunday(new Date());
+      const days: Array<{
+        iso: string;
+        date: Date;
+        weekday: string;
+        specialTitles: string[];
+        events: CalendarEvent[];
+        todos: CalendarTodo[];
+      }> = [];
 
-    for (let i = 0; i < 7; i++) {
-      const date = new Date(start);
-      date.setDate(start.getDate() + i);
-      const iso = toIsoDateLocal(date);
-      const dayEvents = events.filter(e => e.event_date === iso);
-      const specialTitles = dayEvents.filter(e => e.type === 'special_day').map(e => e.event_name);
-      const dayItems = dayEvents.filter(e => e.type !== 'special_day');
-      const dayTodos = todos.filter(t => t.todo_date === iso);
-      days.push({
-        iso,
-        date,
-        weekday: date.toLocaleDateString('es-ES', { weekday: 'long' }),
-        specialTitles,
-        events: dayItems,
-        todos: dayTodos
-      });
-    }
-    return days;
-  })());
+      for (let i = 0; i < 7; i++) {
+        const date = new Date(start);
+        date.setDate(start.getDate() + i);
+        const iso = toIsoDateLocal(date);
+        const dayEvents = events.filter((e) => e.event_date === iso);
+        const specialTitles = dayEvents
+          .filter((e) => e.type === "special_day")
+          .map((e) => e.event_name);
+        const dayItems = dayEvents.filter((e) => e.type !== "special_day");
+        const dayTodos = todos.filter((t) => t.todo_date === iso);
+        days.push({
+          iso,
+          date,
+          weekday: date.toLocaleDateString("es-ES", { weekday: "long" }),
+          specialTitles,
+          events: dayItems,
+          todos: dayTodos,
+        });
+      }
+      return days;
+    })(),
+  );
 
   let showPastEvents = $state(false);
   let showFutureEvents = $state(false);
   let saving = $state(false);
 
   let editingEventId = $state<string | null>(null);
-  let editEventName = $state('');
-  let editEventDate = $state('');
-  let editEventType = $state<CalendarEvent['type']>('event');
+  let editEventName = $state("");
+  let editEventDate = $state("");
+  let editEventType = $state<CalendarEvent["type"]>("event");
 
   function startEditEvent(ev: CalendarEvent) {
     editingEventId = ev.id || null;
@@ -97,9 +111,9 @@
 
   function cancelEditEvent() {
     editingEventId = null;
-    editEventName = '';
-    editEventDate = '';
-    editEventType = 'event';
+    editEventName = "";
+    editEventDate = "";
+    editEventType = "event";
   }
 
   async function saveEditEvent() {
@@ -108,7 +122,11 @@
     const date = normalizeDate(editEventDate);
     if (!name || !date) return;
     saving = true;
-    await repo.calendar.update(editingEventId, { event_name: name, event_date: date, type: editEventType });
+    await repo.calendar.update(editingEventId, {
+      event_name: name,
+      event_date: date,
+      type: editEventType,
+    });
     await load();
     cancelEditEvent();
     saving = false;
@@ -123,103 +141,172 @@
     todos: CalendarTodo[];
   };
 
-  const eventGroups = $derived((() => {
-    const byDate = new Map<string, { events: CalendarEvent[]; todos: CalendarTodo[] }>();
+  const eventGroups = $derived(
+    (() => {
+      const byDate = new Map<
+        string,
+        { events: CalendarEvent[]; todos: CalendarTodo[] }
+      >();
 
-    for (const ev of events) {
-      const iso = ev.event_date;
-      if (!byDate.has(iso)) byDate.set(iso, { events: [], todos: [] });
-      byDate.get(iso)!.events.push(ev);
-    }
+      for (const ev of events) {
+        const iso = ev.event_date;
+        if (!byDate.has(iso)) byDate.set(iso, { events: [], todos: [] });
+        byDate.get(iso)!.events.push(ev);
+      }
 
-    for (const td of todos) {
-      const iso = td.todo_date;
-      if (!byDate.has(iso)) byDate.set(iso, { events: [], todos: [] });
-      byDate.get(iso)!.todos.push(td);
-    }
+      for (const td of todos) {
+        const iso = td.todo_date;
+        if (!byDate.has(iso)) byDate.set(iso, { events: [], todos: [] });
+        byDate.get(iso)!.todos.push(td);
+      }
 
-    const groups: EventGroup[] = [...byDate.entries()].map(([iso, data]) => {
-      const d = new Date(iso);
-      const isToday = iso === todayIso;
-      const isPast = iso < todayIso && !isToday;
-      const sorted = [...data.events].sort((a, b) => {
-        if (a.type === b.type) return a.event_name.localeCompare(b.event_name, 'es', { sensitivity: 'base' });
-        return a.type === 'special_day' ? -1 : 1;
+      const groups: EventGroup[] = [...byDate.entries()].map(([iso, data]) => {
+        const d = new Date(iso);
+        const isToday = iso === todayIso;
+        const isPast = iso < todayIso && !isToday;
+        const sorted = [...data.events].sort((a, b) => {
+          if (a.type === b.type)
+            return a.event_name.localeCompare(b.event_name, "es", {
+              sensitivity: "base",
+            });
+          return a.type === "special_day" ? -1 : 1;
+        });
+        return {
+          iso,
+          date: d,
+          isToday,
+          isPast,
+          events: sorted,
+          todos: data.todos,
+        };
       });
-      return { iso, date: d, isToday, isPast, events: sorted, todos: data.todos };
-    });
 
-    return groups.sort((a, b) => {
-      if (a.isToday && !b.isToday) return -1;
-      if (!a.isToday && b.isToday) return 1;
-      if (a.isPast !== b.isPast) return a.isPast ? 1 : -1;
-      if (a.isPast && b.isPast) return b.iso.localeCompare(a.iso);
-      return a.iso.localeCompare(b.iso);
-    });
-  })());
+      return groups.sort((a, b) => {
+        if (a.isToday && !b.isToday) return -1;
+        if (!a.isToday && b.isToday) return 1;
+        if (a.isPast !== b.isPast) return a.isPast ? 1 : -1;
+        if (a.isPast && b.isPast) return b.iso.localeCompare(a.iso);
+        return a.iso.localeCompare(b.iso);
+      });
+    })(),
+  );
 
   // Group by month
-  const upcomingEventGroups = $derived(eventGroups.filter((g) => !g.isPast).map((g) => {
-    const monthIso = g.iso.slice(0, 7);
-    return { ...g, iso: monthIso };
-  }).reduce((acc, g) => {
-    let group = acc.find(gr => gr.iso === g.iso);
-    if (!group) {
-      group = { iso: g.iso, date: new Date(g.iso + '-01'), isToday: false, isPast: false, events: [], todos: [] };
-      acc.push(group);
-    }
-    group.events.push(...g.events);
-    group.todos.push(...g.todos);
-    return acc;
-  }, [] as EventGroup[]).sort((a, b) => a.iso.localeCompare(b.iso)));
+  const upcomingEventGroups = $derived(
+    eventGroups
+      .filter((g) => !g.isPast)
+      .map((g) => {
+        const monthIso = g.iso.slice(0, 7);
+        return { ...g, iso: monthIso };
+      })
+      .reduce((acc, g) => {
+        let group = acc.find((gr) => gr.iso === g.iso);
+        if (!group) {
+          group = {
+            iso: g.iso,
+            date: new Date(g.iso + "-01"),
+            isToday: false,
+            isPast: false,
+            events: [],
+            todos: [],
+          };
+          acc.push(group);
+        }
+        group.events.push(...g.events);
+        group.todos.push(...g.todos);
+        return acc;
+      }, [] as EventGroup[])
+      .sort((a, b) => a.iso.localeCompare(b.iso)),
+  );
 
-  const pastEventGroups = $derived(eventGroups.filter((g) => g.isPast).map((g) => {
-    const monthIso = g.iso.slice(0, 7);
-    return { ...g, iso: monthIso };
-  }).reduce((acc, g) => {
-    let group = acc.find(gr => gr.iso === g.iso);
-    if (!group) {
-      group = { iso: g.iso, date: new Date(g.iso + '-01'), isToday: false, isPast: true, events: [], todos: [] };
-      acc.push(group);
-    }
-    group.events.push(...g.events);
-    group.todos.push(...g.todos);
-    return acc;
-  }, [] as EventGroup[]).sort((a, b) => b.iso.localeCompare(a.iso)));
-  const nextMonthCutoffIso = $derived((() => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    d.setMonth(d.getMonth() + 1);
-    return toIsoDateLocal(d);
-  })());
+  const pastEventGroups = $derived(
+    eventGroups
+      .filter((g) => g.isPast)
+      .map((g) => {
+        const monthIso = g.iso.slice(0, 7);
+        return { ...g, iso: monthIso };
+      })
+      .reduce((acc, g) => {
+        let group = acc.find((gr) => gr.iso === g.iso);
+        if (!group) {
+          group = {
+            iso: g.iso,
+            date: new Date(g.iso + "-01"),
+            isToday: false,
+            isPast: true,
+            events: [],
+            todos: [],
+          };
+          acc.push(group);
+        }
+        group.events.push(...g.events);
+        group.todos.push(...g.todos);
+        return acc;
+      }, [] as EventGroup[])
+      .sort((a, b) => b.iso.localeCompare(a.iso)),
+  );
+  const nextMonthCutoffIso = $derived(
+    (() => {
+      const d = new Date();
+      d.setHours(0, 0, 0, 0);
+      d.setMonth(d.getMonth() + 1);
+      return toIsoDateLocal(d);
+    })(),
+  );
 
-  const nextEventGroups = $derived(upcomingEventGroups.filter((g) => g.iso <= nextMonthCutoffIso).map((g) => {
-    const monthIso = g.iso.slice(0, 7);
-    return { ...g, iso: monthIso };
-  }).reduce((acc, g) => {
-    let group = acc.find(gr => gr.iso === g.iso);
-    if (!group) {
-      group = { iso: g.iso, date: new Date(g.iso + '-01'), isToday: false, isPast: false, events: [], todos: [] };
-      acc.push(group);
-    }
-    group.events.push(...g.events);
-    group.todos.push(...g.todos);
-    return acc;
-  }, [] as EventGroup[]).sort((a, b) => a.iso.localeCompare(b.iso)));
+  const nextEventGroups = $derived(
+    upcomingEventGroups
+      .filter((g) => g.iso <= nextMonthCutoffIso)
+      .map((g) => {
+        const monthIso = g.iso.slice(0, 7);
+        return { ...g, iso: monthIso };
+      })
+      .reduce((acc, g) => {
+        let group = acc.find((gr) => gr.iso === g.iso);
+        if (!group) {
+          group = {
+            iso: g.iso,
+            date: new Date(g.iso + "-01"),
+            isToday: false,
+            isPast: false,
+            events: [],
+            todos: [],
+          };
+          acc.push(group);
+        }
+        group.events.push(...g.events);
+        group.todos.push(...g.todos);
+        return acc;
+      }, [] as EventGroup[])
+      .sort((a, b) => a.iso.localeCompare(b.iso)),
+  );
 
-  const futureEventGroups = $derived(upcomingEventGroups.filter((g) => g.iso > nextMonthCutoffIso).map((g) => {
-    const monthIso = g.iso.slice(0, 7);
-    return { ...g, iso: monthIso };
-  }).reduce((acc, g) => {
-    let group = acc.find(gr => gr.iso === g.iso);
-    if (!group) {
-      group = { iso: g.iso, date: new Date(g.iso + '-01'), isToday: false, isPast: false, events: [], todos: [] };
-      acc.push(group);
-    }
-    group.events.push(...g.events);
-    group.todos.push(...g.todos);
-    return acc;
-  }, [] as EventGroup[]).sort((a, b) => a.iso.localeCompare(b.iso)));
+  const futureEventGroups = $derived(
+    upcomingEventGroups
+      .filter((g) => g.iso > nextMonthCutoffIso)
+      .map((g) => {
+        const monthIso = g.iso.slice(0, 7);
+        return { ...g, iso: monthIso };
+      })
+      .reduce((acc, g) => {
+        let group = acc.find((gr) => gr.iso === g.iso);
+        if (!group) {
+          group = {
+            iso: g.iso,
+            date: new Date(g.iso + "-01"),
+            isToday: false,
+            isPast: false,
+            events: [],
+            todos: [],
+          };
+          acc.push(group);
+        }
+        group.events.push(...g.events);
+        group.todos.push(...g.todos);
+        return acc;
+      }, [] as EventGroup[])
+      .sort((a, b) => a.iso.localeCompare(b.iso)),
+  );
 
   async function load() {
     if (!userId) return;
@@ -228,7 +315,7 @@
   }
 
   async function deleteCal(id: string) {
-    if (!confirm('¿Eliminar evento?')) return;
+    if (!confirm("¿Eliminar evento?")) return;
     await repo.calendar.remove(id);
     await load();
   }
@@ -240,26 +327,37 @@
     {@const isToday = d.iso === todayIso}
     {@const isSpecial = d.specialTitles.length > 0}
     <div class="week-col">
-      <div class="week-header" class:current={isToday} class:special={!isToday && isSpecial}>
+      <div
+        class="week-header"
+        class:current={isToday}
+        class:special={!isToday && isSpecial}
+      >
         <div class="week-header-top">
           <div class="week-day">{d.weekday}</div>
-          <div class="week-date">{d.date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</div>
+          <div class="week-date">
+            {d.date.toLocaleDateString("es-ES", {
+              day: "numeric",
+              month: "short",
+            })}
+          </div>
         </div>
         {#if isSpecial}
-          <div class="week-special">{d.specialTitles.join(' · ')}</div>
+          <div class="week-special">{d.specialTitles.join(" · ")}</div>
         {/if}
       </div>
 
       <div class="week-body">
         {#if d.events.length === 0 && d.todos.length === 0}
-          <div class="week-empty">{isSpecial ? 'Sin eventos' : '—'}</div>
+          <div class="week-empty">{isSpecial ? "Sin eventos" : "—"}</div>
         {:else}
           <div class="week-list">
             {#each d.todos as td (td.id)}
               <span class="week-todo">{td.name}</span>
             {/each}
             {#each d.events as ev (ev.id)}
-              <a class="week-event" href={`#event-${slugify(ev.event_name)}`}>{ev.event_name}</a>
+              <a class="week-event" href={`#event-${slugify(ev.event_name)}`}
+                >{ev.event_name}</a
+              >
             {/each}
           </div>
         {/if}
@@ -269,7 +367,9 @@
 </div>
 
 {#if showEventList}
-  <hr style="border: none; border-top: 1px solid var(--border); margin: 16px 0;"/>
+  <hr
+    style="border: none; border-top: 1px solid var(--border); margin: 16px 0;"
+  />
 
   <div class="week-section cal-list">
     <div class="week-title">Eventos y Fechas especiales</div>
@@ -278,13 +378,17 @@
         <div class="cal-group" class:today-group={g.isToday}>
           <div class="cal-group-header">
             <div class="cal-group-date">
-              {g.date.toLocaleDateString('es-ES', { year: 'numeric', month: 'long' })}
+              {g.date.toLocaleDateString("es-ES", {
+                year: "numeric",
+                month: "long",
+              })}
             </div>
             <div class="cal-group-meta">
               {#if g.isToday}
                 <span class="cal-pill">Hoy</span>
               {/if}
               <span class="cal-count">{g.events.length} eventos</span>
+              <span class="cal-count">{g.todos.length} pendientes</span>
             </div>
           </div>
           <div class="week-event-list">
@@ -294,8 +398,19 @@
               <div class="cal-card card todo-card" class:today={isToday}>
                 <div class="cal-info">
                   <div class="cal-name">{td.name}</div>
-                  <div class="cal-date">{new Date(td.todo_date).toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
-                  <span class="tag" style="background:var(--accent-orange);color:var(--text-dark)">Tarea</span>
+                  <div class="cal-date">
+                    {new Date(td.todo_date).toLocaleDateString("es-ES", {
+                      weekday: "long",
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    })}
+                  </div>
+                  <span
+                    class="tag"
+                    style="background:var(--accent-orange);color:var(--text-dark)"
+                    >Tarea</span
+                  >
                 </div>
               </div>
             {/each}
@@ -303,31 +418,78 @@
               {@const evDate = dateFromIso(ev.event_date)}
               {@const isToday = toIsoDateLocal(evDate) === todayIso}
               {@const expired = toIsoDateLocal(evDate) < todayIso}
-              <div class="cal-card card" id="event-{slugify(ev.event_name)}" class:today={isToday} class:expired={expired}>
+              <div
+                class="cal-card card"
+                id="event-{slugify(ev.event_name)}"
+                class:today={isToday}
+                class:expired
+              >
                 {#if editingEventId === ev.id}
                   <div class="cal-info">
-                    <input class="todo-edit-input" type="text" bind:value={editEventName} onkeydown={(e) => e.key === 'Enter' && saveEditEvent()} />
-                    <input class="todo-edit-date" type="date" bind:value={editEventDate} oninput={(e) => (editEventDate = normalizeDate((e.currentTarget as HTMLInputElement).value))} />
+                    <input
+                      class="todo-edit-input"
+                      type="text"
+                      bind:value={editEventName}
+                      onkeydown={(e) => e.key === "Enter" && saveEditEvent()}
+                    />
+                    <input
+                      class="todo-edit-date"
+                      type="date"
+                      bind:value={editEventDate}
+                      oninput={(e) =>
+                        (editEventDate = normalizeDate(
+                          (e.currentTarget as HTMLInputElement).value,
+                        ))}
+                    />
                     <select class="todo-edit-date" bind:value={editEventType}>
                       <option value="event">Evento</option>
                       <option value="special_day">Día especial</option>
                     </select>
                   </div>
                   <div class="cal-actions">
-                    <button class="small-btn btn-primary" onclick={saveEditEvent} disabled={saving}>Guardar</button>
-                    <button class="small-btn btn-secondary" onclick={cancelEditEvent} disabled={saving}>Cancelar</button>
+                    <button
+                      class="small-btn btn-primary"
+                      onclick={saveEditEvent}
+                      disabled={saving}>Guardar</button
+                    >
+                    <button
+                      class="small-btn btn-secondary"
+                      onclick={cancelEditEvent}
+                      disabled={saving}>Cancelar</button
+                    >
                   </div>
                 {:else}
                   <div class="cal-info">
                     <div class="cal-name">{ev.event_name}</div>
-                    <div class="cal-date">{evDate.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
+                    <div class="cal-date">
+                      {evDate.toLocaleDateString("es-ES", {
+                        weekday: "long",
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })}
+                    </div>
                     {#if !expired}
-                      <span class="tag" style="background:{ev.type === 'special_day' ? 'var(--accent-purple)' : 'var(--accent-green)'};color:var(--text-dark)">{ev.type === 'special_day' ? 'Dia especial' : 'Evento'}</span>
+                      <span
+                        class="tag"
+                        style="background:{ev.type === 'special_day'
+                          ? 'var(--accent-purple)'
+                          : 'var(--accent-green)'};color:var(--text-dark)"
+                        >{ev.type === "special_day"
+                          ? "Dia especial"
+                          : "Evento"}</span
+                      >
                     {/if}
                   </div>
                   <div class="cal-actions">
-                    <button class="small-btn btn-secondary" onclick={() => startEditEvent(ev)}>🖋</button>
-                    <button class="small-btn btn-ghost" onclick={() => deleteCal(ev.id!)}>✕</button>
+                    <button
+                      class="small-btn btn-secondary"
+                      onclick={() => startEditEvent(ev)}>🖋</button
+                    >
+                    <button
+                      class="small-btn btn-ghost"
+                      onclick={() => deleteCal(ev.id!)}>✕</button
+                    >
                   </div>
                 {/if}
               </div>
@@ -345,7 +507,11 @@
             onclick={() => (showFutureEvents = !showFutureEvents)}
           >
             <span>
-              Eventos futuros (más de 30 días) <span class="cal-count">{futureEventGroups.reduce((n, g) => n + g.events.length, 0)} eventos</span>
+              Eventos futuros ({">30 días"})
+              <span class="cal-count"
+                >{futureEventGroups.reduce((n, g) => n + g.events.length, 0)} eventos
+                o pendientes</span
+              >
             </span>
             <span class="cal-chevron" class:open={showFutureEvents}>▾</span>
           </button>
@@ -356,21 +522,42 @@
                 <div class="cal-group">
                   <div class="cal-group-header">
                     <div class="cal-group-date">
-                      {g.date.toLocaleDateString('es-ES', { year: 'numeric', month: 'long' })}
+                      {g.date.toLocaleDateString("es-ES", {
+                        year: "numeric",
+                        month: "long",
+                      })}
                     </div>
                     <div class="cal-group-meta">
                       <span class="cal-count">{g.events.length} eventos</span>
+                      <span class="cal-count">{g.todos.length} pendientes</span>
                     </div>
                   </div>
                   <div class="week-event-list">
                     {#each g.todos as td (td.id)}
                       {@const tdDate = new Date(td.todo_date)}
                       {@const isToday = toIsoDateLocal(tdDate) === todayIso}
-                      <div class="cal-card card todo-card" class:today={isToday}>
+                      <div
+                        class="cal-card card todo-card"
+                        class:today={isToday}
+                      >
                         <div class="cal-info">
                           <div class="cal-name">{td.name}</div>
-                          <div class="cal-date">{new Date(td.todo_date).toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
-                          <span class="tag" style="background:var(--accent-orange);color:var(--text-dark)">Tarea</span>
+                          <div class="cal-date">
+                            {new Date(td.todo_date).toLocaleDateString(
+                              "es-ES",
+                              {
+                                weekday: "long",
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                              },
+                            )}
+                          </div>
+                          <span
+                            class="tag"
+                            style="background:var(--accent-orange);color:var(--text-dark)"
+                            >Tarea</span
+                          >
                         </div>
                       </div>
                     {/each}
@@ -378,31 +565,82 @@
                       {@const evDate = dateFromIso(ev.event_date)}
                       {@const isToday = toIsoDateLocal(evDate) === todayIso}
                       {@const expired = toIsoDateLocal(evDate) < todayIso}
-                      <div class="cal-card card" id="event-{slugify(ev.event_name)}" class:today={isToday} class:expired={expired}>
+                      <div
+                        class="cal-card card"
+                        id="event-{slugify(ev.event_name)}"
+                        class:today={isToday}
+                        class:expired
+                      >
                         {#if editingEventId === ev.id}
                           <div class="cal-info">
-                            <input class="todo-edit-input" type="text" bind:value={editEventName} onkeydown={(e) => e.key === 'Enter' && saveEditEvent()} />
-                            <input class="todo-edit-date" type="date" bind:value={editEventDate} oninput={(e) => (editEventDate = normalizeDate((e.currentTarget as HTMLInputElement).value))} />
-                            <select class="todo-edit-date" bind:value={editEventType}>
+                            <input
+                              class="todo-edit-input"
+                              type="text"
+                              bind:value={editEventName}
+                              onkeydown={(e) =>
+                                e.key === "Enter" && saveEditEvent()}
+                            />
+                            <input
+                              class="todo-edit-date"
+                              type="date"
+                              bind:value={editEventDate}
+                              oninput={(e) =>
+                                (editEventDate = normalizeDate(
+                                  (e.currentTarget as HTMLInputElement).value,
+                                ))}
+                            />
+                            <select
+                              class="todo-edit-date"
+                              bind:value={editEventType}
+                            >
                               <option value="event">Evento</option>
                               <option value="special_day">Día especial</option>
                             </select>
                           </div>
                           <div class="cal-actions">
-                            <button class="small-btn btn-primary" onclick={saveEditEvent} disabled={saving}>Guardar</button>
-                            <button class="small-btn btn-secondary" onclick={cancelEditEvent} disabled={saving}>Cancelar</button>
+                            <button
+                              class="small-btn btn-primary"
+                              onclick={saveEditEvent}
+                              disabled={saving}>Guardar</button
+                            >
+                            <button
+                              class="small-btn btn-secondary"
+                              onclick={cancelEditEvent}
+                              disabled={saving}>Cancelar</button
+                            >
                           </div>
                         {:else}
                           <div class="cal-info">
                             <div class="cal-name">{ev.event_name}</div>
-                            <div class="cal-date">{evDate.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
+                            <div class="cal-date">
+                              {evDate.toLocaleDateString("es-ES", {
+                                weekday: "long",
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                              })}
+                            </div>
                             {#if !expired}
-                              <span class="tag" style="background:{ev.type === 'special_day' ? 'var(--accent-purple)' : 'var(--accent-green)'};;color:var(--text-dark)">{ev.type === 'special_day' ? 'Dia especial' : 'Evento'}</span>
+                              <span
+                                class="tag"
+                                style="background:{ev.type === 'special_day'
+                                  ? 'var(--accent-purple)'
+                                  : 'var(--accent-green)'};;color:var(--text-dark)"
+                                >{ev.type === "special_day"
+                                  ? "Dia especial"
+                                  : "Evento"}</span
+                              >
                             {/if}
                           </div>
                           <div class="cal-actions">
-                            <button class="small-btn btn-secondary" onclick={() => startEditEvent(ev)}>🖋</button>
-                            <button class="small-btn btn-ghost" onclick={() => deleteCal(ev.id!)}>✕</button>
+                            <button
+                              class="small-btn btn-secondary"
+                              onclick={() => startEditEvent(ev)}>🖋</button
+                            >
+                            <button
+                              class="small-btn btn-ghost"
+                              onclick={() => deleteCal(ev.id!)}>✕</button
+                            >
                           </div>
                         {/if}
                       </div>
@@ -424,7 +662,10 @@
             onclick={() => (showPastEvents = !showPastEvents)}
           >
             <span>
-              Eventos pasados <span class="cal-count">{pastEventGroups.reduce((n, g) => n + g.events.length, 0)} eventos</span>
+              Eventos pasados <span class="cal-count"
+                >{pastEventGroups.reduce((n, g) => n + g.events.length, 0)} eventos
+                o pendientes</span
+              >
             </span>
             <span class="cal-chevron" class:open={showPastEvents}>▾</span>
           </button>
@@ -435,10 +676,14 @@
                 <div class="cal-group expired-group">
                   <div class="cal-group-header">
                     <div class="cal-group-date">
-                      {g.date.toLocaleDateString('es-ES', { year: 'numeric', month: 'long' })}
+                      {g.date.toLocaleDateString("es-ES", {
+                        year: "numeric",
+                        month: "long",
+                      })}
                     </div>
                     <div class="cal-group-meta">
                       <span class="cal-count">{g.events.length} eventos</span>
+                      <span class="cal-count">{g.todos.length} pendientes</span>
                     </div>
                   </div>
                   <div class="week-event-list">
@@ -446,8 +691,22 @@
                       <div class="cal-card card todo-card expired">
                         <div class="cal-info">
                           <div class="cal-name">{td.name}</div>
-                          <div class="cal-date">{new Date(td.todo_date).toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
-                          <span class="tag" style="background:var(--accent-orange);color:var(--text-dark)">Tarea</span>
+                          <div class="cal-date">
+                            {new Date(td.todo_date).toLocaleDateString(
+                              "es-ES",
+                              {
+                                weekday: "long",
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                              },
+                            )}
+                          </div>
+                          <span
+                            class="tag"
+                            style="background:var(--accent-orange);color:var(--text-dark)"
+                            >Tarea</span
+                          >
                         </div>
                       </div>
                     {/each}
@@ -455,28 +714,71 @@
                       {@const evDate = dateFromIso(ev.event_date)}
                       {@const isToday = toIsoDateLocal(evDate) === todayIso}
                       {@const expired = toIsoDateLocal(evDate) < todayIso}
-                      <div class="cal-card card" id="event-{slugify(ev.event_name)}" class:today={isToday} class:expired={expired}>
+                      <div
+                        class="cal-card card"
+                        id="event-{slugify(ev.event_name)}"
+                        class:today={isToday}
+                        class:expired
+                      >
                         {#if editingEventId === ev.id}
                           <div class="cal-info">
-                            <input class="todo-edit-input" type="text" bind:value={editEventName} onkeydown={(e) => e.key === 'Enter' && saveEditEvent()} />
-                            <input class="todo-edit-date" type="date" bind:value={editEventDate} oninput={(e) => (editEventDate = normalizeDate((e.currentTarget as HTMLInputElement).value))} />
-                            <select class="todo-edit-date" bind:value={editEventType}>
+                            <input
+                              class="todo-edit-input"
+                              type="text"
+                              bind:value={editEventName}
+                              onkeydown={(e) =>
+                                e.key === "Enter" && saveEditEvent()}
+                            />
+                            <input
+                              class="todo-edit-date"
+                              type="date"
+                              bind:value={editEventDate}
+                              oninput={(e) =>
+                                (editEventDate = normalizeDate(
+                                  (e.currentTarget as HTMLInputElement).value,
+                                ))}
+                            />
+                            <select
+                              class="todo-edit-date"
+                              bind:value={editEventType}
+                            >
                               <option value="event">Evento</option>
                               <option value="special_day">Día especial</option>
                             </select>
                           </div>
                           <div class="cal-actions">
-                            <button class="small-btn btn-primary" onclick={saveEditEvent} disabled={saving}>Guardar</button>
-                            <button class="small-btn btn-secondary" onclick={cancelEditEvent} disabled={saving}>Cancelar</button>
+                            <button
+                              class="small-btn btn-primary"
+                              onclick={saveEditEvent}
+                              disabled={saving}>Guardar</button
+                            >
+                            <button
+                              class="small-btn btn-secondary"
+                              onclick={cancelEditEvent}
+                              disabled={saving}>Cancelar</button
+                            >
                           </div>
                         {:else}
                           <div class="cal-info">
                             <div class="cal-name">{ev.event_name}</div>
-                            <div class="cal-date">{evDate.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
+                            <div class="cal-date">
+                              {evDate.toLocaleDateString("es-ES", {
+                                weekday: "long",
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                              })}
+                            </div>
                           </div>
                           <div class="cal-actions">
-                            <button class="small-btn btn-secondary" onclick={() => startEditEvent(ev)}>🖋</button>
-                            <button class="small-btn btn-ghost" onclick={() => deleteCal(ev.id!)}>✕</button>
+                            <button
+                              class="small-btn btn-secondary"
+                              onclick={() => startEditEvent(ev)}>🖋</button
+                            >
+                            <button
+                              class="small-btn btn-ghost"
+                              onclick={() => deleteCal(ev.id!)}>✕</button
+                            >
                           </div>
                         {/if}
                       </div>
@@ -496,8 +798,14 @@
 {/if}
 
 <style>
-  .week-section { margin-top: 16px; }
-  .cal-list { display: flex; flex-direction: column; gap: 10px; }
+  .week-section {
+    margin-top: 16px;
+  }
+  .cal-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
 
   .cal-groups {
     display: flex;
@@ -526,7 +834,12 @@
     text-transform: capitalize;
   }
 
-  .cal-group-meta { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .cal-group-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
 
   .cal-count {
     font-size: 11px;
@@ -543,14 +856,19 @@
     font-family: var(--font-mono);
     padding: 2px 8px;
     border-radius: 999px;
-    background: rgba(168,230,207,0.12);
-    border: 1px solid rgba(168,230,207,0.45);
+    background: rgba(168, 230, 207, 0.12);
+    border: 1px solid rgba(168, 230, 207, 0.45);
     color: var(--text);
   }
 
-  .today-group .cal-group-date { color: var(--accent-green); }
+  .today-group .cal-group-date {
+    color: var(--accent-green);
+  }
 
-  .cal-past { border-top: 1px dashed var(--border); padding-top: 12px; }
+  .cal-past {
+    border-top: 1px dashed var(--border);
+    padding-top: 12px;
+  }
 
   .cal-past-toggle {
     width: 100%;
@@ -568,22 +886,38 @@
     transition: all var(--transition);
   }
 
-  .cal-past-toggle:hover { border-color: var(--text3); color: var(--text); }
+  .cal-past-toggle:hover {
+    border-color: var(--text3);
+    color: var(--text);
+  }
 
-  .cal-chevron { transition: transform var(--transition); }
-  .cal-chevron.open { transform: rotate(180deg); }
+  .cal-chevron {
+    transition: transform var(--transition);
+  }
+  .cal-chevron.open {
+    transform: rotate(180deg);
+  }
 
-  .cal-past-body { margin-top: 12px; display: flex; flex-direction: column; gap: 14px; }
-  
+  .cal-past-body {
+    margin-top: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
   .cal-card {
     display: flex;
     align-items: center;
     gap: 14px;
-    padding: 16px;
+    padding: 12px 16px;
   }
 
-  .cal-card.today { border: 2px solid var(--accent-blue); }
-  .cal-card.expired { opacity: 0.8; }
+  .cal-card.today {
+    border: 2px solid var(--accent-blue);
+  }
+  .cal-card.expired {
+    opacity: 0.8;
+  }
 
   .cal-card:target {
     outline: 2px solid var(--accent-green);
@@ -594,9 +928,20 @@
     border-left: 3px solid var(--accent-orange);
   }
 
-  .cal-info { flex: 1; }
-  .cal-name { font-weight: 700; font-size: 15px; line-height: 1.2; }
-  .cal-date { font-size: 13px; color: var(--text2); text-transform: capitalize; margin: 3px 0; }
+  .cal-info {
+    flex: 1;
+  }
+  .cal-name {
+    font-weight: 700;
+    font-size: 15px;
+    line-height: 1.2;
+  }
+  .cal-date {
+    font-size: 13px;
+    color: var(--text2);
+    text-transform: capitalize;
+    margin: 3px 0;
+  }
   .cal-actions {
     display: flex;
     flex-direction: column;
@@ -636,15 +981,19 @@
     background: var(--accent-blue);
     border-bottom-color: var(--accent-blue);
   }
-  
-  .week-header.current .week-day { color: var(--bg3); }
-  .week-header.current .week-date { color: var(--surface2); }
-  
+
+  .week-header.current .week-day {
+    color: var(--bg3);
+  }
+  .week-header.current .week-date {
+    color: var(--surface2);
+  }
+
   .week-header.special {
     background: rgba(235, 213, 127, 0.14);
     border-bottom-color: rgba(235, 213, 127, 0.35);
   }
-  
+
   .week-header-top {
     display: flex;
     flex-wrap: wrap;
@@ -676,17 +1025,27 @@
     line-height: 1.4;
   }
 
-  .week-body { padding: 10px; }
-  .week-empty { color: var(--text3); font-size: 12px; font-family: var(--font-mono); }
-  .week-list { display: flex; flex-direction: column; gap: 6px; }
-  
+  .week-body {
+    padding: 10px;
+  }
+  .week-empty {
+    color: var(--text3);
+    font-size: 12px;
+    font-family: var(--font-mono);
+  }
+  .week-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
   .week-event-list {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     grid-column-gap: 10px;
     grid-row-gap: 5px;
   }
-  
+
   .week-event {
     font-size: 12px;
     color: var(--bg2);
@@ -697,7 +1056,9 @@
     background: var(--accent-blue);
   }
 
-  .week-event:hover { background: var(--accent-green); }
+  .week-event:hover {
+    background: var(--accent-green);
+  }
 
   .week-todo {
     font-size: 11px;
@@ -712,12 +1073,20 @@
   }
 
   @media (max-width: 1000px) {
-    .week-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .week-event-list { grid-template-columns: repeat(2, 1fr); }
+    .week-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .week-event-list {
+      grid-template-columns: repeat(2, 1fr);
+    }
   }
-  
+
   @media (max-width: 560px) {
-    .week-grid { grid-template-columns: 1fr; }
-    .week-event-list { grid-template-columns: repeat(1, 1fr); }
+    .week-grid {
+      grid-template-columns: 1fr;
+    }
+    .week-event-list {
+      grid-template-columns: repeat(1, 1fr);
+    }
   }
 </style>
