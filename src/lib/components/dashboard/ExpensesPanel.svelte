@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Expense } from '$lib/types';
   import PieChart from '$lib/components/PieChart.svelte';
+  import { currencyStore } from '$lib/stores/currency.svelte';
 
   interface Props {
     expenses?: Expense[];
@@ -13,6 +14,11 @@
 
   const currentMonthExpenses = $derived(expenses.filter(e => e.expense_date.startsWith(currentMonth)));
   const currentMonthTotal = $derived(currentMonthExpenses.reduce((sum, e) => sum + (e.cost || 0), 0));
+
+  const chartFormatter = $derived.by(() => {
+    currencyStore.value;
+    return (n: number) => currencyStore.format(n);
+  });
 
   const currentMonthByCategory = $derived(() => {
     const categories: Record<string, number> = {};
@@ -31,10 +37,10 @@
   <h3 class="card-title">Gastos del mes <a href="/goals?tab=expenses" class="card-link">Ver gastos →</a></h3>
   {#if currentMonthByCategory().length > 0}
     <div class="expenses-chart">
-      <PieChart data={currentMonthByCategory()} type="pie" />
+      <PieChart data={currentMonthByCategory()} type="pie" valueFontSize={18} moneyFormatter={chartFormatter} />
     </div>
     <div class="month-expense-total">
-      Total: <span>${currentMonthTotal.toFixed(2)}</span>
+      Total: <span>{currencyStore.format(currentMonthTotal)}</span>
     </div>
   {:else}
     <div class="empty-state">Sin gastos este mes</div>
@@ -75,7 +81,7 @@
 
   .month-expense-total {
     text-align: center;
-    font-size: 13px;
+    font-size: 12px;
     color: var(--text2);
     font-family: var(--font-mono);
   }
@@ -83,6 +89,6 @@
   .month-expense-total span {
     font-weight: 700;
     color: var(--accent-yellow);
-    font-size: 16px;
+    font-size: 14px;
   }
 </style>

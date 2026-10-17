@@ -4,19 +4,12 @@
   import { awardXP, XP_VALUES } from '$lib/utils/xp';
   import PieChart from '$lib/components/PieChart.svelte';
   import { page } from '$app/state';
+  import { currencyStore } from '$lib/stores/currency.svelte';
 
   let props: { userId?: string } = $props();
   const userId = $derived(props.userId ?? page.data.user?.id ?? page.data.session?.user?.id ?? '');
 
   const repo = $derived(createRepository(userId));
-
-  const CURRENCY_KEY = 'vitacora_currency';
-  const CURRENCY_SYMBOLS: Record<string, { symbol: string; before: boolean }> = {
-    dollar: { symbol: '$', before: true },
-    euro: { symbol: '€', before: false }
-  };
-
-  let currency = $state<string>('dollar');
   let expenses = $state<Expense[]>([]);
   let subscriptions = $state<Subscription[]>([]);
   let loading = $state(true);
@@ -33,9 +26,13 @@
   let saving = $state(false);
 
   function formatCurrency(amount: number): string {
-    const { symbol, before } = CURRENCY_SYMBOLS[currency] || CURRENCY_SYMBOLS.dollar;
-    return before ? `${symbol}${amount.toFixed(2)}` : `${amount.toFixed(2)}${symbol}`;
+    return currencyStore.format(amount);
   }
+
+  const chartFormatter = $derived.by(() => {
+    currencyStore.value;
+    return (n: number) => currencyStore.format(n);
+  });
 
   function initDates() {
     const now = new Date();
@@ -43,20 +40,8 @@
     expenseFilterEndDate = '';
   }
 
-  function loadCurrency() {
-    if (typeof window === 'undefined') return;
-    const stored = localStorage.getItem(CURRENCY_KEY);
-    if (stored) currency = stored;
-  }
-
-  function toggleCurrency() {
-    currency = currency === 'dollar' ? 'euro' : 'dollar';
-    localStorage.setItem(CURRENCY_KEY, currency);
-  }
-
   $effect(() => {
     if (typeof window !== 'undefined' && !expenseFilterStartDate) {
-      loadCurrency();
       initDates();
     }
   });
@@ -158,15 +143,31 @@
     }
 
     if (isSubscription && !editingExpenseId) {
-      await repo.subscriptions.insert({
-        name: expenseForm.name,
-        category: expenseForm.category,
-        cost: expenseForm.cost,
-        start_date: expenseForm.expense_date,
-        period_months: subscriptionPeriod,
-        is_active: true,
-        last_paid_date: expenseForm.expense_date
-      });
+      const nameKey = expenseForm.name.trim().toLowerCase();
+      const existing = subscriptions.find(
+        (s) => s.is_active === true && s.name.trim().toLowerCase() === nameKey
+      ) ?? subscriptions.find(
+        (s) => s.name.trim().toLowerCase() === nameKey
+      );
+      if (existing?.id) {
+        await repo.subscriptions.update(existing.id, {
+          cost: expenseForm.cost,
+          category: expenseForm.category,
+          period_months: subscriptionPeriod,
+          last_paid_date: expenseForm.expense_date,
+          is_active: true
+        });
+      } else {
+        await repo.subscriptions.insert({
+          name: expenseForm.name,
+          category: expenseForm.category,
+          cost: expenseForm.cost,
+          start_date: expenseForm.expense_date,
+          period_months: subscriptionPeriod,
+          is_active: true,
+          last_paid_date: expenseForm.expense_date
+        });
+      }
     }
 
     showExpenseForm = false;
@@ -229,8 +230,8 @@
 
   <div class="expenses-toolbar">
     <button class="btn btn-primary" onclick={() => { resetExpenseForm(); showExpenseForm = true; }}>+ Agregar gasto</button>
-    <button class="currency-toggle" onclick={toggleCurrency} title="Cambiar moneda">
-      {currency === 'dollar' ? '$ Dólar' : '€ Euro'}
+    <button class="currency-toggle" onclick={() => currencyStore.toggle()} title="Cambiar moneda">
+      {currencyStore.value === 'dollar' ? '$ Dólar' : '€ Euro'}
     </button>
   </div>
 
@@ -259,7 +260,7 @@
 
   {#if !expenseFilterCategory && expensesByCategory.length > 0}
     <div class="card expenses-chart-card">
-      <PieChart data={expensesByCategory} type="pie" title="Gastos Totales" />
+      <PieChart data={expensesByCategory} type="pie" title="Gastos Totales" moneyFormatter={chartFormatter} />
       <div class="expenses-total">
         Total: <span class="total-amount">{formatCurrency(expensesTotal)}</span>
       </div>
@@ -268,7 +269,7 @@
     {@const monthData = expensesByMonth}
     {@const grandTotal = monthData.reduce((sum, m) => sum + m.total, 0)}
     <div class="card expenses-total-card">
-      <PieChart data={monthData.map(m => ({ name: m.monthLabel, total: m.total, percentage: grandTotal > 0 ? (m.total / grandTotal) * 100 : 0 }))} type="pie" title="Gastos en {expenseFilterCategory}" />
+      <PieChart data={monthData.map(m => ({ name: m.monthLabel, total: m.total, percentage: grandTotal > 0 ? (m.total / grandTotal) * 100 : 0 }))} type="pie" title="Gastos en {expenseFilterCategory}" moneyFormatter={chartFormatter} />
       <div class="expenses-total">
         Total: <span class="total-amount">{formatCurrency(expensesTotal)}</span>
       </div>
@@ -362,7 +363,7 @@
           {/each}
         </datalist>
       </div>
-      <div class="form-group"><label for="expense-cost">Costo ({CURRENCY_SYMBOLS[currency].symbol})</label><input id="expense-cost" type="number" bind:value={expenseForm.cost} min="0" step="0.01" placeholder="0.00" /></div>
+      <div class="form-group"><label for="expense-cost">Costo ({currencyStore.symbol})</label><input id="expense-cost" type="number" bind:value={expenseForm.cost} min="0" step="0.01" placeholder="0.00" /></div>
       <div class="form-group"><label for="expense-date">Fecha</label><input id="expense-date" type="date" bind:value={expenseForm.expense_date} /></div>
       {#if !editingExpenseId}
         <div class="form-group form-check">
