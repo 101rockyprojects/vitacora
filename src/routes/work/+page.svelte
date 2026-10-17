@@ -180,7 +180,17 @@
     {/if}
   </div>
 
-  <article class="resume-section">
+  {#if loading}
+  <div class="loading">Cargando...</div>
+  {:else}
+    <WorkTodos {userId} todos={workTodos} onTodosChange={(t) => (workTodos = t)} />
+    <Kanban 
+      {userId} 
+      tasks={tasks} 
+      onTasksChange={handleTasksChange}
+      useWorkFilter={true}
+    />
+    <article class="resume-section">
     <div class="resume-header">
       <div class="resume-info">
         <h3 class="resume-title">Resumen de la semana</h3>
@@ -211,17 +221,6 @@
       <div class="resume-empty">No hay tareas completadas en este período</div>
     {/if}
   </article>
-
-  {#if loading}
-  <div class="loading">Cargando...</div>
-  {:else}
-    <WorkTodos {userId} todos={workTodos} onTodosChange={(t) => (workTodos = t)} />
-    <Kanban 
-      {userId} 
-      tasks={tasks} 
-      onTasksChange={handleTasksChange}
-      useWorkFilter={true}
-    />
   {/if}
 </div>
 
@@ -306,6 +305,7 @@
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
     padding: 16px;
+    margin-top: 16px;
     margin-bottom: 20px;
   }
 
