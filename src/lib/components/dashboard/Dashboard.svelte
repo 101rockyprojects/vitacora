@@ -98,11 +98,11 @@
   <Stats {totalXP} {tasks} {books} {userBadgesCount} />
 
   <div class="dash-grid">
-    <TasksPanel {tasks} {loading} />
-    <BooksPanel {books} />
-    <Motivational />
-    <ExpensesPanel {expenses} />
-    <AreaXP bind:areaXP />
+    <div class="bento-tasks"><TasksPanel {tasks} {loading} /></div>
+    <div class="bento-books"><BooksPanel {books} /></div>
+    <div class="bento-motive"><Motivational /></div>
+    <div class="bento-expenses"><ExpensesPanel {expenses} /></div>
+    <div class="bento-xp"><AreaXP bind:areaXP /></div>
     <div class="card week-card">
       <WeekPlanner events={calEvents} showEventList={false} />
     </div>
@@ -111,6 +111,10 @@
 
 <style>
   .dashboard { max-width: 1100px; }
+
+  @media (min-width: 1151px) {
+    .dashboard { max-width: 1440px; }
+  }
 
   .dash-header {
     display: flex;
@@ -184,6 +188,20 @@
     gap: 16px;
   }
 
+  .dash-grid > :global(*) { min-width: 0; }
+
+  .bento-tasks, .bento-books, .bento-motive, .bento-expenses, .bento-xp {
+    display: flex;
+  }
+
+  .bento-tasks > :global(.card),
+  .bento-books > :global(.card),
+  .bento-motive > :global(.card),
+  .bento-expenses > :global(.card),
+  .bento-xp > :global(.card) {
+    width: 100%;
+  }
+
   .week-card { grid-column: 1; }
 
   @media (min-width: 768px) and (max-width: 1150px) {
@@ -194,12 +212,28 @@
   }
 
   @media (min-width: 1151px) {
-    .dash-grid { grid-template-columns: 1fr 1fr 1fr; }
-    .week-card { grid-column: span 3; }
+    .dash-grid {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      grid-template-areas:
+        "motive tasks books exp exp"
+        "xp     tasks books exp exp";
+    }
+    .bento-tasks { grid-area: tasks; }
+    .bento-books { grid-area: books; }
+    .bento-expenses { grid-area: exp; }
+    .bento-motive { grid-area: motive; }
+    .bento-xp { grid-area: xp; }
+    .week-card { grid-column: 1 / -1; }
   }
 
-  @media (min-width: 1280px) {
-    .dash-grid { grid-template-columns: 1fr 1fr 1fr 1fr; }
-    .week-card { grid-column: span 4; }
+  @media (min-width: 1151px) {
+    .bento-tasks > :global(.card),
+    .bento-books > :global(.card),
+    .bento-expenses > :global(.card),
+    .bento-xp > :global(.card),
+    .bento-motive > :global(.card) {
+      height: 100%;
+    }
+    .week-card { height: 100%; }
   }
 </style>

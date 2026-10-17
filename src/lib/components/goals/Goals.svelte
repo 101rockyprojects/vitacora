@@ -188,6 +188,10 @@
 <style>
   .goals-page { max-width: 1100px; }
 
+  @media (min-width: 1151px) {
+    .goals-page { max-width: 1440px; }
+  }
+
   .tabs-bar {
     display: flex;
     gap: 4px;
