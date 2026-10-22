@@ -4,19 +4,22 @@
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
   import { workFilterTag } from '$lib/stores/workFilter.svelte';
+  import { SECTIONS, readSettings } from '$lib/settings';
   import type { User } from '@supabase/supabase-js';
 
   let { user }: { user: User | null } = $props();
 
-  const nav = [
-    { href: '/dashboard', label: 'Dashboard', icon: '◈' },
-    { href: '/goals', label: 'Visión & Metas', icon: '⊶' },
-    { href: '/projects', label: 'Proyectos', icon: '◉' },
-    { href: '/work', label: workFilterTag.value, icon: '⌘' },
-    { href: '/expenses', label: 'Gastos', icon: '$' },
-    { href: '/partner', label: 'Partner', icon: '♥' },
-    { href: '/profile', label: 'Perfil & XP', icon: '◎' }
-  ];
+  const settings = $derived(readSettings(user));
+
+  const nav = $derived(
+    SECTIONS.filter((section) => settings.sections[section.id]).map((section) => ({
+      href: section.href,
+      label: section.id === 'work' ? workFilterTag.value : section.label,
+      icon: section.icon
+    }))
+  );
+
+  const displayName = $derived(settings.display_name || user?.email?.replace(/@.*/, '') || '');
 
   const repo = createRepository();
 
@@ -80,14 +83,26 @@
           </a>
         </li>
       {/each}
+      <li>
+        <a
+          href="/settings"
+          class="nav-item"
+          class:active={currentPath === '/settings'}
+          aria-current={currentPath === '/settings' ? 'page' : undefined}
+          onclick={() => { if (isMobile) isOpen = false; }}
+        >
+          <span class="nav-icon" aria-hidden="true">⚙</span>
+          <span class="nav-label">Ajustes</span>
+        </a>
+      </li>
     </ul>
   </nav>
 
   <div class="sidebar-bottom">
     {#if user}
       <div class="user-info">
-        <div class="user-avatar">{user.email?.[0].toUpperCase()}</div>
-        <div class="user-email">{user.email?.replace(/@.*/, '')}</div>
+        <div class="user-avatar">{displayName[0]?.toUpperCase()}</div>
+        <div class="user-email">{displayName}</div>
       </div>
     {/if}
     <button class="sign-out-btn" onclick={signOut}>

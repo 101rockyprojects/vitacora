@@ -3,10 +3,12 @@ import { env } from '$env/dynamic/public';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import type { Handle } from '@sveltejs/kit';
 import type { Session, User } from '@supabase/supabase-js';
+import { readSettings } from '$lib/settings';
 
 export const handle: Handle = async ({ event, resolve }) => {
   const supabaseUrl = env.PUBLIC_SUPABASE_URL;
   const supabaseKey = env.PUBLIC_SUPABASE_ANON_KEY;
+  let palette = 'default';
 
   if (supabaseUrl && supabaseKey) {
     event.locals.supabase = createServerClient(
@@ -45,6 +47,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 
     // Obtener sesión y usuario
     const { session, user } = await event.locals.safeGetSession();
+    palette = readSettings(user).palette;
     
     // Extender locals con las propiedades
     (event.locals as App.Locals & { session: Session | null; user: User | null }).session = session;
@@ -60,6 +63,8 @@ export const handle: Handle = async ({ event, resolve }) => {
   }
 
   return resolve(event, {
+    transformPageChunk: ({ html }) =>
+      html.replace('<html', `<html data-palette="${palette}"`),
     filterSerializedResponseHeaders(name) {
       return name === 'content-range' || name === 'x-supabase-api-version';
     },

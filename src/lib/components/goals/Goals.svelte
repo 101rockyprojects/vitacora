@@ -1,6 +1,7 @@
 <script lang="ts">
   import { page } from '$app/state';
   import { browser } from '$app/environment';
+  import { orderedTabs, readSettings } from '$lib/settings';
   import { createRepository } from '$lib/services/repository';
   import { onDestroy } from 'svelte';
   import type { Book, LearningItem, SuccessExperience, Reward, MemoryPhoto, CalendarEvent, UsefulLink, CalendarTodo } from '$lib/types';
@@ -12,10 +13,10 @@
   import Successes from './Successes.svelte';
   import Rewards from './Rewards.svelte';
 
-  const GOALS_TABS = ['calendar', 'vision', 'books', 'learning', 'memories', 'successes', 'rewards'] as const;
-  type GoalsTab = typeof GOALS_TABS[number];
 
   const userId = $derived(page.data.user?.id ?? page.data.session?.user?.id ?? '');
+  const settings = $derived(readSettings(page.data.user));
+  const tabs = $derived(orderedTabs('goals', settings));
   const repo = $derived(createRepository(userId));
   let initialized = $state(false);
   let url = new URL(page.url.href);
@@ -23,8 +24,9 @@
     url = new URL(window.location.href);
   }
   const current = url.searchParams.get('tab');
-  const defaultTab = GOALS_TABS.includes(current as GoalsTab) ? (current as GoalsTab) : 'calendar';
-  let activeTab = $state<GoalsTab>(defaultTab);
+  const initialTabs = orderedTabs('goals', readSettings(page.data.user));
+  const defaultTab = initialTabs.some((tab) => tab.id === current) ? (current as string) : (initialTabs[0]?.id ?? 'calendar');
+  let activeTab = $state(defaultTab);
 
   let visionBoardLink = $state<UsefulLink | null>(null);
   let showVisionLinkForm = $state(false);
@@ -43,15 +45,6 @@
 
   let saving = $state(false);
 
-  const tabs = [
-    { id: 'calendar', label: 'Calendario', icon: '📅' },
-    { id: 'vision', label: 'Visión', icon: '⊶' },
-    { id: 'books', label: 'Libros', icon: '📚' },
-    { id: 'learning', label: 'Aprendizaje', icon: '🧠' },
-    { id: 'memories', label: 'Memorias', icon: '📸' },
-    { id: 'successes', label: 'Logros', icon: '🏆' },
-    { id: 'rewards', label: 'Recompensas', icon: '🎁' }
-  ] as const;
 
   $effect(() => {
     if (userId && !initialized) {
@@ -60,15 +53,11 @@
     }
   });
 
-  function switchTab(tabId: GoalsTab) {
-    if (GOALS_TABS.includes(activeTab)) {
-      activeTab = tabId as typeof activeTab;
-      const next = new URL(window.location.href);
-      next.searchParams.set('tab', activeTab);
-      window.history.replaceState(window.history.state, '', next);
-    } else {
-      activeTab = 'calendar';
-    }
+  function switchTab(tabId: string) {
+    activeTab = tabId;
+    const next = new URL(window.location.href);
+    next.searchParams.set('tab', activeTab);
+    window.history.replaceState(window.history.state, '', next);
   }
 
   $effect(() => {

@@ -1,30 +1,26 @@
 <script lang="ts">
   import { page } from '$app/state';
   import { browser } from '$app/environment';
+  import { orderedTabs, readSettings } from '$lib/settings';
   import Connection from './Connection.svelte';
   import MovieRoulette from './MovieRoulette.svelte';
   import PartnerIdeas from './PartnerIdeas.svelte';
   import UsefulLinks from './UsefulLinks.svelte';
 
-  const PARTNER_TABS = ['connection', 'movies', 'ideas', 'links'] as const;
-  type PartnerTab = typeof PARTNER_TABS[number];
 
   const userId = $derived(page.data.user?.id ?? page.data.session?.user?.id ?? '');
+  const settings = $derived(readSettings(page.data.user));
+  const tabs = $derived(orderedTabs('partner', settings));
 
   let url = new URL(page.url.href);
   if (browser) {
     url = new URL(window.location.href);
   }
   const current = url.searchParams.get('tab');
-  const defaultTab = PARTNER_TABS.includes(current as PartnerTab) ? (current as PartnerTab) : 'connection';
-  let activeTab = $state<PartnerTab>(defaultTab);
+  const initialTabs = orderedTabs('partner', readSettings(page.data.user));
+  const defaultTab = initialTabs.some((tab) => tab.id === current) ? (current as string) : (initialTabs[0]?.id ?? 'connection');
+  let activeTab = $state(defaultTab);
 
-  const tabs = [
-    { id: 'connection', label: 'Conexión', icon: '♥' },
-    { id: 'movies', label: 'Películas', icon: '🎬' },
-    { id: 'ideas', label: 'Ideas', icon: '💡' },
-    { id: 'links', label: 'Enlaces útiles', icon: '🔗' }
-  ] as const;
 
   $effect(() => {
     if (typeof window === 'undefined') return;
@@ -35,7 +31,7 @@
     window.history.replaceState(window.history.state, '', url);
   });
 
-  function switchTab(tabId: PartnerTab) {
+  function switchTab(tabId: string) {
     activeTab = tabId;
     const next = new URL(window.location.href);
     next.searchParams.set('tab', activeTab);

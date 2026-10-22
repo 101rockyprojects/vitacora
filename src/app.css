@@ -31,6 +31,46 @@
   --sidebar-width: 240px;
 }
 
+/* ponytail: placeholder values — swap the hex codes when the final palettes arrive */
+/* Skeleton tokens (used by loading skeletons) follow the palette */
+[data-palette="default"] {
+  --color-surface-500: var(--surface);
+  --color-surface-700: var(--surface2);
+  --color-primary-500: var(--accent-green);
+}
+[data-palette="ocean"] {
+  --color-surface-500: var(--surface);
+  --color-surface-700: var(--surface2);
+  --color-primary-500: var(--accent-green);
+  --surface: #1b2a3f;
+  --surface2: #24374f;
+  --accent-green: #6fb3f5;
+}
+[data-palette="forest"] {
+  --color-surface-500: var(--surface);
+  --color-surface-700: var(--surface2);
+  --color-primary-500: var(--accent-green);
+  --surface: #1e2e26;
+  --surface2: #294035;
+  --accent-green: #7fd8a6;
+}
+[data-palette="sunset"] {
+  --color-surface-500: var(--surface);
+  --color-surface-700: var(--surface2);
+  --color-primary-500: var(--accent-green);
+  --surface: #33242b;
+  --surface2: #452f38;
+  --accent-green: #f0a07a;
+}
+[data-palette="mono"] {
+  --color-surface-500: var(--surface);
+  --color-surface-700: var(--surface2);
+  --color-primary-500: var(--accent-green);
+  --surface: #262629;
+  --surface2: #34343a;
+  --accent-green: #c9ccd4;
+}
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 html { scroll-behavior: smooth; }

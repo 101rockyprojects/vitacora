@@ -57,7 +57,9 @@ export function createRepository(
       signInWithPassword: (email: string, password: string) =>
         client.auth.signInWithPassword({ email, password }),
       signUp: (email: string, password: string, options?: { emailRedirectTo?: string }) => 
-        client.auth.signUp({ email, password, options: options ? { emailRedirectTo: options.emailRedirectTo } : undefined })
+        client.auth.signUp({ email, password, options: options ? { emailRedirectTo: options.emailRedirectTo } : undefined }),
+      updateUser: (data: Record<string, unknown>) => client.auth.updateUser({ data }),
+      updateEmail: (email: string) => client.auth.updateUser({ email })
     },
 
     tasks: {

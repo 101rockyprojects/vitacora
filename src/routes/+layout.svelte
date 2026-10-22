@@ -34,7 +34,8 @@
       '/goals': { label: 'Goals', description: 'Vision, habits, and growth.' },
       '/work': { label: 'Work', description: 'Kanban, projects, links, and skills.' },
       '/partner': { label: 'Partner', description: 'Shared ideas and plans.' },
-      '/profile': { label: 'Profile', description: 'XP, badges, and your progress.' }
+      '/profile': { label: 'Profile', description: 'XP, badges, and your progress.' },
+      '/settings': { label: 'Settings', description: 'Profile, theme and sections.' }
     };
 
     const entry = known[normalized] ?? {
