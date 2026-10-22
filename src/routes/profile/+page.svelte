@@ -378,8 +378,8 @@
             <span class="activity-dot" style="background:{areaColor(log.area)}"
             ></span>
             <span class="activity-source"
-              >{log.message?.trim() ||
-                xpSourceLabel(log.source_type ?? "")}</span
+              >{xpSourceLabel(log.source_type ?? "") +
+                (log.message ? ": " + log.message?.trim() : "")}</span
             >
             <span class="activity-area"
               >{areaIcon(log.area)} {areaLabel(log.area)}</span
