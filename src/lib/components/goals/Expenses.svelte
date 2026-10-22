@@ -157,7 +157,13 @@
   }
 
   async function saveSub() {
-    if (!editingSubId || !subForm.name.trim() || subForm.cost <= 0 || !subForm.start_date) return;
+    if (
+      !editingSubId ||
+      !subForm.name.trim() ||
+      subForm.cost <= 0 ||
+      !subForm.start_date
+    )
+      return;
     saving = true;
     await repo.subscriptions.update(editingSubId, {
       name: subForm.name.trim(),
@@ -896,8 +902,8 @@
   }
 
   .check-label {
-    display: flex;
-    align-items: center;
+    display: grid;
+    grid-template-columns: 25px 1fr;
     gap: 8px;
     font-size: 13px;
     color: var(--text2);
@@ -906,5 +912,7 @@
 
   .check-label input[type="checkbox"] {
     accent-color: var(--accent-green);
+    border: 0;
+    outline: var(--accent-green);
   }
 </style>

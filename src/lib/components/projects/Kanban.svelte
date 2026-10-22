@@ -1,10 +1,10 @@
 <script lang="ts">
-  import type { Task } from '$lib/types';
-  import { awardXP, XP_VALUES } from '$lib/utils/xp';
-  import { createRepository } from '$lib/services/repository';
-  import { renderMd } from '$lib/utils/markdown';
-  import { page } from '$app/state';
-  import { workFilterTag } from '$lib/stores/workFilter.svelte';
+  import type { Task } from "$lib/types";
+  import { awardXP, XP_VALUES } from "$lib/utils/xp";
+  import { createRepository } from "$lib/services/repository";
+  import { renderMd } from "$lib/utils/markdown";
+  import { page } from "$app/state";
+  import { workFilterTag } from "$lib/stores/workFilter.svelte";
 
   interface Props {
     userId: string;
@@ -13,36 +13,45 @@
     useWorkFilter?: boolean;
   }
 
-  let { userId, tasks = $bindable([]), onTasksChange, useWorkFilter = false }: Props = $props();
+  let {
+    userId,
+    tasks = $bindable([]),
+    onTasksChange,
+    useWorkFilter = false,
+  }: Props = $props();
 
   const filterTag = $derived(useWorkFilter ? workFilterTag.value : null);
 
   const repo = $derived(createRepository(userId));
-  const statuses: { id: Task['status']; label: string; color: string }[] = [
-    { id: 'to_do', label: 'Por hacer', color: 'var(--accent-blue)' },
-    { id: 'doing', label: 'En progreso', color: 'var(--accent-yellow)' },
-    { id: 'done', label: 'Hecho', color: 'var(--accent-green)' },
-    { id: 'to_review', label: 'Revisar', color: 'var(--accent-orange)' }
+  const statuses: { id: Task["status"]; label: string; color: string }[] = [
+    { id: "to_do", label: "Por hacer", color: "var(--accent-blue)" },
+    { id: "doing", label: "En progreso", color: "var(--accent-yellow)" },
+    { id: "done", label: "Hecho", color: "var(--accent-green)" },
+    { id: "to_review", label: "Revisar", color: "var(--accent-orange)" },
   ];
 
   let showTaskForm = $state(false);
   let editingTask = $state<Task | null>(null);
-  let taskModalMode = $state<'view' | 'edit'>('edit');
-  let taskForm = $state<Task>({ title: '', status: 'to_do' });
+  let taskModalMode = $state<"view" | "edit">("edit");
+  let taskForm = $state<Task>({ title: "", status: "to_do" });
   let draggedTask = $state<Task | null>(null);
   let selectedTags = $state<string[]>(page.data.selectedTags ?? []);
   let collapsedColumns = $state<Record<string, boolean>>({
     to_do: false,
     doing: false,
     done: true,
-    to_review: true
+    to_review: true,
   });
   let saving = $state(false);
-  let taskPriorities = $state<Record<string, 'low' | 'medium' | 'high'>>({});
+  let taskPriorities = $state<Record<string, "low" | "medium" | "high">>({});
 
-  const PRIORITY_KEY = 'vitacora_task_priorities';
+  const PRIORITY_KEY = "vitacora_task_priorities";
   const PRIORITY_ORDER: Record<string, number> = { high: 0, medium: 1, low: 2 };
-  const PRIORITY_ICONS: Record<string, string> = { high: '🔴', medium: '🟡', low: '🟢' };
+  const PRIORITY_ICONS: Record<string, string> = {
+    high: "🔴",
+    medium: "🟡",
+    low: "🟢",
+  };
   const ARCHIVE_DAYS = 90;
 
   function hasPriority(taskId: string): string | undefined {
@@ -50,27 +59,37 @@
   }
 
   function loadPriorities() {
-    if (typeof window === 'undefined') return;
-    try { taskPriorities = JSON.parse(localStorage.getItem(PRIORITY_KEY) || '{}'); } catch { taskPriorities = {}; }
+    if (typeof window === "undefined") return;
+    try {
+      taskPriorities = JSON.parse(localStorage.getItem(PRIORITY_KEY) || "{}");
+    } catch {
+      taskPriorities = {};
+    }
   }
 
-  function savePriority(taskId: string, priority: 'low' | 'medium' | 'high') {
+  function savePriority(taskId: string, priority: "low" | "medium" | "high") {
     taskPriorities = { ...taskPriorities, [taskId]: priority };
     localStorage.setItem(PRIORITY_KEY, JSON.stringify(taskPriorities));
   }
 
-  $effect(() => { if (typeof window !== 'undefined') loadPriorities(); });
+  $effect(() => {
+    if (typeof window !== "undefined") loadPriorities();
+  });
 
   const selectedTagSet = $derived(new Set(selectedTags));
   let showArchive = $state(false);
 
   const workFilteredTasks = $derived(
     useWorkFilter
-      ? (filterTag ? tasks.filter(t => t.tags?.includes(filterTag)) : tasks)
-      : tasks.filter(t => !t.tags?.includes(workFilterTag.value))
+      ? filterTag
+        ? tasks.filter((t) => t.tags?.includes(filterTag))
+        : tasks
+      : tasks.filter((t) => !t.tags?.includes(workFilterTag.value)),
   );
 
-  const filteredTasks = $derived(workFilteredTasks.filter((t) => matchesTagFilters(t, selectedTags)));
+  const filteredTasks = $derived(
+    workFilteredTasks.filter((t) => matchesTagFilters(t, selectedTags)),
+  );
 
   function isArchived(task: Task): boolean {
     if (!task.created_at) return false;
@@ -79,24 +98,31 @@
     cutoff.setDate(cutoff.getDate() - ARCHIVE_DAYS);
     return new Date(task.created_at) < cutoff;
   }
-  const tagCounts = $derived((() => {
-    const counts = new Map<string, number>();
-    for (const task of workFilteredTasks) {
-      for (const tag of task.tags ?? []) {
-        const normalized = tag.trim();
-        if (!normalized) continue;
-        counts.set(normalized, (counts.get(normalized) ?? 0) + 1);
+  const tagCounts = $derived(
+    (() => {
+      const counts = new Map<string, number>();
+      for (const task of workFilteredTasks) {
+        for (const tag of task.tags ?? []) {
+          const normalized = tag.trim();
+          if (!normalized) continue;
+          counts.set(normalized, (counts.get(normalized) ?? 0) + 1);
+        }
       }
-    }
-    return [...counts.entries()]
-      .map(([tag, count]) => ({ tag, count }))
-      .sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag, 'es', { sensitivity: 'base' }));
-  })());
+      return [...counts.entries()]
+        .map(([tag, count]) => ({ tag, count }))
+        .sort(
+          (a, b) =>
+            b.count - a.count ||
+            a.tag.localeCompare(b.tag, "es", { sensitivity: "base" }),
+        );
+    })(),
+  );
 
   function toggleTagFilter(tag: string) {
     const normalized = tag.trim();
     if (!normalized) return;
-    if (selectedTagSet.has(normalized)) selectedTags = selectedTags.filter((t) => t !== normalized);
+    if (selectedTagSet.has(normalized))
+      selectedTags = selectedTags.filter((t) => t !== normalized);
     else selectedTags = [...selectedTags, normalized];
     syncSelectedTagsToUrl();
   }
@@ -107,11 +133,11 @@
   }
 
   function syncSelectedTagsToUrl() {
-    if (typeof window === 'undefined') return;
+    if (typeof window === "undefined") return;
     const next = new URL(window.location.href);
-    next.searchParams.delete('tag');
-    for (const tag of selectedTags) next.searchParams.append('tag', tag);
-    window.history.replaceState(window.history.state, '', next);
+    next.searchParams.delete("tag");
+    for (const tag of selectedTags) next.searchParams.append("tag", tag);
+    window.history.replaceState(window.history.state, "", next);
   }
 
   function matchesTagFilters(task: Task, filters: string[]): boolean {
@@ -125,42 +151,56 @@
     return p ? (PRIORITY_ORDER[p] ?? 1) : 3;
   }
 
-  function staTasks(sta: Task['status']) {
+  function staTasks(sta: Task["status"]) {
     return filteredTasks
-      .filter(t => t.status === sta && !isArchived(t))
+      .filter((t) => t.status === sta && !isArchived(t))
       .sort((a, b) => priorityRank(a) - priorityRank(b));
   }
 
-  const archivedTasks = $derived(filteredTasks.filter(isArchived).sort((a, b) => (a.created_at ?? '').localeCompare(b.created_at ?? '')));
+  const archivedTasks = $derived(
+    filteredTasks
+      .filter(isArchived)
+      .sort((a, b) => (a.created_at ?? "").localeCompare(b.created_at ?? "")),
+  );
 
   function getTaskKey(task: Task): string {
     if (task.id) return task.id;
-    const createdAt = task.created_at ?? '';
+    const createdAt = task.created_at ?? "";
     return `${task.title}::${createdAt}`;
   }
 
   function openTaskDetail(t: Task) {
     editTask(t);
-    taskModalMode = 'view';
+    taskModalMode = "view";
   }
 
-  let taskFormPriority = $state<'low' | 'medium' | 'high'>('medium');
+  let taskFormPriority = $state<"low" | "medium" | "high">("medium");
 
   function resetTaskForm() {
-    const tags = (useWorkFilter && filterTag) ? [filterTag] : [];
-    taskForm = { title: '', status: 'to_do', tags };
+    const tags = useWorkFilter && filterTag ? [filterTag] : [];
+    taskForm = { title: "", status: "to_do", tags };
     editingTask = null;
-    taskFormPriority = 'medium';
-    taskModalMode = 'edit';
+    taskFormPriority = "medium";
+    taskModalMode = "edit";
   }
 
   async function saveTask() {
     saving = true;
     if (editingTask?.id) {
-      await repo.tasks.update(editingTask.id, { ...taskForm, updated_at: new Date().toISOString() });
+      await repo.tasks.update(editingTask.id, {
+        ...taskForm,
+        updated_at: new Date().toISOString(),
+      });
       savePriority(editingTask.id, taskFormPriority);
-      if (taskForm.status === 'done' && editingTask.status !== 'done') {
-        await awardXP(userId, 'work', 'task_done', XP_VALUES.task_done, editingTask.id, taskForm.title);
+      if (taskForm.status === "done" && editingTask.status !== "done") {
+        await awardXP(
+          userId,
+          "work",
+          "task_done",
+          XP_VALUES.task_done,
+          editingTask.id,
+          taskForm.title,
+        );
       }
     } else {
       const { data } = await repo.tasks.insert(taskForm);
@@ -173,17 +213,28 @@
     saving = false;
   }
 
-  async function moveTask(task: Task, sta: Task['status']) {
+  async function moveTask(task: Task, sta: Task["status"]) {
     if (task.status === sta) return;
-    const wasDone = task.status === 'done';
-    await repo.tasks.update(task.id!, { status: sta, updated_at: new Date().toISOString() });
-    if (sta === 'done' && !wasDone) await awardXP(userId, 'work', 'task_done', XP_VALUES.task_done, task.id, task.title);
+    const wasDone = task.status === "done";
+    await repo.tasks.update(task.id!, {
+      status: sta,
+      updated_at: new Date().toISOString(),
+    });
+    if (sta === "done" && !wasDone)
+      await awardXP(
+        userId,
+        "work",
+        "task_done",
+        XP_VALUES.task_done,
+        task.id,
+        task.title,
+      );
     const { data } = await repo.tasks.list();
     tasks = data || [];
   }
 
   async function deleteTask(id: string) {
-    if (!confirm('¿Eliminar tarea?')) return;
+    if (!confirm("¿Eliminar tarea?")) return;
     await repo.tasks.remove(id);
     const { data } = await repo.tasks.list();
     tasks = data || [];
@@ -193,37 +244,42 @@
     const stored = t.id ? hasPriority(t.id) : undefined;
     editingTask = t;
     taskForm = { ...t };
-    taskFormPriority = (stored as 'low' | 'medium' | 'high') ?? 'medium';
-    taskModalMode = 'edit';
+    taskFormPriority = (stored as "low" | "medium" | "high") ?? "medium";
+    taskModalMode = "edit";
     showTaskForm = true;
   }
 
-  function onDragStart(task: Task) { draggedTask = task; }
+  function onDragStart(task: Task) {
+    draggedTask = task;
+  }
 
   async function onCheckboxChange(task: Task, e: Event) {
     const input = e.target as HTMLInputElement;
     const idx = Number(input.dataset.idx);
     if (isNaN(idx)) return;
-    const lines = (task.description ?? '').split('\n');
+    const lines = (task.description ?? "").split("\n");
     let checkboxIdx = 0;
     for (let i = 0; i < lines.length; i++) {
       if (/^\s*- \[( |x|X)\]\s+/.test(lines[i])) {
         if (checkboxIdx === idx) {
           lines[i] = input.checked
-            ? lines[i].replace(/^(\s*- \[) \](\s+)/, '$1x]$2')
-            : lines[i].replace(/^(\s*- \[)x\]/i, '$1 ]');
+            ? lines[i].replace(/^(\s*- \[) \](\s+)/, "$1x]$2")
+            : lines[i].replace(/^(\s*- \[)x\]/i, "$1 ]");
           break;
         }
         checkboxIdx++;
       }
     }
-    const newDesc = lines.join('\n');
-    await repo.tasks.update(task.id!, { description: newDesc, updated_at: new Date().toISOString() });
+    const newDesc = lines.join("\n");
+    await repo.tasks.update(task.id!, {
+      description: newDesc,
+      updated_at: new Date().toISOString(),
+    });
     const { data } = await repo.tasks.list();
     tasks = data || [];
   }
 
-  async function onDrop(sta: Task['status']) {
+  async function onDrop(sta: Task["status"]) {
     if (draggedTask && draggedTask.status !== sta) {
       await moveTask(draggedTask, sta);
     }
@@ -238,7 +294,13 @@
 
 <div class="fade-in">
   <div class="tab-actions kanban-actions">
-    <button class="btn btn-primary" onclick={() => { resetTaskForm(); showTaskForm = true; }}>+ Nueva tarea</button>
+    <button
+      class="btn btn-primary"
+      onclick={() => {
+        resetTaskForm();
+        showTaskForm = true;
+      }}>+ Nueva tarea</button
+    >
     <div class="kanban-actions-end">
       {#if !useWorkFilter && tagCounts.length > 0}
         <div class="tag-filters" aria-label="Filtrar por tags">
@@ -255,7 +317,11 @@
             </button>
           {/each}
           {#if selectedTags.length > 0}
-            <button class="tag-filter-clear" type="button" onclick={clearTagFilters}>Limpiar</button>
+            <button
+              class="tag-filter-clear"
+              type="button"
+              onclick={clearTagFilters}>Limpiar</button
+            >
           {/if}
         </div>
         <p>|</p>
@@ -265,16 +331,18 @@
         class:active={showArchive}
         type="button"
         aria-pressed={showArchive}
-        onclick={() => showArchive = !showArchive}
+        onclick={() => (showArchive = !showArchive)}
       >
-        ⊟ ARCHIVADOS{archivedTasks.length > 0 ? ` (${archivedTasks.length})` : ''}
+        ⊟ ARCHIVADOS{archivedTasks.length > 0
+          ? ` (${archivedTasks.length})`
+          : ""}
       </button>
     </div>
   </div>
   {#if showArchive}
     <div class="kanban-archive">
       {#each statuses as sta}
-        {@const group = archivedTasks.filter(t => t.status === sta.id)}
+        {@const group = archivedTasks.filter((t) => t.status === sta.id)}
         {#if group.length > 0}
           <div class="kanban-archive-group card">
             <div class="kanban-archive-head">
@@ -289,21 +357,42 @@
                     <div class="ka-title">{task.title}</div>
                     <div class="ka-meta">
                       {#if task.tags?.length}
-                        <span class="ka-tags">{task.tags.join(' · ')}</span>
+                        <span class="ka-tags">{task.tags.join(" · ")}</span>
                       {/if}
                       {#if task.created_at}
-                        <span class="ka-date">creada {new Date(task.created_at).toLocaleDateString('es-ES')}</span>
+                        <span class="ka-date"
+                          >creada {new Date(task.created_at).toLocaleDateString(
+                            "es-ES",
+                          )}</span
+                        >
                       {/if}
                     </div>
                   </div>
                   <div class="kcard-actions">
-                    <select class="kcard-move" onchange={(e) => moveTask(task, (e.target as HTMLSelectElement).value as Task['status'])} value={task.status}>
+                    <select
+                      class="kcard-move"
+                      onchange={(e) =>
+                        moveTask(
+                          task,
+                          (e.target as HTMLSelectElement)
+                            .value as Task["status"],
+                        )}
+                      value={task.status}
+                    >
                       {#each statuses as s}
                         <option value={s.id}>{s.label}</option>
                       {/each}
                     </select>
-                    <button class="btn btn-secondary" style="font-size:11px;padding:3px 6px;" onclick={() => editTask(task)}>Editar</button>
-                    <button class="btn btn-ghost" style="font-size:11px;color:var(--accent-red);padding:3px 6px;" onclick={() => deleteTask(task.id!)}>✕</button>
+                    <button
+                      class="btn btn-secondary"
+                      style="font-size:11px;padding:3px 6px;"
+                      onclick={() => editTask(task)}>Editar</button
+                    >
+                    <button
+                      class="btn btn-ghost"
+                      style="font-size:11px;color:var(--accent-red);padding:3px 6px;"
+                      onclick={() => deleteTask(task.id!)}>✕</button
+                    >
                   </div>
                 </div>
               {/each}
@@ -312,7 +401,9 @@
         {/if}
       {/each}
       {#if archivedTasks.length === 0}
-        <div class="kanban-archive-empty card">No hay tareas con más de 3 meses 🗄</div>
+        <div class="kanban-archive-empty card">
+          No hay tareas con más de 3 meses 🗄
+        </div>
       {/if}
     </div>
   {:else}
@@ -322,7 +413,7 @@
         <div
           class="kanban-sta"
           class:collapsed={isCollapsed}
-          class:wide={sta.id === 'to_review'}
+          class:wide={sta.id === "to_review"}
           ondragover={(e) => e.preventDefault()}
           ondrop={() => onDrop(sta.id)}
           role="region"
@@ -331,72 +422,107 @@
           <button
             class="kanban-sta-header"
             type="button"
-            onclick={() => collapsedColumns[sta.id] = !collapsedColumns[sta.id]}
+            onclick={() =>
+              (collapsedColumns[sta.id] = !collapsedColumns[sta.id])}
             aria-expanded={!isCollapsed}
           >
             <span class="sta-toggle" class:collapsed={isCollapsed}>❯</span>
             <span class="sta-dot" style="background:{sta.color}"></span>
             <span class="sta-label">{sta.label}</span>
-            <span class="sta-count" class:active={staTasks(sta.id).length > 0} style="--status-color: {sta.color}">
+            <span
+              class="sta-count"
+              class:active={staTasks(sta.id).length > 0}
+              style="--status-color: {sta.color}"
+            >
               {staTasks(sta.id).length}
-              </span>
+            </span>
           </button>
           {#if !isCollapsed}
             <div class="kanban-cards">
               {#each staTasks(sta.id) as task}
                 {@const key = getTaskKey(task)}
-                {@const taskPriority = task.id ? hasPriority(task.id) : undefined}
+                {@const taskPriority = task.id
+                  ? hasPriority(task.id)
+                  : undefined}
                 <div
                   id={`card-${task.id ?? key}`}
                   class="kanban-card"
-                  class:wide={sta.id === 'to_review'}
-                  class:priority-high={taskPriority === 'high'}
-                  class:priority-medium={taskPriority === 'medium'}
-                  class:priority-low={taskPriority === 'low'}
+                  class:wide={sta.id === "to_review"}
+                  class:priority-high={taskPriority === "high"}
+                  class:priority-medium={taskPriority === "medium"}
+                  class:priority-low={taskPriority === "low"}
                   draggable="true"
                   role="application"
                   ondragstart={() => onDragStart(task)}
                 >
                   <div class="kcard-header">
                     {#if taskPriority}
-                      <span class="kcard-priority" title={`Prioridad: ${taskPriority}`}>
+                      <span
+                        class="kcard-priority"
+                        title={`Prioridad: ${taskPriority}`}
+                      >
                         {PRIORITY_ICONS[taskPriority]}
                       </span>
                     {/if}
                     <div class="kcard-title">{task.title}</div>
-                    {#if task.description && task.description.trim() !== ''}
-                      <button
-                        class="kcard-desc-toggle"
-                        type="button"
-                        draggable="false"
-                        onpointerdown={(e) => e.stopPropagation()}
-                        onclick={(e) => { e.stopPropagation(); openTaskDetail(task); }}
-                        ondragstart={(e) => e.preventDefault()}
-                      >
-                        <span class="kcard-desc-toggle-label">Ver más</span>
-                        <span class="kcard-desc-toggle-icon">↗</span>
-                      </button>
-                    {/if}
                   </div>
                   <div class="kcard-tags">
+                    {#if task.due_date}
+                      <div class="kcard-due">
+                        📅 {new Date(task.due_date).toLocaleDateString("es-ES")}
+                      </div>
+                    {/if}
+                    <span>|</span>
                     {#each task.tags ?? [] as tag}
                       <span class="tag">{tag}</span>
                     {/each}
                   </div>
-                  {#if task.description && task.description.trim() !== ''}
-                    <div class="kcard-desc kcard-desc-preview">{task.description}</div>
+                  {#if task.description && task.description.trim() !== ""}
+                    <div class="kcard-desc kcard-desc-preview">
+                      {task.description}
+                    </div>
                   {/if}
-                  {#if task.due_date}
-                    <div class="kcard-due">📅 {new Date(task.due_date).toLocaleDateString('es-ES')}</div>
+                  {#if task.description && task.description.trim() !== ""}
+                    <button
+                      class="kcard-desc-toggle"
+                      type="button"
+                      draggable="false"
+                      onpointerdown={(e) => e.stopPropagation()}
+                      onclick={(e) => {
+                        e.stopPropagation();
+                        openTaskDetail(task);
+                      }}
+                      ondragstart={(e) => e.preventDefault()}
+                    >
+                      <span class="kcard-desc-toggle-label">Ver más</span>
+                      <span class="kcard-desc-toggle-icon">↗</span>
+                    </button>
                   {/if}
                   <div class="kcard-actions">
-                    <select class="kcard-move" onchange={(e) => moveTask(task, (e.target as HTMLSelectElement).value as Task['status'])} value={task.status}>
+                    <select
+                      class="kcard-move"
+                      onchange={(e) =>
+                        moveTask(
+                          task,
+                          (e.target as HTMLSelectElement)
+                            .value as Task["status"],
+                        )}
+                      value={task.status}
+                    >
                       {#each statuses as s}
                         <option value={s.id}>{s.label}</option>
                       {/each}
                     </select>
-                    <button class="btn btn-secondary" style="font-size:11px;padding:3px 6px;" onclick={() => editTask(task)}>Editar</button>
-                    <button class="btn btn-ghost" style="font-size:11px;color:var(--accent-red);padding:3px 6px;" onclick={() => deleteTask(task.id!)}>✕</button>
+                    <button
+                      class="btn btn-secondary"
+                      style="font-size:11px;padding:3px 6px;"
+                      onclick={() => editTask(task)}>Editar</button
+                    >
+                    <button
+                      class="btn btn-ghost"
+                      style="font-size:11px;color:var(--accent-red);padding:3px 6px;"
+                      onclick={() => deleteTask(task.id!)}>✕</button
+                    >
                   </div>
                 </div>
               {/each}
@@ -409,30 +535,57 @@
 </div>
 
 {#if showTaskForm}
-  <div 
-    class="modal-backdrop" 
-    onclick={(e) => { if (e.target === e.currentTarget) { showTaskForm = false; resetTaskForm(); } }}
-    onkeydown={(e) => { if (e.key === 'Escape') { showTaskForm = false; resetTaskForm(); } }}
+  <div
+    class="modal-backdrop"
+    onclick={(e) => {
+      if (e.target === e.currentTarget) {
+        showTaskForm = false;
+        resetTaskForm();
+      }
+    }}
+    onkeydown={(e) => {
+      if (e.key === "Escape") {
+        showTaskForm = false;
+        resetTaskForm();
+      }
+    }}
     role="presentation"
   >
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="task-form-title">
+    <div
+      class="modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="task-form-title"
+    >
       <div class="task-modal-header">
         <h3 id="task-form-title">
-          {taskModalMode === 'view' ? 'Detalles de la tarea' : editingTask ? 'Editar tarea' : 'Nueva tarea'}
+          {taskModalMode === "view"
+            ? "Detalles de la tarea"
+            : editingTask
+              ? "Editar tarea"
+              : "Nueva tarea"}
         </h3>
         <div class="task-modal-header-actions">
-          {#if taskModalMode === 'view'}
-            <button class="btn btn-secondary" style="font-size:12px;padding:5px 10px;" type="button" onclick={() => (taskModalMode = 'edit')}>Editar</button>
+          {#if taskModalMode === "view"}
+            <button
+              class="btn btn-secondary"
+              style="font-size:12px;padding:5px 10px;"
+              type="button"
+              onclick={() => (taskModalMode = "edit")}>Editar</button
+            >
           {/if}
           <button
             class="task-modal-close"
             type="button"
             aria-label="Cerrar"
-            onclick={() => { showTaskForm = false; resetTaskForm(); }}
-          >✕</button>
+            onclick={() => {
+              showTaskForm = false;
+              resetTaskForm();
+            }}>✕</button
+          >
         </div>
       </div>
-      {#if taskModalMode === 'view'}
+      {#if taskModalMode === "view"}
         <div class="task-detail">
           <div class="task-detail-row">
             <span class="task-detail-label">Título</span>
@@ -440,14 +593,23 @@
           </div>
           <div class="task-detail-row">
             <span class="task-detail-label">Status</span>
-            <span class="task-detail-value">{statuses.find((sta) => sta.id === taskForm.status)?.label ?? taskForm.status}</span>
+            <span class="task-detail-value"
+              >{statuses.find((sta) => sta.id === taskForm.status)?.label ??
+                taskForm.status}</span
+            >
           </div>
           <div class="task-detail-row">
             <span class="task-detail-label">Prioridad</span>
             <span class="task-detail-value">
               {#if editingTask?.id && hasPriority(editingTask.id)}
-                {PRIORITY_ICONS[hasPriority(editingTask.id) as 'high' | 'medium' | 'low']}
-                {hasPriority(editingTask.id) === 'high' ? 'Alta' : hasPriority(editingTask.id) === 'medium' ? 'Media' : 'Baja'}
+                {PRIORITY_ICONS[
+                  hasPriority(editingTask.id) as "high" | "medium" | "low"
+                ]}
+                {hasPriority(editingTask.id) === "high"
+                  ? "Alta"
+                  : hasPriority(editingTask.id) === "medium"
+                    ? "Media"
+                    : "Baja"}
               {:else}
                 —
               {/if}
@@ -456,7 +618,9 @@
           {#if taskForm.due_date}
             <div class="task-detail-row">
               <span class="task-detail-label">Fecha límite</span>
-              <span class="task-detail-value">{new Date(taskForm.due_date).toLocaleDateString('es-ES')}</span>
+              <span class="task-detail-value"
+                >{new Date(taskForm.due_date).toLocaleDateString("es-ES")}</span
+              >
             </div>
           {/if}
           {#if taskForm.tags && taskForm.tags.length > 0}
@@ -471,7 +635,7 @@
           {/if}
           <div class="task-detail-desc">
             <span class="task-detail-label">Descripción</span>
-            {#if taskForm.description && taskForm.description.trim() !== ''}
+            {#if taskForm.description && taskForm.description.trim() !== ""}
               {@html renderMd(taskForm.description)}
             {:else}
               <p class="task-detail-empty">Sin descripción</p>
@@ -479,49 +643,73 @@
           </div>
         </div>
       {:else}
-        <form onsubmit={(e) => { e.preventDefault(); saveTask(); }}>
-        <div class="form-group">
-          <label for="task-title">Título</label>
-          <input id="task-title" bind:value={taskForm.title} placeholder="¿Qué hay que hacer?" />
-        </div>
-        <div class="form-group">
-          <label for="task-desc">Descripción</label>
-          <textarea id="task-desc" bind:value={taskForm.description} rows="8"></textarea>
-        </div>
-        <div class="form-group">
-          <label for="task-status">Status</label>
-          <select id="task-status" bind:value={taskForm.status}>
-            {#each statuses as sta}
-              <option value={sta.id}>{sta.label}</option>
-            {/each}
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="task-due">Fecha límite</label>
-          <input id="task-due" type="date" bind:value={taskForm.due_date} />
-        </div>
-        <div class="form-group">
-          <label for="task-tags">Tags (coma separados)</label>
-          <input
-            id="task-tags"
-            value={taskForm.tags?.join(', ') || ''}
-            oninput={(e) => { taskForm.tags = (e.target as HTMLInputElement).value.split(',').map(t => t.trim()).filter(Boolean); }}
-            placeholder="ej: urgente, trabajo, personal"
-          />
-        </div>
-        <div class="form-group">
-          <label for="task-priority">Prioridad</label>
-          <select id="task-priority" bind:value={taskFormPriority}>
-            <option value="high">🔴 Alta</option>
-            <option value="medium">🟡 Media</option>
-            <option value="low">🟢 Baja</option>
-          </select>
-        </div>
-        <div class="form-actions">
-          <button type="button" class="btn btn-secondary" onclick={() => { showTaskForm = false; resetTaskForm(); }}>Cancelar</button>
-          <button type="submit" class="btn btn-primary" disabled={saving}>{saving ? '...' : 'Guardar'}</button>
-        </div>
-      </form>
+        <form
+          onsubmit={(e) => {
+            e.preventDefault();
+            saveTask();
+          }}
+        >
+          <div class="form-group">
+            <label for="task-title">Título</label>
+            <input
+              id="task-title"
+              bind:value={taskForm.title}
+              placeholder="¿Qué hay que hacer?"
+            />
+          </div>
+          <div class="form-group">
+            <label for="task-desc">Descripción</label>
+            <textarea id="task-desc" bind:value={taskForm.description} rows="8"
+            ></textarea>
+          </div>
+          <div class="form-group">
+            <label for="task-status">Status</label>
+            <select id="task-status" bind:value={taskForm.status}>
+              {#each statuses as sta}
+                <option value={sta.id}>{sta.label}</option>
+              {/each}
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="task-due">Fecha límite</label>
+            <input id="task-due" type="date" bind:value={taskForm.due_date} />
+          </div>
+          <div class="form-group">
+            <label for="task-tags">Tags (coma separados)</label>
+            <input
+              id="task-tags"
+              value={taskForm.tags?.join(", ") || ""}
+              oninput={(e) => {
+                taskForm.tags = (e.target as HTMLInputElement).value
+                  .split(",")
+                  .map((t) => t.trim())
+                  .filter(Boolean);
+              }}
+              placeholder="ej: urgente, trabajo, personal"
+            />
+          </div>
+          <div class="form-group">
+            <label for="task-priority">Prioridad</label>
+            <select id="task-priority" bind:value={taskFormPriority}>
+              <option value="high">🔴 Alta</option>
+              <option value="medium">🟡 Media</option>
+              <option value="low">🟢 Baja</option>
+            </select>
+          </div>
+          <div class="form-actions">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              onclick={() => {
+                showTaskForm = false;
+                resetTaskForm();
+              }}>Cancelar</button
+            >
+            <button type="submit" class="btn btn-primary" disabled={saving}
+              >{saving ? "..." : "Guardar"}</button
+            >
+          </div>
+        </form>
       {/if}
     </div>
   </div>
@@ -560,15 +748,21 @@
     cursor: pointer;
   }
 
-  .kanban-archive-toggle:hover { border-color: var(--accent-purple); color: var(--text); }
-
-  .kanban-archive-toggle.active {
-    background: rgba(168,230,207,0.12);
-    border-color: rgba(168,230,207,0.45);
+  .kanban-archive-toggle:hover {
+    border-color: var(--accent-purple);
     color: var(--text);
   }
 
-  .kanban-archive-toggle.active:hover { border-color: var(--accent-purple); color: var(--accent-purple); }
+  .kanban-archive-toggle.active {
+    background: rgba(168, 230, 207, 0.12);
+    border-color: rgba(168, 230, 207, 0.45);
+    color: var(--text);
+  }
+
+  .kanban-archive-toggle.active:hover {
+    border-color: var(--accent-purple);
+    color: var(--accent-purple);
+  }
 
   .kanban-archive {
     display: flex;
@@ -611,7 +805,10 @@
     margin-top: 0;
   }
 
-  .ka-main { flex: 1; min-width: 200px; }
+  .ka-main {
+    flex: 1;
+    min-width: 200px;
+  }
 
   .ka-title {
     font-size: 13px;
@@ -629,7 +826,9 @@
     font-family: var(--font-mono);
   }
 
-  .ka-tags { color: var(--text2); }
+  .ka-tags {
+    color: var(--text2);
+  }
 
   .kanban-archive-empty {
     text-align: center;
@@ -670,11 +869,14 @@
     gap: 6px;
   }
 
-  .tag-filter:hover { border-color: var(--accent-green); color: var(--text2); }
+  .tag-filter:hover {
+    border-color: var(--accent-green);
+    color: var(--text2);
+  }
 
   .tag-filter.active {
-    background: rgba(168,230,207,0.12);
-    border-color: rgba(168,230,207,0.45);
+    background: rgba(168, 230, 207, 0.12);
+    border-color: rgba(168, 230, 207, 0.45);
     color: var(--text);
   }
 
@@ -694,7 +896,10 @@
     transition: all var(--transition);
   }
 
-  .tag-filter-clear:hover { border-color: var(--text3); color: var(--text2); }
+  .tag-filter-clear:hover {
+    border-color: var(--text3);
+    color: var(--text2);
+  }
 
   .kanban-board {
     display: grid;
@@ -766,7 +971,12 @@
     color: var(--text);
   }
 
-  .sta-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .sta-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
 
   .sta-label {
     font-size: 12px;
@@ -811,8 +1021,13 @@
     transition: all var(--transition);
   }
 
-  .kanban-card:hover { border-color: var(--accent-green); transform: translateY(-1px); }
-  .kanban-card:active { cursor: grabbing; }
+  .kanban-card:hover {
+    border-color: var(--accent-green);
+    transform: translateY(-1px);
+  }
+  .kanban-card:active {
+    cursor: grabbing;
+  }
 
   .kanban-card.wide {
     width: 33.33%;
@@ -820,20 +1035,41 @@
 
   .kcard-header {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     flex-wrap: wrap;
-    justify-content: space-between;
+    justify-content: flex-start;
     margin-bottom: 4px;
   }
 
-  .kcard-priority { font-size: 12px; flex-shrink: 0; margin-right: 4px; }
+  .kcard-priority {
+    font-size: 12px;
+    flex-shrink: 0;
+    margin-right: 4px;
+    margin-bottom: 8px;
+  }
 
-  .kanban-card.priority-high { border-left: 3px solid var(--accent-red); }
-  .kanban-card.priority-medium { border-left: 3px solid var(--accent-yellow); }
-  .kanban-card.priority-low { border-left: 3px solid var(--accent-green); }
+  .kanban-card.priority-high {
+    border-left: 3px solid var(--accent-red);
+  }
+  .kanban-card.priority-medium {
+    border-left: 3px solid var(--accent-yellow);
+  }
+  .kanban-card.priority-low {
+    border-left: 3px solid var(--accent-green);
+  }
 
-  .kcard-title { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 4px; line-height: 1.3; }
-  .kcard-desc { font-size: 12px; color: var(--text2); margin-bottom: 6px; }
+  .kcard-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 4px;
+    line-height: 1.3;
+  }
+  .kcard-desc {
+    font-size: 12px;
+    color: var(--text2);
+    margin-bottom: 6px;
+  }
   :global(.md-checkbox-row) {
     display: flex;
     align-items: center;
@@ -841,7 +1077,7 @@
     margin: 0;
     line-height: 1.4;
   }
-  :global(.md-checkbox-row input[type='checkbox']) {
+  :global(.md-checkbox-row input[type="checkbox"]) {
     width: 12px;
     height: 12px;
     accent-color: var(--accent-green);
@@ -857,9 +1093,16 @@
     gap: 2px;
     margin: 4px 0;
   }
-  .kcard-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+  .kcard-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 6px;
+  }
 
-  .kcard-tags:empty { display: none; }
+  .kcard-tags:empty {
+    display: none;
+  }
 
   .kcard-desc-preview {
     display: -webkit-box;
@@ -882,7 +1125,6 @@
     border: 1px solid var(--border);
     border-radius: 999px;
     padding: 2px 8px;
-    margin-bottom: 8px;
   }
 
   .kcard-desc-toggle {
@@ -901,7 +1143,10 @@
     flex-shrink: 0;
   }
 
-  .kcard-desc-toggle:hover { border-color: var(--text3); color: var(--text2); }
+  .kcard-desc-toggle:hover {
+    border-color: var(--text3);
+    color: var(--text2);
+  }
 
   .kcard-desc-toggle-icon {
     display: inline-block;
@@ -939,10 +1184,18 @@
   }
 
   @media (max-width: 900px) {
-    .kanban-board { grid-template-columns: 1fr 1fr; }
-    .kanban-cards:has(.kanban-card.wide) {flex-direction: column; }
-    .kanban-sta.wide { grid-column: span 1; }
-    .kanban-card.wide { width: 100%; }
+    .kanban-board {
+      grid-template-columns: 1fr 1fr;
+    }
+    .kanban-cards:has(.kanban-card.wide) {
+      flex-direction: column;
+    }
+    .kanban-sta.wide {
+      grid-column: span 1;
+    }
+    .kanban-card.wide {
+      width: 100%;
+    }
   }
 
   @media (max-width: 768px) {
@@ -960,7 +1213,9 @@
   }
 
   @media (max-width: 600px) {
-    .kanban-board { grid-template-columns: 1fr; }
+    .kanban-board {
+      grid-template-columns: 1fr;
+    }
   }
 
   .task-modal-header {
