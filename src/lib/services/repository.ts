@@ -66,7 +66,7 @@ export function createRepository(
       listDoneIds: () =>
         client.from('tasks').select('id').eq('user_id', uid()).eq('status', 'done'),
       insert: (task: Omit<Task, 'id' | 'user_id'>) =>
-        client.from('tasks').insert({ ...task, user_id: uid() }),
+        client.from('tasks').insert({ ...task, user_id: uid() }).select().single(),
       update: (id: string, values: Partial<Task>) =>
         client.from('tasks').update(values).eq('id', id),
       remove: (id: string) => client.from('tasks').delete().eq('id', id)

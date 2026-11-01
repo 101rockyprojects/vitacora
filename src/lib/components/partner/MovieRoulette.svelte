@@ -121,7 +121,7 @@
   }
 
   async function deleteMovie(id: string) {
-    if (!confirm('¿Eliminar este título?')) return;
+    if (!repo || !confirm('¿Eliminar este título?')) return;
     await repo.movieWatchlist.remove(id);
     await loadData();
   }
@@ -162,7 +162,7 @@
   }
 
   async function saveMovieUpdates() {
-    if (!modalMovie?.id) return;
+    if (!modalMovie?.id || !repo) return;
     modalSaving = true;
 
     const movieId = modalMovie.id;
