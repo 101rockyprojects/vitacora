@@ -92,7 +92,11 @@ export async function awardXP(
     console.error('XP award error:', error);
     return false;
   }
-  xpToastStore.show(xpAmount, detail?.trim() || xpSourceLabel(sourceType));
+  xpToastStore.show({
+    icon: AREAS.find((a) => a.key === area)?.icon ?? '✨',
+    label: xpSourceLabel(sourceType),
+    xp: xpAmount
+  });
   return true;
 }
 

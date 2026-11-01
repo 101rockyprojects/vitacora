@@ -1,19 +1,20 @@
 export interface XpToast {
   id: string;
-  amount: number;
-  message: string;
+  icon: string;
+  label: string;
+  xp?: number;
 }
 
+export const TOAST_DURATION_MS = 3000;
 const MAX_TOASTS = 3;
-const TOAST_DURATION_MS = 5000;
 
 class XpToastStore {
   toasts = $state<XpToast[]>([]);
 
-  show(amount: number, message: string) {
+  show(toast: Omit<XpToast, 'id'>) {
     if (typeof window === 'undefined') return;
     const id = crypto.randomUUID();
-    this.toasts = [...this.toasts.slice(-(MAX_TOASTS - 1)), { id, amount, message }];
+    this.toasts = [...this.toasts.slice(-(MAX_TOASTS - 1)), { id, ...toast }];
     setTimeout(() => this.dismiss(id), TOAST_DURATION_MS);
   }
 

@@ -9,6 +9,7 @@
     xpSourceLabel,
   } from "$lib/utils/xp";
   import { displayNameFor } from "$lib/settings";
+  import { xpToastStore } from "$lib/stores/xpToast.svelte";
   import type { UserBadge, XpLog } from "$lib/types";
   import html2canvas from "html2canvas";
 
@@ -219,6 +220,7 @@
 
       if (earned) {
         await repo.userBadges.insert({ badge_id: badge.id });
+        xpToastStore.show({ icon: badge.icon, label: `Logro: ${badge.name}` });
       }
     }
 
