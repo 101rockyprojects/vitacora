@@ -106,6 +106,7 @@ npm run watch    # wrangler tail (production logs)
 - Merge with master before push. Notify conflicts, user is responsible to solve them, not you
 - Deploy by pushing changes: `git push origin master`
 - After code changes: commit and push to master first, then offer to deploy
+- BEFORE PUSH, ask user if version of project needs to be updated: MAJOR.MINOR.PATCH
 
 ## MCP Tools Available
 
