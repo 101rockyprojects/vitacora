@@ -8,14 +8,15 @@
     PREDEFINED_BADGES,
     xpSourceLabel,
   } from "$lib/utils/xp";
+  import { displayNameFor } from "$lib/settings";
   import type { UserBadge, XpLog } from "$lib/types";
   import html2canvas from "html2canvas";
 
   const userId = $derived(
     page.data.user?.id ?? page.data.session?.user?.id ?? "",
   );
-  const userEmail = $derived(
-    page.data.user?.email ?? page.data.session?.user?.email ?? "",
+  const displayName = $derived(
+    displayNameFor(page.data.user ?? page.data.session?.user ?? null),
   );
   const repo = $derived(createRepository(userId));
   let initialized = $state(false);
@@ -292,9 +293,9 @@
     <!-- Shareable card -->
     <div id="share-card" class="share-card">
       <div class="share-header">
-        <div class="share-avatar">{userEmail[0]?.toUpperCase()}</div>
+        <div class="share-avatar">{displayName[0]?.toUpperCase()}</div>
         <div>
-          <div class="share-email">{userEmail}</div>
+          <div class="share-email">{displayName}</div>
           <div class="share-level-text">Nivel global {globalLevel.level}</div>
         </div>
         <div class="share-total-xp">
@@ -316,7 +317,7 @@
           <div
             class="progress-fill xp-glow"
             style="width:{(globalLevel.progress / globalLevel.nextLevelXp) *
-              100}%;background:var(--accent-green);"
+              100}%;background:var(--accent);"
           ></div>
         </div>
       </div>
@@ -461,7 +462,7 @@
     width: 48px;
     height: 48px;
     border-radius: 50%;
-    background: var(--accent-green);
+    background: var(--accent);
     color: #0a1a0f;
     display: flex;
     align-items: center;
@@ -494,7 +495,7 @@
     font-family: var(--font-display);
     font-size: 32px;
     font-weight: 800;
-    color: var(--accent-green);
+    color: var(--accent);
     line-height: 1;
   }
 
@@ -687,7 +688,7 @@
     font-size: 12px;
   }
   .activity-xp {
-    color: var(--accent-green);
+    color: var(--accent);
     font-family: var(--font-mono);
     font-weight: 700;
     font-size: 12px;
@@ -737,7 +738,7 @@
     font-family: var(--font-display);
     font-size: 28px;
     font-weight: 800;
-    color: var(--accent-green);
+    color: var(--accent);
     line-height: 1;
   }
 

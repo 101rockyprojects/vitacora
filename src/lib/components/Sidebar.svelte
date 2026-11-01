@@ -4,12 +4,13 @@
   import { goto } from "$app/navigation";
   import { onMount } from "svelte";
   import { workFilterTag } from "$lib/stores/workFilter.svelte";
-  import { SECTIONS, readSettings } from "$lib/settings";
+  import { SECTIONS, displayNameFor, readSettings } from "$lib/settings";
   import type { User } from "@supabase/supabase-js";
 
   let { user }: { user: User | null } = $props();
 
   const settings = $derived(readSettings(user));
+  const displayName = $derived(displayNameFor(user));
 
   const nav = $derived(
     SECTIONS.filter((section) => settings.sections[section.id]).map(
@@ -110,8 +111,8 @@
   <div class="sidebar-bottom">
     {#if user}
       <div class="user-info">
-        <div class="user-avatar">{user.email?.[0].toUpperCase()}</div>
-        <div class="user-email">{user.email?.replace(/@.*/, "")}</div>
+        <div class="user-avatar">{displayName[0]?.toUpperCase()}</div>
+        <div class="user-email">{displayName}</div>
       </div>
     {/if}
     <button class="sign-out-btn" onclick={signOut}>
@@ -179,8 +180,8 @@
   }
 
   .sidebar-toggle:hover {
-    border-color: var(--accent-green);
-    color: var(--accent-green);
+    border-color: var(--accent);
+    color: var(--accent);
     transform: translateY(-1px);
   }
 
@@ -195,7 +196,7 @@
 
   .logo-icon {
     font-size: 22px;
-    color: var(--accent-green);
+    color: var(--accent);
   }
 
   .logo-text {
@@ -239,7 +240,7 @@
   }
 
   .nav-item.active {
-    color: var(--accent-green);
+    color: var(--accent);
     background: rgba(168, 230, 207, 0.1);
   }
 
@@ -279,7 +280,7 @@
     width: 30px;
     height: 30px;
     border-radius: 50%;
-    background: var(--accent-green);
+    background: var(--accent);
     color: #0a1a0f;
     display: flex;
     align-items: center;

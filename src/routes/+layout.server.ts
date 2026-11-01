@@ -14,7 +14,6 @@ export const load: LayoutServerLoad = async ({ locals: { safeGetSession }, url }
 
   return {
     session,
-    user,
-    settings
+    user
   };
 };

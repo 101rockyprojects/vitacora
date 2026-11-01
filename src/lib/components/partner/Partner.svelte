@@ -9,8 +9,7 @@
 
 
   const userId = $derived(page.data.user?.id ?? page.data.session?.user?.id ?? '');
-  const settings = $derived(readSettings(page.data.user));
-  const tabs = $derived(orderedTabs('partner', settings));
+  const tabs = $derived(orderedTabs('partner', readSettings(page.data.user)));
 
   let url = new URL(page.url.href);
   if (browser) {

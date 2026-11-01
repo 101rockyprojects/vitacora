@@ -59,7 +59,9 @@ export function createRepository(
       signUp: (email: string, password: string, options?: { emailRedirectTo?: string }) => 
         client.auth.signUp({ email, password, options: options ? { emailRedirectTo: options.emailRedirectTo } : undefined }),
       updateUser: (data: Record<string, unknown>) => client.auth.updateUser({ data }),
-      updateEmail: (email: string) => client.auth.updateUser({ email })
+      updateEmail: (email: string) => client.auth.updateUser({ email }),
+      updatePassword: (password: string) => client.auth.updateUser({ password }),
+      deleteAccount: () => client.rpc('delete_my_account')
     },
 
     tasks: {

@@ -68,14 +68,17 @@ export const TABS: Record<TabGroup, TabDef[]> = {
 
 // ponytail: labels only; the palette values live in app.css ([data-palette="…"])
 export const PALETTES = [
-  { id: 'default', label: 'Original' },
-  { id: 'ocean', label: 'Océano' },
-  { id: 'forest', label: 'Bosque' },
-  { id: 'sunset', label: 'Atardecer' },
-  { id: 'mono', label: 'Monocromo' }
+  { id: 'default', label: 'Vitacora' },
+  { id: 'ocean', label: 'Abisal' },
+  { id: 'forest', label: 'Soto' },
+  { id: 'sunset', label: 'Ocaso' },
+  { id: 'mono', label: 'Domino' }
 ];
 
-const ALL_TAB_IDS = Object.values(TABS).flatMap((group) => group.map((tab) => tab.id));
+export function tabKey(group: TabGroup, id: string): string {
+  return `${group}:${id}`;
+}
+
 
 export const DEFAULT_SETTINGS: VitacoraSettings = {
   display_name: '',
@@ -111,14 +114,18 @@ export function readSettings(user: User | null): VitacoraSettings {
       projects: normalizeOrder('projects', raw.tab_order?.projects),
       partner: normalizeOrder('partner', raw.tab_order?.partner)
     },
-    hidden_tabs: (raw.hidden_tabs ?? []).filter((id) => ALL_TAB_IDS.includes(id))
+    hidden_tabs: raw.hidden_tabs ?? []
   };
 }
 
 export function orderedTabs(group: TabGroup, settings: VitacoraSettings): TabDef[] {
   return settings.tab_order[group]
     .map((id) => TABS[group].find((tab) => tab.id === id))
-    .filter((tab): tab is TabDef => !!tab && !settings.hidden_tabs.includes(tab.id));
+    .filter((tab): tab is TabDef => !!tab && !settings.hidden_tabs.includes(tabKey(group, tab.id)));
+}
+
+export function displayNameFor(user: User | null): string {
+  return readSettings(user).display_name || user?.email?.replace(/@.*/, '') || '';
 }
 
 export function sectionForPath(pathname: string): SectionId | null {

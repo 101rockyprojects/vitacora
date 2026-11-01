@@ -12,8 +12,7 @@
 
 
   const userId = $derived(page.data.user?.id ?? page.data.session?.user?.id ?? '');
-  const settings = $derived(readSettings(page.data.user));
-  const tabs = $derived(orderedTabs('projects', settings));
+  const tabs = $derived(orderedTabs('projects', readSettings(page.data.user)));
   const repo = $derived(createRepository(userId));
   let initialized = $state(false);
   let url = new URL(page.url.href);
