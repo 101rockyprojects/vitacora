@@ -1,6 +1,9 @@
 <script lang="ts">
-  import { notificationStore, type Notification } from '$lib/stores/notifications.svelte';
-  import { goto } from '$app/navigation';
+  import {
+    notificationStore,
+    type Notification,
+  } from "$lib/stores/notifications.svelte";
+  import { goto } from "$app/navigation";
 
   const { notifications, showMenu, unreadCount } = $derived(notificationStore);
 
@@ -12,28 +15,31 @@
 
   function formatTime(timestamp: number): string {
     const seconds = Math.floor((Date.now() - timestamp) / 1000);
-    if (seconds < 60) return 'Ahora';
+    if (seconds < 60) return "Ahora";
     const minutes = Math.floor(seconds / 60);
     if (minutes < 60) return `${minutes}m`;
     return `${Math.floor(minutes / 60)}h`;
   }
 
-  function getTypeStyles(type: Notification['type']) {
+  function getTypeStyles(type: Notification["type"]) {
     switch (type) {
-      case 'urgent':
-        return 'border-l-4 border-red-500 bg-red-500/10';
-      case 'warning':
-        return 'border-l-4 border-yellow-500 bg-yellow-500/10';
+      case "urgent":
+        return "border-l-4 border-red-500 bg-red-500/10";
+      case "warning":
+        return "border-l-4 border-yellow-500 bg-yellow-500/10";
       default:
-        return 'border-l-4 border-blue-500 bg-blue-500/10';
+        return "border-l-4 border-blue-500 bg-blue-500/10";
     }
   }
 
-  function getTypeIcon(type: Notification['type']) {
+  function getTypeIcon(type: Notification["type"]) {
     switch (type) {
-      case 'urgent': return '🔴';
-      case 'warning': return '🟡';
-      default: return '🔵';
+      case "urgent":
+        return "🔴";
+      case "warning":
+        return "🟡";
+      default:
+        return "🔵";
     }
   }
 </script>
@@ -44,7 +50,7 @@
       <div
         class="toast-notification {getTypeStyles(notification.type)}"
         onclick={() => handleClick(notification)}
-        onkeydown={(e) => e.key === 'Enter' && handleClick(notification)}
+        onkeydown={(e) => e.key === "Enter" && handleClick(notification)}
         role="button"
         tabindex="0"
       >
@@ -55,7 +61,10 @@
         </div>
         <button
           class="toast-close"
-          onclick={(e) => { e.stopPropagation(); notificationStore.removeNotification(notification.id); }}
+          onclick={(e) => {
+            e.stopPropagation();
+            notificationStore.removeNotification(notification.id);
+          }}
           type="button"
           aria-label="Cerrar"
         >
@@ -75,7 +84,7 @@
     >
       🔔
       {#if unreadCount > 0}
-        <span class="bell-badge animate-ping">{unreadCount > 9 ? '9+' : unreadCount}</span>
+        <span class="bell-badge">{unreadCount > 9 ? "9+" : unreadCount}</span>
       {/if}
     </button>
 
@@ -84,7 +93,11 @@
         <div class="menu-header">
           <span>Notificaciones</span>
           {#if unreadCount > 0}
-            <button type="button" class="mark-read-btn" onclick={() => notificationStore.markAllAsRead()}>
+            <button
+              type="button"
+              class="mark-read-btn"
+              onclick={() => notificationStore.markAllAsRead()}
+            >
               Marcar todo leido
             </button>
           {/if}
@@ -99,20 +112,26 @@
                 class="menu-item {getTypeStyles(notification.type)}"
                 class:unread={!notification.read}
                 onclick={() => handleClick(notification)}
-                onkeydown={(e) => e.key === 'Enter' && handleClick(notification)}
+                onkeydown={(e) =>
+                  e.key === "Enter" && handleClick(notification)}
                 role="button"
                 tabindex="0"
               >
                 <div class="menu-item-content">
                   <div class="menu-item-title">{notification.title}</div>
                   <div class="menu-item-message">{notification.message}</div>
-                  <div class="menu-item-time">{formatTime(notification.createdAt)}</div>
+                  <div class="menu-item-time">
+                    {formatTime(notification.createdAt)}
+                  </div>
                 </div>
                 <button
                   class="menu-item-remove"
                   type="button"
                   aria-label="Eliminar notificación"
-                  onclick={(e) => { e.stopPropagation(); notificationStore.removeNotification(notification.id); }}
+                  onclick={(e) => {
+                    e.stopPropagation();
+                    notificationStore.removeNotification(notification.id);
+                  }}
                 >
                   ✕
                 </button>
@@ -147,7 +166,9 @@
     box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
     max-width: 360px;
     cursor: pointer;
-    transition: transform 0.2s ease, opacity 0.2s ease;
+    transition:
+      transform 0.2s ease,
+      opacity 0.2s ease;
     text-align: left;
   }
 
@@ -202,7 +223,7 @@
     height: 44px;
     border-radius: 50%;
     background: var(--surface);
-    border: 1px solid var(--accent-purple);
+    border: 3px solid var(--accent);
     font-size: 20px;
     display: flex;
     align-items: center;
