@@ -247,6 +247,30 @@
               </div>
             </div>
           {/each}
+          <div class="preview-samples" aria-hidden="true">
+            <a href="#preview-title" class="preview-link" tabindex="-1"
+              >Enlace de ejemplo</a
+            >
+            <div class="preview-buttons">
+              <button type="button" class="btn btn-primary" tabindex="-1"
+                >Primario</button
+              >
+              <button type="button" class="btn btn-secondary" tabindex="-1"
+                >Secundario</button
+              >
+              <button type="button" class="btn btn-danger" tabindex="-1"
+                >Peligro</button
+              >
+            </div>
+            <div class="preview-accents">
+              {#each ["green", "yellow", "orange", "blue", "purple", "red"] as name}
+                <span
+                  class="accent-dot"
+                  style="background: var(--accent-{name})"
+                ></span>
+              {/each}
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -489,7 +513,7 @@
 
 <style>
   .settings-page {
-    max-width: 900px;
+    width: 100%;
   }
 
   .settings-card {
@@ -758,6 +782,45 @@
   .preview-empty {
     font-size: 11px;
     color: var(--text3);
+  }
+
+  .preview-samples {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: auto;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+
+  .preview-link {
+    font-size: 13px;
+    color: var(--accent);
+    text-decoration: underline;
+    align-self: flex-start;
+  }
+
+  .preview-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .preview-buttons .btn {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  .preview-accents {
+    display: flex;
+    gap: 6px;
+  }
+
+  .accent-dot {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
   }
 
   .confirm-dialog {
