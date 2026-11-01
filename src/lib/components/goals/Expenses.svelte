@@ -367,7 +367,11 @@
   </div>
 
   {#if loading}
-    <div class="card flex flex-col items-center gap-4 p-6" aria-busy="true" aria-label="Cargando gastos">
+    <div
+      class="card flex flex-col items-center gap-4 p-6"
+      aria-busy="true"
+      aria-label="Cargando gastos"
+    >
       <div class="skeleton skeleton-circle h-56 w-56"></div>
       <div class="skeleton h-5 w-40"></div>
     </div>
@@ -709,7 +713,7 @@
   }
 
   .currency-toggle:hover {
-    border-color: var(--accent-green);
+    border-color: var(--accent);
     color: var(--text);
   }
 

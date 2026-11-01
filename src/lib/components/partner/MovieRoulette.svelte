@@ -1,41 +1,54 @@
 <script lang="ts">
-  import { page } from '$app/state';
-  import { createRepository } from '$lib/services/repository';
-  import Toast from '$lib/components/Toast.svelte';
-  import type { MovieWithRatings } from '$lib/types';
-  import { awardXP, XP_VALUES } from '$lib/utils/xp';
-  import { renderMd, formatLinks } from '$lib/utils/markdown';
+  import { page } from "$app/state";
+  import { createRepository } from "$lib/services/repository";
+  import Toast from "$lib/components/Toast.svelte";
+  import type { MovieWithRatings } from "$lib/types";
+  import { awardXP, XP_VALUES } from "$lib/utils/xp";
+  import { renderMd, formatLinks } from "$lib/utils/markdown";
 
-  const userId = $derived(page.data.user?.id ?? page.data.session?.user?.id ?? '');
+  const userId = $derived(
+    page.data.user?.id ?? page.data.session?.user?.id ?? "",
+  );
   const repo = $derived(userId ? createRepository(userId) : null);
 
   let initialized = $state(false);
   let movies = $state<MovieWithRatings[]>([]);
-  let activeTab = $state<'movie' | 'series'>('movie');
+  let activeTab = $state<"movie" | "series">("movie");
 
-  let filteredMovies = $derived(movies.filter(m => (m.media_type || 'movie') === activeTab));
-  let moviesWithoutRatings = $derived(filteredMovies.filter(m => !m.user_rating));
+  let filteredMovies = $derived(
+    movies.filter((m) => (m.media_type || "movie") === activeTab),
+  );
+  let moviesWithoutRatings = $derived(
+    filteredMovies.filter((m) => !m.user_rating),
+  );
 
-  let addText = $state('');
+  let addText = $state("");
   let addSaving = $state(false);
   let addToast = $state(false);
-  let addToastMsg = $state('');
+  let addToastMsg = $state("");
   let addToastTimer: ReturnType<typeof setTimeout> | null = $state(null);
 
   let spinning = $state(false);
   let wheelAngle = $state(0);
 
   let modalMovie = $state<MovieWithRatings | null>(null);
-  let modalTitle = $state('');
-  let modalPoster = $state('');
-  let modalResources = $state('');
-  let modalMediaType = $state<'movie' | 'series'>('movie');
+  let modalTitle = $state("");
+  let modalPoster = $state("");
+  let modalResources = $state("");
+  let modalMediaType = $state<"movie" | "series">("movie");
   let modalUserRating = $state(0);
   let modalSaving = $state(false);
   let modalTextarea: HTMLTextAreaElement | null = $state(null);
   let wheelCanvas: HTMLCanvasElement | null = $state(null);
 
-  const wheelColorVars = ['--accent-green', '--accent-yellow', '--accent-orange', '--accent-blue', '--accent-purple', '--accent-red'];
+  const wheelColorVars = [
+    "--accent-green",
+    "--accent-yellow",
+    "--accent-orange",
+    "--accent-blue",
+    "--accent-purple",
+    "--accent-red",
+  ];
 
   $effect(() => {
     if (userId && !initialized) {
@@ -46,7 +59,7 @@
 
   $effect(() => {
     if (!modalTextarea) return;
-    modalTextarea.style.height = 'auto';
+    modalTextarea.style.height = "auto";
     modalTextarea.style.height = `${modalTextarea.scrollHeight}px`;
   });
 
@@ -78,7 +91,7 @@
 
   async function addMovies() {
     if (!userId || !repo) {
-      showToast('La sesión no está lista');
+      showToast("La sesión no está lista");
       return;
     }
 
@@ -86,42 +99,55 @@
       new Set(
         addText
           .split(/[\n,]+/)
-          .map(title => title.replace(/^[-•*\s]+/, '').trim())
+          .map((title) => title.replace(/^[-•*\s]+/, "").trim())
           .filter(Boolean)
-          .map(title => title.replace(/\s+/g, ' '))
-      )
+          .map((title) => title.replace(/\s+/g, " ")),
+      ),
     );
 
     if (!parsedTitles.length) return;
 
-    const existing = new Set(movies.map(m => m.title.toLowerCase().trim()));
-    const toAdd = parsedTitles.filter(title => !existing.has(title.toLowerCase().trim()));
+    const existing = new Set(movies.map((m) => m.title.toLowerCase().trim()));
+    const toAdd = parsedTitles.filter(
+      (title) => !existing.has(title.toLowerCase().trim()),
+    );
     const skipped = parsedTitles.length - toAdd.length;
 
     if (!toAdd.length) {
-      showToast('Todas las películas ya están en la lista');
+      showToast("Todas las películas ya están en la lista");
       return;
     }
 
     addSaving = true;
-    const { data, error } = await repo.movieWatchlist.insertMany(toAdd, activeTab);
+    const { data, error } = await repo.movieWatchlist.insertMany(
+      toAdd,
+      activeTab,
+    );
     if (error) {
-      showToast('Error al agregar');
+      showToast("Error al agregar");
     } else {
       const newItems = Array.isArray(data) ? data : data ? [data] : [];
       if (newItems.length) {
-        await awardXP(userId, 'social', 'movie_added', XP_VALUES.movie_added, undefined, `${newItems.length} nuevo${newItems.length === 1 ? '' : 's'} en la lista`);
+        await awardXP(
+          userId,
+          "social",
+          "movie_added",
+          XP_VALUES.movie_added,
+          undefined,
+          `${newItems.length} nuevo${newItems.length === 1 ? "" : "s"} en la lista`,
+        );
       }
-      if (skipped > 0) showToast(`${skipped} título(s) omitido(s) por duplicado`);
+      if (skipped > 0)
+        showToast(`${skipped} título(s) omitido(s) por duplicado`);
       else showToast(`${toAdd.length} título(s) agregado(s)`);
-      addText = '';
+      addText = "";
     }
     addSaving = false;
     await loadData();
   }
 
   async function deleteMovie(id: string) {
-    if (!repo || !confirm('¿Eliminar este título?')) return;
+    if (!repo || !confirm("¿Eliminar este título?")) return;
     await repo.movieWatchlist.remove(id);
     await loadData();
   }
@@ -133,12 +159,14 @@
     const spinDegrees = 3600 + Math.random() * 7200;
     wheelAngle += spinDegrees;
 
-    const rotationRad = (wheelAngle * Math.PI / 180) % (2 * Math.PI);
-    let originalAngle = - rotationRad;
-    originalAngle = ((originalAngle % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+    const rotationRad = ((wheelAngle * Math.PI) / 180) % (2 * Math.PI);
+    let originalAngle = -rotationRad;
+    originalAngle =
+      ((originalAngle % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
 
     const arcRad = (2 * Math.PI) / moviesWithoutRatings.length;
-    const targetIndex = Math.floor(originalAngle / arcRad) % moviesWithoutRatings.length;
+    const targetIndex =
+      Math.floor(originalAngle / arcRad) % moviesWithoutRatings.length;
 
     setTimeout(() => {
       openMovieModal(moviesWithoutRatings[targetIndex]);
@@ -149,9 +177,9 @@
   function openMovieModal(movie: MovieWithRatings) {
     modalMovie = movie;
     modalTitle = movie.title;
-    modalPoster = movie.poster_url || '';
-    modalResources = movie.resources || '';
-    modalMediaType = (movie.media_type as 'movie' | 'series') || 'movie';
+    modalPoster = movie.poster_url || "";
+    modalResources = movie.resources || "";
+    modalMediaType = (movie.media_type as "movie" | "series") || "movie";
     modalUserRating = movie.user_rating || 0;
     modalSaving = false;
   }
@@ -167,9 +195,9 @@
 
     const movieId = modalMovie.id;
     const prevTitle = modalMovie.title;
-    const prevPoster = modalMovie.poster_url || '';
-    const prevResources = formatLinks(modalMovie.resources || '');
-    const prevMediaType = modalMovie.media_type || 'movie';
+    const prevPoster = modalMovie.poster_url || "";
+    const prevResources = formatLinks(modalMovie.resources || "");
+    const prevMediaType = modalMovie.media_type || "movie";
     const prevUserRating = modalMovie.user_rating || 0;
 
     if (modalTitle !== prevTitle) {
@@ -208,17 +236,20 @@
     wheelCanvas.width = Math.floor(size * dpr);
     wheelCanvas.height = Math.floor(size * dpr);
 
-    const ctx = wheelCanvas.getContext('2d');
+    const ctx = wheelCanvas.getContext("2d");
     if (!ctx) return;
 
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, size, size);
 
     const rootStyles = getComputedStyle(document.documentElement);
-    const colors = wheelColorVars.map(v => rootStyles.getPropertyValue(v).trim()).filter(Boolean);
-    const bg1 = rootStyles.getPropertyValue('--bg1').trim() || '#0b1114';
-    const textColor = rootStyles.getPropertyValue('--bg1').trim() || '#0b1114';
-    const monoFont = rootStyles.getPropertyValue('--font-mono').trim() || 'ui-monospace, SFMono-Regular, Menlo, monospace';
+    const colors = wheelColorVars
+      .map((v) => rootStyles.getPropertyValue(v).trim())
+      .filter(Boolean);
+    const bg = rootStyles.getPropertyValue("--bg").trim() || "#0f1117";
+    const monoFont =
+      rootStyles.getPropertyValue("--font-mono").trim() ||
+      "ui-monospace, SFMono-Regular, Menlo, monospace";
 
     const cx = size / 2;
     const cy = size / 2;
@@ -232,16 +263,16 @@
       ctx.moveTo(cx, cy);
       ctx.arc(cx, cy, radius, start, end);
       ctx.closePath();
-      ctx.fillStyle = colors[i % colors.length] || '#73e7bd';
+      ctx.fillStyle = colors[i % colors.length] || "#73e7bd";
       ctx.fill();
-      ctx.strokeStyle = bg1;
+      ctx.strokeStyle = bg;
       ctx.lineWidth = 2;
       ctx.stroke();
     }
 
-    ctx.fillStyle = textColor;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
+    ctx.fillStyle = bg;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
     ctx.font = `800 11px ${monoFont}`;
 
     const labelRadius = radius * 0.45;
@@ -252,7 +283,8 @@
       const x = cx + Math.cos(mid) * labelRadius;
       const y = cy + Math.sin(mid) * labelRadius;
 
-      const title = movie.title.length > 18 ? `${movie.title.slice(0, 16)}…` : movie.title;
+      const title =
+        movie.title.length > 18 ? `${movie.title.slice(0, 16)}…` : movie.title;
 
       ctx.save();
       ctx.translate(x, y);
@@ -274,10 +306,18 @@
   </div>
 
   <div class="media-tabs">
-    <button class="media-tab" class:active={activeTab === 'movie'} onclick={() => activeTab = 'movie'}>
+    <button
+      class="media-tab"
+      class:active={activeTab === "movie"}
+      onclick={() => (activeTab = "movie")}
+    >
       🎬 Películas
     </button>
-    <button class="media-tab" class:active={activeTab === 'series'} onclick={() => activeTab = 'series'}>
+    <button
+      class="media-tab"
+      class:active={activeTab === "series"}
+      onclick={() => (activeTab = "series")}
+    >
       📺 Series
     </button>
   </div>
@@ -303,21 +343,26 @@
         onclick={spin}
         disabled={spinning || moviesWithoutRatings.length === 0}
       >
-        {spinning ? 'Girando…' : '🎡 Girar'}
+        {spinning ? "Girando…" : "🎡 Girar"}
       </button>
     </div>
 
     <div class="roulette-sidebar">
       <div class="add-panel card">
-        <h4>Agregar {activeTab === 'movie' ? 'pelis' : 'series'}</h4>
+        <h4>Agregar {activeTab === "movie" ? "pelis" : "series"}</h4>
         <textarea
           class="md-editor"
           bind:value={addText}
-          placeholder={activeTab === 'movie' ? 'Película 1\nPelícula 2\n...' : 'Serie 1\nSerie 2\n...'}
-          rows="5"
-        ></textarea>
-        <button class="btn btn-primary" onclick={addMovies} disabled={addSaving || !addText.trim()}>
-          {addSaving ? '…' : '+ Agregar'}
+          placeholder={activeTab === "movie"
+            ? "Película 1\nPelícula 2\n..."
+            : "Serie 1\nSerie 2\n..."}
+          rows="5"></textarea>
+        <button
+          class="btn btn-primary"
+          onclick={addMovies}
+          disabled={addSaving || !addText.trim()}
+        >
+          {addSaving ? "…" : "+ Agregar"}
         </button>
       </div>
     </div>
@@ -327,7 +372,11 @@
     {#snippet movieCard(movie: MovieWithRatings)}
       {@const avg = movie.avg_rating || 0}
       {@const isRated = movie.total_ratings && movie.total_ratings > 0}
-      <button type="button" class="rating-card card" onclick={() => openMovieModal(movie)}>
+      <button
+        type="button"
+        class="rating-card card"
+        onclick={() => openMovieModal(movie)}
+      >
         {#if movie.poster_url}
           <img src={movie.poster_url} alt={movie.title} class="rating-poster" />
         {:else}
@@ -341,7 +390,7 @@
             {:else}
               <span class="rating-avg">—</span>
             {/if}
-            {#each [1,2,3,4,5] as s}
+            {#each [1, 2, 3, 4, 5] as s}
               <span class="star">
                 {#if s <= avg}
                   <span class="filled">★</span>
@@ -353,10 +402,12 @@
           </div>
           <div class="rating-partner-stars">
             {#if movie.user_rating}
-              <span class="rating-you">Tú: {movie.user_rating}/5 ⭐</span>
+              <span class="rating-you">Tú: {movie.user_rating}/5</span>
             {/if}
             {#if movie.partner_rating}
-              <span class="rating-partner">Pareja: {movie.partner_rating}/5 ⭐</span>
+              <span class="rating-partner"
+                >Pareja: {movie.partner_rating}/5</span
+              >
             {/if}
           </div>
           {#if movie.resources}
@@ -369,7 +420,9 @@
     {/snippet}
 
     <div class="ratings-section">
-      <h3 class="ideas-group-label">Pendientes de ver ({moviesWithoutRatings.length})</h3>
+      <h3 class="ideas-group-label">
+        Pendientes de ver ({moviesWithoutRatings.length})
+      </h3>
       {#if moviesWithoutRatings.length > 0}
         <div class="ratings-grid">
           {#each moviesWithoutRatings as movie (movie.id)}
@@ -383,7 +436,11 @@
 
     {@const ratedMovies = filteredMovies
       .filter((m) => !!m.user_rating)
-      .sort((a, b) => (b.user_rating ?? 0) - (a.user_rating ?? 0) || (b.avg_rating || 0) - (a.avg_rating || 0))}
+      .sort(
+        (a, b) =>
+          (b.user_rating ?? 0) - (a.user_rating ?? 0) ||
+          (b.avg_rating || 0) - (a.avg_rating || 0),
+      )}
     {#if ratedMovies.length > 0}
       <div class="ratings-section">
         <h3 class="ideas-group-label">Ya calificadas ({ratedMovies.length})</h3>
@@ -400,11 +457,17 @@
 {#if modalMovie}
   <div
     class="modal-backdrop"
-    onclick={(e) => { if (e.target === e.currentTarget) closeMovieModal(); }}
+    onclick={(e) => {
+      if (e.target === e.currentTarget) closeMovieModal();
+    }}
     role="presentation"
   >
-    <div class="modal movie-modal" role="dialog" aria-modal="true" aria-label="Editar película">
-
+    <div
+      class="modal movie-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Editar película"
+    >
       <input
         id="movie-title"
         type="text"
@@ -420,9 +483,13 @@
           <option value="series">Serie</option>
         </select>
       </div>
-      
+
       {#if modalPoster}
-        <img src={modalPoster} alt={modalMovie.title} class="rating-modal-poster" />
+        <img
+          src={modalPoster}
+          alt={modalMovie.title}
+          class="rating-modal-poster"
+        />
       {:else}
         <div class="rating-poster-placeholder" style="height:150px;">🎬</div>
       {/if}
@@ -435,8 +502,7 @@
           bind:this={modalTextarea}
           bind:value={modalResources}
           placeholder="## Recursos&#10;&#10;- enlace1&#10;- enlace2"
-          rows="4"
-        ></textarea>
+          rows="4"></textarea>
       </div>
 
       <div class="form-group">
@@ -452,18 +518,22 @@
 
       <div class="movie-modal-rating">
         <div class="star-picker">
-          {#each [1,2,3,4,5] as s}
+          {#each [1, 2, 3, 4, 5] as s}
             <button
               type="button"
               class="star-btn"
               class:filled={s <= modalUserRating}
-              onclick={() => modalUserRating = s}
+              onclick={() => (modalUserRating = s)}
               aria-label={`${s} estrellas`}
             >
               ★
             </button>
           {/each}
-          <span class="star-label">{modalUserRating > 0 ? `${modalUserRating}/5` : 'Sin calificar'}</span>
+          <span class="star-label"
+            >{modalUserRating > 0
+              ? `${modalUserRating}/5`
+              : "Sin calificar"}</span
+          >
         </div>
 
         <div class="rating-partner-stars">
@@ -471,19 +541,39 @@
             <span class="rating-avg">Media: {modalMovie.avg_rating}/5</span>
           {/if}
           {#if modalMovie.partner_rating}
-            <span class="rating-partner">Pareja: {modalMovie.partner_rating}⭐</span>
+            <span class="rating-partner"
+              >Pareja: {modalMovie.partner_rating}⭐</span
+            >
           {/if}
         </div>
       </div>
 
       <div class="form-actions">
-        <button type="button" class="btn btn-danger" onclick={() => { void deleteMovie(modalMovie!.id!); closeMovieModal(); }} disabled={modalSaving}>
+        <button
+          type="button"
+          class="btn btn-danger"
+          onclick={() => {
+            void deleteMovie(modalMovie!.id!);
+            closeMovieModal();
+          }}
+          disabled={modalSaving}
+        >
           Eliminar
         </button>
         <div style="flex:1"></div>
-        <button type="button" class="btn btn-secondary" onclick={closeMovieModal} disabled={modalSaving}>Cancelar</button>
-        <button type="button" class="btn btn-primary" onclick={saveMovieUpdates} disabled={modalSaving}>
-          {modalSaving ? '…' : 'Guardar'}
+        <button
+          type="button"
+          class="btn btn-secondary"
+          onclick={closeMovieModal}
+          disabled={modalSaving}>Cancelar</button
+        >
+        <button
+          type="button"
+          class="btn btn-primary"
+          onclick={saveMovieUpdates}
+          disabled={modalSaving}
+        >
+          {modalSaving ? "…" : "Guardar"}
         </button>
       </div>
     </div>
@@ -491,7 +581,9 @@
 {/if}
 
 <style>
-  .movie-roulette { max-width: inherit; }
+  .movie-roulette {
+    max-width: inherit;
+  }
 
   .media-tabs {
     display: flex;
@@ -528,10 +620,9 @@
 
   .roulette-layout {
     display: grid;
-    grid-template-columns: 1fr 280px;
+    grid-template-columns: 2fr 1fr;
     gap: 24px;
     align-items: start;
-    max-width: 1000px;
     margin-bottom: 28px;
   }
 
@@ -544,8 +635,9 @@
 
   .wheel-container {
     position: relative;
-    width: 320px;
-    height: 320px;
+    width: 400px;
+    height: 400px;
+    max-width: 80dvw;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -557,16 +649,19 @@
     left: 50%;
     transform: translateX(-50%);
     font-size: 28px;
-    color: var(--bg);
+    color: var(--accent);
     z-index: 2;
     text-shadow: 0 5px 15px rgba(255, 255, 255, 0.5);
   }
 
   .wheel {
-    width: 300px;
-    height: 300px;
+    width: 350px;
+    height: 350px;
+    max-width: 80dvw;
     border-radius: 50%;
-    box-shadow: 0 4px 24px rgba(168,230,207,0.2), inset 0 0 0 4px var(--bg1);
+    box-shadow:
+      0 4px 24px color-mix(in srgb, var(--accent-green) 20%, transparent),
+      inset 0 0 0 4px var(--bg);
     position: relative;
     overflow: hidden;
     display: block;
@@ -595,7 +690,11 @@
     border-radius: 999px;
   }
 
-  .roulette-sidebar { display: flex; flex-direction: column; gap: 12px; }
+  .roulette-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
 
   .add-panel {
     display: flex;
@@ -626,7 +725,9 @@
     padding: 4px 8px;
   }
 
-  .poster-input-full { width: 100%; }
+  .poster-input-full {
+    width: 100%;
+  }
 
   .ideas-group-label {
     font-size: 13px;
@@ -645,7 +746,9 @@
     margin: 0 0 8px;
   }
 
-  .ratings-section { margin-top: 32px; }
+  .ratings-section {
+    margin-top: 32px;
+  }
 
   .ratings-grid {
     display: grid;
@@ -664,7 +767,10 @@
     padding: 0;
   }
 
-  .rating-card:hover { border-color: var(--accent-yellow); transform: translateY(-2px); }
+  .rating-card:hover {
+    border-color: var(--accent-yellow);
+    transform: translateY(-2px);
+  }
 
   .rating-poster {
     width: 100%;
@@ -710,7 +816,9 @@
     color: var(--accent-purple);
   }
 
-  .star .filled { color: var(--accent-yellow); }
+  .star .filled {
+    color: var(--accent-yellow);
+  }
 
   .rating-avg {
     font-size: 12px;
@@ -730,8 +838,12 @@
     font-family: var(--font-mono);
   }
 
-  .rating-you { color: var(--text2); }
-  .rating-partner { color: var(--accent-orange); }
+  .rating-you {
+    color: var(--text2);
+  }
+  .rating-partner {
+    color: var(--accent-orange);
+  }
 
   .rating-resources {
     font-size: 12px;
@@ -758,10 +870,16 @@
     line-height: 1;
   }
 
-  .star-btn.filled { color: var(--accent-yellow); }
-  .star-btn:hover { color: var(--accent-yellow); }
+  .star-btn.filled {
+    color: var(--accent-yellow);
+  }
+  .star-btn:hover {
+    color: var(--accent-yellow);
+  }
   @media (hover: hover) and (pointer: fine) {
-    .star-btn:hover { color: var(--accent-yellow); }
+    .star-btn:hover {
+      color: var(--accent-yellow);
+    }
   }
 
   .star-label {
@@ -796,7 +914,7 @@
   .modal-backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,0.6);
+    background: rgba(0, 0, 0, 0.6);
     backdrop-filter: blur(4px);
     display: flex;
     align-items: center;
@@ -815,7 +933,9 @@
     position: relative;
   }
 
-  .movie-modal { max-width: 520px; }
+  .movie-modal {
+    max-width: 520px;
+  }
 
   .movie-modal-title {
     margin: 0 0 14px;
@@ -826,8 +946,12 @@
     width: inherit;
   }
 
-  .movie-modal-rating { margin-top: 6px; }
-  .movie-modal-rating .star-picker { margin-bottom: 10px; }
+  .movie-modal-rating {
+    margin-top: 6px;
+  }
+  .movie-modal-rating .star-picker {
+    margin-bottom: 10px;
+  }
 
   .form-actions {
     display: flex;
@@ -837,9 +961,19 @@
   }
 
   @media (max-width: 700px) {
-    .roulette-layout { grid-template-columns: 1fr; }
-    .ratings-grid { grid-template-columns: 1fr; }
-    .wheel { width: 260px; height: 260px; }
-    .wheel-container { width: 280px; height: 280px; }
+    .roulette-layout {
+      grid-template-columns: 1fr;
+    }
+    .ratings-grid {
+      grid-template-columns: 1fr;
+    }
+    .wheel {
+      width: 260px;
+      height: 260px;
+    }
+    .wheel-container {
+      width: 280px;
+      height: 280px;
+    }
   }
 </style>

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Book } from '$lib/types';
+  import type { Book } from "$lib/types";
 
   interface Props {
     books?: Book[];
@@ -17,9 +17,15 @@
 </script>
 
 <div class="card">
-  <h3 class="card-title">Lecturas <a href="/goals?tab=books" class="card-link">Ver libros →</a></h3>
+  <h3 class="card-title">
+    Lecturas <a href="/goals?tab=books" class="card-link">Ver libros →</a>
+  </h3>
   {#if loading}
-    <div class="flex flex-col gap-3" aria-busy="true" aria-label="Cargando lecturas">
+    <div
+      class="flex flex-col gap-3"
+      aria-busy="true"
+      aria-label="Cargando lecturas"
+    >
       {#each [1, 2, 3] as _}
         <div class="flex items-center gap-3">
           <div class="skeleton h-14 w-10 shrink-0"></div>
@@ -47,9 +53,14 @@
           <div class="book-item-info">
             <div class="book-item-title">{book.title}</div>
             <div class="progress-track" style="margin-top:6px;">
-              <div class="progress-fill" style="width:{pct}%;background:var(--accent-green);"></div>
+              <div
+                class="progress-fill"
+                style="width:{pct}%;background:var(--accent);"
+              ></div>
             </div>
-            <div class="book-item-pages">{book.current_page}/{book.total_pages} págs — {pct}%</div>
+            <div class="book-item-pages">
+              {book.current_page}/{book.total_pages} págs — {pct}%
+            </div>
           </div>
         </div>
       {/each}
@@ -71,14 +82,22 @@
 
   .card-link {
     font-size: 12px;
-    color: var(--accent-green);
+    color: var(--accent);
     font-weight: 500;
     font-family: var(--font-body);
   }
 
-  .book-list { display: flex; flex-direction: column; gap: 12px; }
+  .book-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
 
-  .book-item { display: flex; gap: 10px; align-items: center; }
+  .book-item {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
 
   .book-item-cover {
     width: 36px;
@@ -90,13 +109,20 @@
     justify-content: center;
     font-size: 16px;
     font-weight: 700;
-    color: var(--accent-green);
+    color: var(--accent);
     flex-shrink: 0;
     overflow: hidden;
   }
-  .book-item-cover img { width: 100%; height: 100%; object-fit: cover; }
+  .book-item-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
 
-  .book-item-info { flex: 1; min-width: 0; }
+  .book-item-info {
+    flex: 1;
+    min-width: 0;
+  }
 
   .book-item-title {
     font-size: 13px;

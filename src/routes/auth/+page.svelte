@@ -1,14 +1,14 @@
 <script lang="ts">
-  import { enhance } from '$app/forms';
-  import { goto } from '$app/navigation';
-  import Toast from '$lib/components/Toast.svelte';
+  import { enhance } from "$app/forms";
+  import { goto } from "$app/navigation";
+  import Toast from "$lib/components/Toast.svelte";
 
   let isLogin = $state(true);
-  let error = $state('');
+  let error = $state("");
   let loading = $state(false);
   let showPassword = $state(false);
   let toastVisible = $state(false);
-  let toastMessage = $state('');
+  let toastMessage = $state("");
   let toastTimer: ReturnType<typeof setTimeout> | null = null;
 
   function showToast(msg: string) {
@@ -21,21 +21,29 @@
     }, 3000);
   }
 
-  function handleSubmit({ result }: { result: { type: string; data?: { success?: boolean; action?: string; error?: string } } }) {
+  function handleSubmit({
+    result,
+  }: {
+    result: {
+      type: string;
+      data?: { success?: boolean; action?: string; error?: string };
+    };
+  }) {
     loading = false;
-    if (result.type === 'success' && result.data) {
+    if (result.type === "success" && result.data) {
       if (result.data.success) {
-        if (result.data.action === 'login') {
-          if (typeof window !== 'undefined') localStorage.setItem('vitacora_just_logged_in', 'true');
-          showToast('Iniciando sesión, redireccionando...');
-          setTimeout(() => goto('/dashboard', { invalidateAll: true }), 800);
-        } else if (result.data.action === 'signup') {
-          showToast('Se ha enviado un enlace de confirmación a tu correo');
+        if (result.data.action === "login") {
+          if (typeof window !== "undefined")
+            localStorage.setItem("vitacora_just_logged_in", "true");
+          showToast("Iniciando sesión, redireccionando...");
+          setTimeout(() => goto("/dashboard", { invalidateAll: true }), 800);
+        } else if (result.data.action === "signup") {
+          showToast("Se ha enviado un enlace de confirmación a tu correo");
         }
       } else if (result.data.error) {
         error = result.data.error;
       }
-    } else if (result.type === 'failure' && result.data?.error) {
+    } else if (result.type === "failure" && result.data?.error) {
       error = result.data.error;
     }
   }
@@ -64,29 +72,54 @@
     <p class="auth-tagline">Tu espacio de crecimiento personal</p>
 
     <div class="auth-tabs">
-      <button class:active={isLogin} onclick={() => isLogin = true}>Entrar</button>
-      <button class:active={!isLogin} onclick={() => isLogin = false}>Registrarse</button>
+      <button class:active={isLogin} onclick={() => (isLogin = true)}
+        >Entrar</button
+      >
+      <button class:active={!isLogin} onclick={() => (isLogin = false)}
+        >Registrarse</button
+      >
     </div>
 
-
-    <form method="POST" action={isLogin ? '?/login' : '?/signup'} use:enhance={() => { loading = true; error = ''; return handleSubmit; }}>
+    <form
+      method="POST"
+      action={isLogin ? "?/login" : "?/signup"}
+      use:enhance={() => {
+        loading = true;
+        error = "";
+        return handleSubmit;
+      }}
+    >
       <div class="form-group">
         <label for="email">Email</label>
-        <input id="email" name="email" type="email" placeholder="tu@email.com" required disabled={loading} />
+        <input
+          id="email"
+          name="email"
+          type="email"
+          placeholder="tu@email.com"
+          required
+          disabled={loading}
+        />
       </div>
       <div class="form-group password-group">
         <label for="password">Contraseña</label>
         <div class="password-input-wrap">
-          <input 
-            id="password" 
-            name="password" 
-            type={showPassword ? 'text' : 'password'} 
-            placeholder="••••••••" 
-            required 
-            disabled={loading} 
+          <input
+            id="password"
+            name="password"
+            type={showPassword ? "text" : "password"}
+            placeholder="••••••••"
+            required
+            disabled={loading}
           />
-          <button type="button" class="toggle-password" onclick={() => showPassword = !showPassword} aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}>
-            {showPassword ? '🙈' : '👁️'}
+          <button
+            type="button"
+            class="toggle-password"
+            onclick={() => (showPassword = !showPassword)}
+            aria-label={showPassword
+              ? "Ocultar contraseña"
+              : "Mostrar contraseña"}
+          >
+            {showPassword ? "🙈" : "👁️"}
           </button>
         </div>
       </div>
@@ -95,8 +128,12 @@
         <div class="auth-error">{error}</div>
       {/if}
 
-      <button type="submit" class="btn btn-primary auth-submit" disabled={loading}>
-        {loading ? '...' : isLogin ? 'Entrar' : 'Crear cuenta'}
+      <button
+        type="submit"
+        class="btn btn-primary auth-submit"
+        disabled={loading}
+      >
+        {loading ? "..." : isLogin ? "Entrar" : "Crear cuenta"}
       </button>
     </form>
 
@@ -114,7 +151,11 @@
     overflow: hidden;
   }
 
-  .auth-bg { position: absolute; inset: 0; pointer-events: none; }
+  .auth-bg {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
 
   .bg-orb {
     position: absolute;
@@ -122,9 +163,27 @@
     filter: blur(80px);
     opacity: 0.12;
   }
-  .orb1 { width: 400px; height: 400px; background: var(--accent-green); top: -100px; left: -100px; }
-  .orb2 { width: 300px; height: 300px; background: var(--accent-yellow); bottom: -50px; right: 100px; }
-  .orb3 { width: 250px; height: 250px; background: var(--accent-orange); top: 50%; right: -50px; }
+  .orb1 {
+    width: 400px;
+    height: 400px;
+    background: var(--accent);
+    top: -100px;
+    left: -100px;
+  }
+  .orb2 {
+    width: 300px;
+    height: 300px;
+    background: var(--accent-yellow);
+    bottom: -50px;
+    right: 100px;
+  }
+  .orb3 {
+    width: 250px;
+    height: 250px;
+    background: var(--accent-orange);
+    top: 50%;
+    right: -50px;
+  }
 
   .auth-card {
     background: var(--bg2);
@@ -147,7 +206,7 @@
 
   .logo-glyph {
     font-size: 32px;
-    color: var(--accent-green);
+    color: var(--accent);
   }
 
   h1 {
@@ -198,7 +257,9 @@
     margin-bottom: 16px;
   }
 
-  .password-group { position: relative; }
+  .password-group {
+    position: relative;
+  }
 
   .password-input-wrap {
     position: relative;
@@ -223,7 +284,9 @@
     transition: opacity var(--transition);
   }
 
-  .toggle-password:hover { opacity: 1; }
+  .toggle-password:hover {
+    opacity: 1;
+  }
 
   .auth-submit {
     width: 100%;
@@ -242,8 +305,12 @@
     font-style: italic;
   }
 
-  .auth-page.loading { pointer-events: none; }
-  .auth-page.loading .auth-card { opacity: 0.5; }
+  .auth-page.loading {
+    pointer-events: none;
+  }
+  .auth-page.loading .auth-card {
+    opacity: 0.5;
+  }
 
   .loading-overlay {
     position: fixed;
@@ -267,12 +334,14 @@
     width: 40px;
     height: 40px;
     border: 3px solid var(--border);
-    border-top-color: var(--accent-green);
+    border-top-color: var(--accent);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
   }
 
   @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+      transform: rotate(360deg);
+    }
   }
 </style>

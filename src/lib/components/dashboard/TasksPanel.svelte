@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Task } from '$lib/types';
+  import type { Task } from "$lib/types";
 
   interface Props {
     tasks?: Task[];
@@ -8,13 +8,23 @@
 
   let { tasks = [], loading = false }: Props = $props();
 
-  const todayTasks = $derived(tasks.filter(t => t.status !== 'done' && t.status !== 'to_review').slice(0, 5));
+  const todayTasks = $derived(
+    tasks
+      .filter((t) => t.status !== "done" && t.status !== "to_review")
+      .slice(0, 5),
+  );
 </script>
 
 <div class="card">
-  <h3 class="card-title">Pendientes <a href="/work" class="card-link">Ver pendientes →</a></h3>
+  <h3 class="card-title">
+    Pendientes <a href="/work" class="card-link">Ver pendientes →</a>
+  </h3>
   {#if loading}
-    <div class="flex flex-col gap-2" aria-busy="true" aria-label="Cargando pendientes">
+    <div
+      class="flex flex-col gap-2"
+      aria-busy="true"
+      aria-label="Cargando pendientes"
+    >
       {#each [1, 2, 3] as _}
         <div class="skeleton h-10 w-full"></div>
       {/each}
@@ -25,11 +35,18 @@
     <div class="task-list">
       {#each todayTasks as task}
         <div class="task-item">
-          <span class="task-sta-dot" style="background:{task.status === 'doing' ? 'var(--accent-yellow)' : 'var(--accent-blue)'}"></span>
+          <span
+            class="task-sta-dot"
+            style="background:{task.status === 'doing'
+              ? 'var(--accent-yellow)'
+              : 'var(--accent-blue)'}"
+          ></span>
           <div class="task-item-info">
             <div class="task-item-title">{task.title}</div>
             {#if task.due_date}
-              <div class="task-item-due">{new Date(task.due_date).toLocaleDateString('es-ES')}</div>
+              <div class="task-item-due">
+                {new Date(task.due_date).toLocaleDateString("es-ES")}
+              </div>
             {/if}
           </div>
           <span class="task-sta-tag">{task.status}</span>
@@ -53,12 +70,16 @@
 
   .card-link {
     font-size: 12px;
-    color: var(--accent-green);
+    color: var(--accent);
     font-weight: 500;
     font-family: var(--font-body);
   }
 
-  .task-list { display: flex; flex-direction: column; gap: 8px; }
+  .task-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
 
   .task-item {
     display: flex;
@@ -76,7 +97,10 @@
     flex-shrink: 0;
   }
 
-  .task-item-info { flex: 1; min-width: 0; }
+  .task-item-info {
+    flex: 1;
+    min-width: 0;
+  }
 
   .task-item-title {
     font-size: 13px;

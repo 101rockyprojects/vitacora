@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type { WorkTodo } from '$lib/types';
-  import { createRepository } from '$lib/services/repository';
+  import type { WorkTodo } from "$lib/types";
+  import { createRepository } from "$lib/services/repository";
 
   interface Props {
     userId: string;
@@ -9,21 +9,26 @@
     loading?: boolean;
   }
 
-  let { userId, todos = $bindable([]), onTodosChange, loading = false }: Props = $props();
+  let {
+    userId,
+    todos = $bindable([]),
+    onTodosChange,
+    loading = false,
+  }: Props = $props();
 
   const repo = $derived(createRepository(userId));
-  let todoInput = $state('');
+  let todoInput = $state("");
   let saving = $state(false);
 
-  const pending = $derived(todos.filter(t => !t.done));
-  const doneTodos = $derived(todos.filter(t => t.done));
+  const pending = $derived(todos.filter((t) => !t.done));
+  const doneTodos = $derived(todos.filter((t) => t.done));
 
   async function addTodo() {
     const name = todoInput.trim();
     if (!name || saving) return;
     saving = true;
     await repo.workTodos.insert({ name, done: false });
-    todoInput = '';
+    todoInput = "";
     const { data } = await repo.workTodos.list();
     todos = data || [];
     onTodosChange?.(todos);
@@ -48,17 +53,24 @@
 
 <div class="card work-todos">
   <div class="work-todos-head">
-    <h3 class="wt-title">Pendientes <span class="todos-count">{pending.length}</span></h3>
+    <h3 class="wt-title">
+      Pendientes <span class="todos-count">{pending.length}</span>
+    </h3>
   </div>
   <div class="todo-form">
     <input
       class="todo-input"
       placeholder="¿Qué queda pendiente?"
       bind:value={todoInput}
-      onkeydown={(e) => e.key === 'Enter' && addTodo()}
+      onkeydown={(e) => e.key === "Enter" && addTodo()}
       aria-label="Nuevo pendiente"
     />
-    <button class="btn btn-primary" onclick={addTodo} disabled={!todoInput.trim() || saving} title="Agregar pendiente">+</button>
+    <button
+      class="btn btn-primary"
+      onclick={addTodo}
+      disabled={!todoInput.trim() || saving}
+      title="Agregar pendiente">+</button
+    >
   </div>
   {#if loading}
     <div class="todos-list" aria-busy="true" aria-label="Cargando pendientes">
@@ -76,10 +88,14 @@
             class="todo-check"
             type="button"
             aria-label={`Marcar ${todo.name} como completada`}
-            onclick={() => toggleTodo(todo)}
-          >✓</button>
+            onclick={() => toggleTodo(todo)}>✓</button
+          >
           <span class="todo-name">{todo.name}</span>
-          <button class="small-btn btn-ghost" onclick={() => deleteTodo(todo.id!)} title="Eliminar">✕</button>
+          <button
+            class="small-btn btn-ghost"
+            onclick={() => deleteTodo(todo.id!)}
+            title="Eliminar">✕</button
+          >
         </li>
       {/each}
       {#each doneTodos as todo (todo.id)}
@@ -88,10 +104,14 @@
             class="todo-check checked"
             type="button"
             aria-label={`Marcar ${todo.name} como pendiente`}
-            onclick={() => toggleTodo(todo)}
-          >✓</button>
+            onclick={() => toggleTodo(todo)}>✓</button
+          >
           <span class="todo-name">{todo.name}</span>
-          <button class="small-btn btn-ghost" onclick={() => deleteTodo(todo.id!)} title="Eliminar">✕</button>
+          <button
+            class="small-btn btn-ghost"
+            onclick={() => deleteTodo(todo.id!)}
+            title="Eliminar">✕</button
+          >
         </li>
       {/each}
     </ul>
@@ -125,7 +145,7 @@
   .todos-count {
     font-size: 11px;
     color: var(--bg3);
-    background: var(--accent-green);
+    background: var(--accent);
     border-radius: 999px;
     padding: 1px 7px;
     font-family: var(--font-mono);
@@ -178,7 +198,9 @@
     height: 32px;
   }
 
-  .todo-item.done { opacity: 0.55; }
+  .todo-item.done {
+    opacity: 0.55;
+  }
 
   .todo-item.done .todo-name {
     text-decoration: line-through;
@@ -201,7 +223,10 @@
     transition: all var(--transition);
   }
 
-  .todo-check:hover { border-color: var(--accent-green); color: var(--text2); }
+  .todo-check:hover {
+    border-color: var(--accent-green);
+    color: var(--text2);
+  }
 
   .todo-check.checked {
     background: var(--accent-green);

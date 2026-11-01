@@ -1,16 +1,22 @@
 <script lang="ts">
-  import type { UsefulLink } from '$lib/types';
+  import type { UsefulLink } from "$lib/types";
 
   interface Props {
     visionBoardLink?: UsefulLink | null;
     showVisionLinkForm?: boolean;
-    visionLinkMode?: 'image' | 'canva';
+    visionLinkMode?: "image" | "canva";
     visionLinkInput?: string;
     onSave?: () => void;
     onRefresh?: () => void;
   }
 
-  let { visionBoardLink = $bindable(null), showVisionLinkForm = $bindable(false), visionLinkMode = $bindable('image'), visionLinkInput = $bindable(''), onSave }: Props = $props();
+  let {
+    visionBoardLink = $bindable(null),
+    showVisionLinkForm = $bindable(false),
+    visionLinkMode = $bindable("image"),
+    visionLinkInput = $bindable(""),
+    onSave,
+  }: Props = $props();
 
   const motivationalPhrases = [
     "1% better every day",
@@ -27,25 +33,40 @@
   <div class="vision-board-placeholder card">
     <div class="vb-topbar">
       <div class="vb-label">Vision Board</div>
-      <button class="btn btn-secondary" onclick={() => showVisionLinkForm = !showVisionLinkForm}>
-        {showVisionLinkForm ? 'Cerrar' : 'Configurar enlace'}
+      <button
+        class="btn btn-secondary"
+        onclick={() => (showVisionLinkForm = !showVisionLinkForm)}
+      >
+        {showVisionLinkForm ? "Cerrar" : "Configurar enlace"}
       </button>
     </div>
 
     {#if showVisionLinkForm}
       <div class="vb-link-form">
         <div class="vb-link-types">
-          <button type="button" class="toggle-pill" class:active={visionLinkMode === 'image'} onclick={() => visionLinkMode = 'image'}>
+          <button
+            type="button"
+            class="toggle-pill"
+            class:active={visionLinkMode === "image"}
+            onclick={() => (visionLinkMode = "image")}
+          >
             Imagen
           </button>
-          <button type="button" class="toggle-pill" class:active={visionLinkMode === 'canva'} onclick={() => visionLinkMode = 'canva'}>
+          <button
+            type="button"
+            class="toggle-pill"
+            class:active={visionLinkMode === "canva"}
+            onclick={() => (visionLinkMode = "canva")}
+          >
             Canva embed
           </button>
         </div>
         <input
           class="vb-link-input"
           bind:value={visionLinkInput}
-          placeholder={visionLinkMode === 'canva' ? 'https://www.canva.com/design/...' : 'https://...'}
+          placeholder={visionLinkMode === "canva"
+            ? "https://www.canva.com/design/..."
+            : "https://..."}
         />
         <div class="vb-link-actions">
           <button class="btn btn-primary" onclick={onSave}>Guardar</button>
@@ -54,12 +75,12 @@
     {/if}
 
     {#if visionBoardLink?.url}
-      {#if visionBoardLink.link_type === 'vision_board_canva'}
+      {#if visionBoardLink.link_type === "vision_board_canva"}
         <div class="vb-embed-shell">
           <iframe
             loading="lazy"
             style="position: absolute; width: 100%; height: 100%; top: 0; left: 0; border: none; padding: 0;margin: 0;"
-            src={visionBoardLink.url + '?embed'}
+            src={visionBoardLink.url + "?embed"}
             allowfullscreen={true}
             allow="fullscreen"
             title="Vision Board Canva"
@@ -125,7 +146,9 @@
     font-size: 13px;
   }
 
-  .vb-icon { font-size: 40px; }
+  .vb-icon {
+    font-size: 40px;
+  }
 
   .vb-link-form {
     display: flex;
@@ -209,7 +232,7 @@
   .phrase-glyph {
     font-family: var(--font-display);
     font-size: 20px;
-    color: var(--accent-green);
+    color: var(--accent);
     line-height: 1;
   }
 
@@ -223,8 +246,15 @@
   }
 
   @media (max-width: 600px) {
-    .phrases-grid { grid-template-columns: 1fr; }
-    .phrase-card { flex-direction: column; text-align: center; }
-    .phrase-glyph { align-self: flex-start; }
+    .phrases-grid {
+      grid-template-columns: 1fr;
+    }
+    .phrase-card {
+      flex-direction: column;
+      text-align: center;
+    }
+    .phrase-glyph {
+      align-self: flex-start;
+    }
   }
 </style>

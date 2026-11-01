@@ -1,23 +1,25 @@
 <script lang="ts">
-  import Kanban from '$lib/components/projects/Kanban.svelte';
-  import WorkTodos from '$lib/components/projects/WorkTodos.svelte';
-  import { createRepository } from '$lib/services/repository';
-  import type { Task, WorkTodo } from '$lib/types';
-  import { page } from '$app/state';
-  import { workFilterTag } from '$lib/stores/workFilter.svelte';
-  import Toast from '$lib/components/Toast.svelte';
+  import Kanban from "$lib/components/projects/Kanban.svelte";
+  import WorkTodos from "$lib/components/projects/WorkTodos.svelte";
+  import { createRepository } from "$lib/services/repository";
+  import type { Task, WorkTodo } from "$lib/types";
+  import { page } from "$app/state";
+  import { workFilterTag } from "$lib/stores/workFilter.svelte";
+  import Toast from "$lib/components/Toast.svelte";
 
-  const userId = $derived(page.data.user?.id ?? page.data.session?.user?.id ?? '');
+  const userId = $derived(
+    page.data.user?.id ?? page.data.session?.user?.id ?? "",
+  );
   const repo = $derived(createRepository(userId));
-  
+
   let tasks = $state<Task[]>([]);
   let workTodos = $state<WorkTodo[]>([]);
   let initialized = $state(false);
   let loading = $state(true);
   let editingFilter = $state(false);
-  let filterInput = $state('');
-  let resumeStart = $state('');
-  let resumeEnd = $state('');
+  let filterInput = $state("");
+  let resumeStart = $state("");
+  let resumeEnd = $state("");
   let copyToast = $state(false);
   let copyToastTimer: ReturnType<typeof setTimeout> | null = $state(null);
 
@@ -29,14 +31,14 @@
     const sunday = new Date(monday);
     sunday.setDate(monday.getDate() + 6);
     return {
-      start: monday.toISOString().split('T')[0],
-      end: sunday.toISOString().split('T')[0]
+      start: monday.toISOString().split("T")[0],
+      end: sunday.toISOString().split("T")[0],
     };
   }
 
   function loadDateRange() {
-    if (typeof window === 'undefined') return;
-    const stored = localStorage.getItem('vitacora_resume_date_range');
+    if (typeof window === "undefined") return;
+    const stored = localStorage.getItem("vitacora_resume_date_range");
     if (stored) {
       const { start, end } = JSON.parse(stored);
       resumeStart = start;
@@ -49,12 +51,15 @@
   }
 
   function saveDateRange() {
-    if (typeof window === 'undefined') return;
-    localStorage.setItem('vitacora_resume_date_range', JSON.stringify({ start: resumeStart, end: resumeEnd }));
+    if (typeof window === "undefined") return;
+    localStorage.setItem(
+      "vitacora_resume_date_range",
+      JSON.stringify({ start: resumeStart, end: resumeEnd }),
+    );
   }
 
   $effect(() => {
-    if (typeof window !== 'undefined' && !resumeStart) {
+    if (typeof window !== "undefined" && !resumeStart) {
       loadDateRange();
     }
   });
@@ -97,7 +102,12 @@
   }
 
   function resetFilter() {
-    if (!confirm('¿Restablecer filtro? El filtro se reiniciará con el valor \'trabajo\'.')) return;
+    if (
+      !confirm(
+        "¿Restablecer filtro? El filtro se reiniciará con el valor 'trabajo'.",
+      )
+    )
+      return;
     workFilterTag.reset();
     editingFilter = false;
   }
@@ -110,12 +120,13 @@
     endDate.setHours(23, 59, 59, 999);
 
     return tasks
-      .filter(t => 
-        (t.status === 'done' || t.status === 'to_review') &&
-        t.tags?.includes(tag) &&
-        t.updated_at &&
-        new Date(t.updated_at) >= startDate &&
-        new Date(t.updated_at) <= endDate
+      .filter(
+        (t) =>
+          (t.status === "done" || t.status === "to_review") &&
+          t.tags?.includes(tag) &&
+          t.updated_at &&
+          new Date(t.updated_at) >= startDate &&
+          new Date(t.updated_at) <= endDate,
       )
       .sort((a, b) => {
         const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
@@ -127,11 +138,11 @@
   async function copyResumeContent() {
     const list = resumeTasks();
     if (list.length === 0) {
-      alert('No hay tareas completadas para copiar.');
+      alert("No hay tareas completadas para copiar.");
       return;
     }
     const dateLabel = `${resumeStart} al ${resumeEnd}`;
-    const text = `📋 Tareas completadas (${dateLabel})\n${list.map(t => `- ${t.title}`).join('\n')}`;
+    const text = `📋 Tareas completadas (${dateLabel})\n${list.map((t) => `- ${t.title}`).join("\n")}`;
     try {
       await navigator.clipboard.writeText(text);
       copyToast = true;
@@ -141,7 +152,7 @@
         copyToastTimer = null;
       }, 2500);
     } catch (err) {
-      console.error('Failed to copy:', err);
+      console.error("Failed to copy:", err);
     }
   }
 </script>
@@ -157,69 +168,102 @@
   </div>
 
   <div class="filter-kanban">
-    <button class="btn-filter" type="button" onclick={toggleFilterEditor} title="Editar filtro de trabajo">
+    <button
+      class="btn-filter"
+      type="button"
+      onclick={toggleFilterEditor}
+      title="Editar filtro de trabajo"
+    >
       <span class="filter-icon">🏷️ Filtro:</span>
       <span class="filter-tag">{workFilterTag.value}</span>
     </button>
-    
+
     {#if editingFilter}
       <div class="filter-editor">
         <label for="filter-input">Tag para filtrar:</label>
-        <input 
+        <input
           id="filter-input"
-          type="text" 
-          bind:value={filterInput} 
+          type="text"
+          bind:value={filterInput}
           placeholder="ej: trabajo, work, laboral"
-          onkeydown={(e) => e.key === 'Enter' && saveFilter()}
+          onkeydown={(e) => e.key === "Enter" && saveFilter()}
         />
         <div class="filter-actions">
-          <button class="btn btn-secondary" onclick={resetFilter}>Restablecer</button>
+          <button class="btn btn-secondary" onclick={resetFilter}
+            >Restablecer</button
+          >
           <button class="btn btn-primary" onclick={saveFilter}>Guardar</button>
         </div>
       </div>
     {/if}
   </div>
 
-  <WorkTodos {userId} todos={workTodos} onTodosChange={(t) => (workTodos = t)} {loading} />
+  <WorkTodos
+    {userId}
+    todos={workTodos}
+    onTodosChange={(t) => (workTodos = t)}
+    {loading}
+  />
   <Kanban
     {userId}
-    tasks={tasks}
+    {tasks}
     onTasksChange={handleTasksChange}
     useWorkFilter={true}
     {loading}
   />
   {#if !loading}
     <article class="resume-section">
-    <div class="resume-header">
-      <div class="resume-info">
-        <h3 class="resume-title">Resumen de la semana</h3>
-        <button class="btn-copy" onclick={() => copyResumeContent()} title="Copiar resumen">❏ Copiar</button>
+      <div class="resume-header">
+        <div class="resume-info">
+          <h3 class="resume-title">Resumen de la semana</h3>
+          <button
+            class="btn-copy"
+            onclick={() => copyResumeContent()}
+            title="Copiar resumen">❏ Copiar</button
+          >
+        </div>
+        <form class="resume-dates">
+          <div class="form-group">
+            <label for="resume-start">Desde:</label>
+            <input
+              id="resume-start"
+              type="date"
+              bind:value={resumeStart}
+              onchange={saveDateRange}
+            />
+          </div>
+          <div class="form-group">
+            <label for="resume-end">Hasta:</label>
+            <input
+              id="resume-end"
+              type="date"
+              bind:value={resumeEnd}
+              onchange={saveDateRange}
+            />
+          </div>
+        </form>
       </div>
-      <form class="resume-dates">
-        <div class="form-group">
-          <label for="resume-start">Desde:</label>
-          <input id="resume-start" type="date" bind:value={resumeStart} onchange={saveDateRange} />
+      {#if resumeTasks().length > 0}
+        <ul class="resume-list">
+          {#each resumeTasks() as task}
+            <li class="resume-item">
+              <span class="resume-check">✓</span>
+              <span class="resume-task-title">{task.title}</span>
+            </li>
+          {/each}
+        </ul>
+        <div class="resume-count">
+          {resumeTasks().length} tarea{resumeTasks().length === 1 ? "" : "s"} completada{resumeTasks()
+            .length === 1
+            ? ""
+            : "s"}
         </div>
-        <div class="form-group">
-          <label for="resume-end">Hasta:</label>
-          <input id="resume-end" type="date" bind:value={resumeEnd} onchange={saveDateRange} />
+      {:else}
+        <div class="resume-empty">
+          No hay tareas completadas en este período
         </div>
-      </form>
-    </div>
-    {#if resumeTasks().length > 0}
-      <ul class="resume-list">
-        {#each resumeTasks() as task}
-          <li class="resume-item">
-            <span class="resume-check">✓</span>
-            <span class="resume-task-title">{task.title}</span>
-          </li>
-        {/each}
-      </ul>
-      <div class="resume-count">{resumeTasks().length} tarea{resumeTasks().length === 1 ? '' : 's'} completada{resumeTasks().length === 1 ? '' : 's'}</div>
-    {:else}
-      <div class="resume-empty">No hay tareas completadas en este período</div>
-    {/if}
-  </article>
+      {/if}
+    </article>
   {/if}
 </div>
 
@@ -249,11 +293,13 @@
   }
 
   .btn-filter:hover {
-    border-color: var(--accent-green);
+    border-color: var(--accent);
     color: var(--text);
   }
 
-  .filter-icon { font-size: 14px; }
+  .filter-icon {
+    font-size: 14px;
+  }
 
   .filter-tag {
     background: var(--bg3);
@@ -363,7 +409,7 @@
   }
 
   .btn-copy:hover {
-    border-color: var(--accent-green);
+    border-color: var(--accent);
     color: var(--text);
   }
 
@@ -389,7 +435,7 @@
   }
 
   .resume-check {
-    color: var(--accent-green);
+    color: var(--accent);
     font-weight: 700;
   }
 
@@ -413,7 +459,11 @@
   }
 
   @media (max-width: 768px) {
-    .filter-kanban { flex-direction: column; }
-    .filter-editor { width: 100%; }
+    .filter-kanban {
+      flex-direction: column;
+    }
+    .filter-editor {
+      width: 100%;
+    }
   }
 </style>

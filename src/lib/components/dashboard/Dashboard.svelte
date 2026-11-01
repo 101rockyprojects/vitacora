@@ -116,7 +116,7 @@
           <div
             class="progress-fill xp-bar-fill"
             style="width:{(globalLevel.progress / globalLevel.nextLevelXp) *
-              100}%;background:var(--accent-green);"
+              100}%;background:var(--accent);"
           ></div>
         </div>
       </div>
@@ -191,7 +191,7 @@
     font-family: var(--font-display);
     font-size: 28px;
     font-weight: 800;
-    color: var(--accent-green);
+    color: var(--accent);
     line-height: 1;
   }
 

@@ -1,9 +1,9 @@
 <script lang="ts">
-  import type { SkillsMd } from '$lib/types';
-  import { createRepository } from '$lib/services/repository';
-  import { awardXP, XP_VALUES } from '$lib/utils/xp';
-  import { renderMd, formatLinks, getMarkdownHelp } from '$lib/utils/markdown';
-  import { tick } from 'svelte';
+  import type { SkillsMd } from "$lib/types";
+  import { createRepository } from "$lib/services/repository";
+  import { awardXP, XP_VALUES } from "$lib/utils/xp";
+  import { renderMd, formatLinks, getMarkdownHelp } from "$lib/utils/markdown";
+  import { tick } from "svelte";
 
   interface Props {
     userId: string;
@@ -15,7 +15,7 @@
   const repo = $derived(createRepository(userId));
 
   let editingSkillId = $state<string | null>(null);
-  let mdContent = $state('');
+  let mdContent = $state("");
   let mdSaving = $state(false);
   let mdTextarea: HTMLTextAreaElement | null = $state(null);
   let copyToast = $state(false);
@@ -23,27 +23,30 @@
 
   $effect(() => {
     if (!mdTextarea) return;
-    mdTextarea.style.height = 'auto';
+    mdTextarea.style.height = "auto";
     mdTextarea.style.height = `${mdTextarea.scrollHeight}px`;
   });
 
   async function startEditSkill(skill: SkillsMd) {
     editingSkillId = skill.id || null;
-    mdContent = skill.content || '';
+    mdContent = skill.content || "";
     await tick();
     mdTextarea?.focus();
   }
 
   function cancelEditSkill() {
     editingSkillId = null;
-    mdContent = '';
+    mdContent = "";
   }
 
   async function addSkill() {
     mdSaving = true;
     const now = new Date().toISOString();
-    const initialContent = '# Skill\n\nEscribe tu skill aqui en Markdown...\n';
-    const { data } = await repo.skillsMd.insert({ content: initialContent, updated_at: now });
+    const initialContent = "# Skill\n\nEscribe tu skill aqui en Markdown...\n";
+    const { data } = await repo.skillsMd.insert({
+      content: initialContent,
+      updated_at: now,
+    });
     const { data: s } = await repo.skillsMd.list();
     skills = s || [];
     mdSaving = false;
@@ -53,9 +56,7 @@
   }
 
   function formatTitle(str: string): string {
-    return str
-      .replace(/-/g, ' ')
-      .replace(/\b\w/g, c => c.toUpperCase());
+    return str.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
   }
 
   function getSkillName(content: string, index: number): string {
@@ -74,15 +75,21 @@
   async function saveMd() {
     if (!editingSkillId) return;
     mdSaving = true;
-    await repo.skillsMd.update(editingSkillId, { content: formatLinks(mdContent), updated_at: new Date().toISOString() });
-    const skillIndex = Math.max(skills.findIndex((s) => s.id === editingSkillId), 0);
+    await repo.skillsMd.update(editingSkillId, {
+      content: formatLinks(mdContent),
+      updated_at: new Date().toISOString(),
+    });
+    const skillIndex = Math.max(
+      skills.findIndex((s) => s.id === editingSkillId),
+      0,
+    );
     await awardXP(
       userId,
-      'education',
-      'skill_document_updated',
+      "education",
+      "skill_document_updated",
       XP_VALUES.skill_document_updated,
       editingSkillId,
-      getSkillName(mdContent, skillIndex)
+      getSkillName(mdContent, skillIndex),
     );
     const { data } = await repo.skillsMd.list();
     skills = data || [];
@@ -100,17 +107,19 @@
         copyToastTimer = null;
       }, 2500);
     } catch (err) {
-      console.error('Failed to copy:', err);
+      console.error("Failed to copy:", err);
     }
   }
 </script>
 
 <div class="fade-in">
   <div class="skills-header">
-    <button class="btn btn-primary" onclick={addSkill} disabled={mdSaving}>{mdSaving ? '...' : '+ Nueva skill'}</button>
+    <button class="btn btn-primary" onclick={addSkill} disabled={mdSaving}
+      >{mdSaving ? "..." : "+ Nueva skill"}</button
+    >
   </div>
 
-  {#if skills.length === 0 }
+  {#if skills.length === 0}
     <div class="empty-state card">
       Aun no tienes skills. Agrega la primera.
       <br />
@@ -126,20 +135,37 @@
         <div class="card skill-card">
           <div class="skill-card-header">
             <div class="skill-meta">
-              <div class="skill-title">{getSkillName(skill.content, index)}</div>
+              <div class="skill-title">
+                {getSkillName(skill.content, index)}
+              </div>
               <div class="skill-updated">
-                {skill.updated_at ? new Date(skill.updated_at).toLocaleString('es-ES') : ''}
+                {skill.updated_at
+                  ? new Date(skill.updated_at).toLocaleString("es-ES")
+                  : ""}
               </div>
             </div>
             <div style="display:flex;gap:8px;">
               {#if isEditing}
-                <button class="btn btn-secondary" onclick={cancelEditSkill}>Cancelar</button>
-                <button class="btn btn-primary" onclick={saveMd} disabled={mdSaving}>{mdSaving ? '...' : 'Guardar'}</button>
+                <button class="btn btn-secondary" onclick={cancelEditSkill}
+                  >Cancelar</button
+                >
+                <button
+                  class="btn btn-primary"
+                  onclick={saveMd}
+                  disabled={mdSaving}>{mdSaving ? "..." : "Guardar"}</button
+                >
               {:else}
-                <button class="btn btn-ghost skill-copy-btn" onclick={() => copySkillContent(skill.content || '')} title="Copiar contenido">
+                <button
+                  class="btn btn-ghost skill-copy-btn"
+                  onclick={() => copySkillContent(skill.content || "")}
+                  title="Copiar contenido"
+                >
                   ❏
                 </button>
-                <button class="btn btn-secondary" onclick={() => startEditSkill(skill)}>Editar</button>
+                <button
+                  class="btn btn-secondary"
+                  onclick={() => startEditSkill(skill)}>Editar</button
+                >
               {/if}
             </div>
           </div>
@@ -154,7 +180,7 @@
             ></textarea>
           {:else}
             <div class="md-preview skill-preview">
-              {@html renderMd(skill.content || '')}
+              {@html renderMd(skill.content || "")}
             </div>
           {/if}
         </div>
@@ -194,9 +220,22 @@
     margin-bottom: 10px;
   }
 
-  .skill-meta { display: flex; flex-direction: column; gap: 2px; }
-  .skill-title { font-size: 13px; font-weight: 800; color: var(--text); font-family: var(--font-mono); }
-  .skill-updated { font-size: 11px; color: var(--text3); font-family: var(--font-mono); }
+  .skill-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .skill-title {
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--text);
+    font-family: var(--font-mono);
+  }
+  .skill-updated {
+    font-size: 11px;
+    color: var(--text3);
+    font-family: var(--font-mono);
+  }
 
   .skill-copy-btn {
     font-size: 20px;
@@ -204,7 +243,7 @@
   }
 
   .skill-copy-btn:hover {
-    color: var(--accent-green);
+    color: var(--accent);
     background: var(--surface);
   }
 
@@ -238,8 +277,11 @@
     resize: none;
   }
 
-
   @media (max-width: 900px) {
-    .skills-grid { display: flex; flex-direction: column; gap: 14px; }
+    .skills-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
   }
 </style>

@@ -23,10 +23,12 @@
   let chart: any = null;
   let cleanup: (() => void) | null = null;
 
-  const colors = [
-    '#73e7bd', '#ebd57f', '#ee9863', '#5d99ee', '#9294f5',
-    '#ee8888', '#6bcfcf', '#f5a3b8', '#a3d9a5', '#d4c4fb'
-  ];
+  const accentVars = ['--accent-green', '--accent-yellow', '--accent-orange', '--accent-blue', '--accent-purple', '--accent-red'];
+
+  function themeColors(): string[] {
+    const styles = getComputedStyle(document.documentElement);
+    return accentVars.map((v) => styles.getPropertyValue(v).trim()).filter(Boolean);
+  }
 
   async function renderChart(money?: (n: number) => string, chartHeight = 280) {
     if (!browser || !chartEl || data.length === 0) return;
@@ -60,7 +62,7 @@
         toolbar: { show: false },
         animations: { enabled: true }
       },
-      colors: colors,
+      colors: themeColors(),
       series: data.map(d => d.total),
       labels: data.map(d => d.name),
       legend: {

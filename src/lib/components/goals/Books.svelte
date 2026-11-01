@@ -1,8 +1,12 @@
 <script lang="ts">
-  import type { Book, BookCategoryRating, BookRatingCategory } from '$lib/types';
-  import { createRepository } from '$lib/services/repository';
-  import { awardXP, XP_VALUES } from '$lib/utils/xp';
-  import { renderMd, formatLinks } from '$lib/utils/markdown';
+  import type {
+    Book,
+    BookCategoryRating,
+    BookRatingCategory,
+  } from "$lib/types";
+  import { createRepository } from "$lib/services/repository";
+  import { awardXP, XP_VALUES } from "$lib/utils/xp";
+  import { renderMd, formatLinks } from "$lib/utils/markdown";
 
   interface Props {
     userId: string;
@@ -16,13 +20,18 @@
 
   let showBookForm = $state(false);
   let editingBook = $state<Book | null>(null);
-  let bookForm = $state<Book>({ title: '', current_page: 0, total_pages: 0, rating_mode: 'default' });
+  let bookForm = $state<Book>({
+    title: "",
+    current_page: 0,
+    total_pages: 0,
+    rating_mode: "default",
+  });
   let expandedBookNotes = $state<string[]>([]);
   let saving = $state(false);
 
   let ratingCategories = $state<BookRatingCategory[]>([]);
   let categoryRatings = $state<BookCategoryRating[]>([]);
-  let newCategoryName = $state('');
+  let newCategoryName = $state("");
   let showCategoryManager = $state(false);
   let detailedModeEnabled = $state(false);
   let detailedModeApplied = $state(false);
@@ -31,7 +40,7 @@
   const expandedBookNotesSet = $derived(new Set(expandedBookNotes));
 
   function calculateRating(ratings: BookCategoryRating[]): number {
-    const validRatings = ratings.filter(r => r.rating > 0);
+    const validRatings = ratings.filter((r) => r.rating > 0);
     if (validRatings.length === 0) return 0;
     const sum = validRatings.reduce((acc, r) => acc + r.rating, 0);
     return sum / validRatings.length;
@@ -44,7 +53,7 @@
 
   let editingBookDisplayRating = $derived.by(() => {
     if (!editingBook) return 0;
-    if (editingBook.rating_mode === 'default') {
+    if (editingBook.rating_mode === "default") {
       return editingBook.rating || 0;
     }
     return calculatedRating;
@@ -52,14 +61,19 @@
 
   function toggleBookNotes(bookId: string) {
     if (expandedBookNotesSet.has(bookId)) {
-      expandedBookNotes = expandedBookNotes.filter(id => id !== bookId);
+      expandedBookNotes = expandedBookNotes.filter((id) => id !== bookId);
     } else {
       expandedBookNotes = [...expandedBookNotes, bookId];
     }
   }
 
   function resetBookForm() {
-    bookForm = { title: '', current_page: 0, total_pages: 0, rating_mode: 'default' };
+    bookForm = {
+      title: "",
+      current_page: 0,
+      total_pages: 0,
+      rating_mode: "default",
+    };
     editingBook = null;
     categoryRatings = [];
     detailedModeEnabled = false;
@@ -77,98 +91,143 @@
   }
 
   function getCategoryRating(categoryId: string): number {
-    const existing = categoryRatings.find(r => r.category_id === categoryId);
+    const existing = categoryRatings.find((r) => r.category_id === categoryId);
     return existing?.rating || 0;
   }
 
   function setCategoryRating(categoryId: string, rating: number) {
-    const existing = categoryRatings.find(r => r.category_id === categoryId);
+    const existing = categoryRatings.find((r) => r.category_id === categoryId);
     if (existing) {
-      categoryRatings = categoryRatings.map(r => 
-        r.category_id === categoryId ? { ...r, rating } : r
+      categoryRatings = categoryRatings.map((r) =>
+        r.category_id === categoryId ? { ...r, rating } : r,
       );
     } else {
-      categoryRatings = [...categoryRatings, {
-        book_id: editingBook?.id || '',
-        category_id: categoryId,
-        rating,
-        user_id: userId
-      }];
+      categoryRatings = [
+        ...categoryRatings,
+        {
+          book_id: editingBook?.id || "",
+          category_id: categoryId,
+          rating,
+          user_id: userId,
+        },
+      ];
     }
   }
 
   async function addCategory() {
     if (!newCategoryName.trim()) return;
-    const { data } = await repo.bookRatingCategories.create(newCategoryName.trim());
+    const { data } = await repo.bookRatingCategories.create(
+      newCategoryName.trim(),
+    );
     if (data) {
       ratingCategories = [...ratingCategories, data];
-      newCategoryName = '';
+      newCategoryName = "";
     }
   }
 
   async function removeCategory(id: string) {
-    if (!confirm('¿Eliminar categoría?')) return;
+    if (!confirm("¿Eliminar categoría?")) return;
     await repo.bookRatingCategories.remove(id);
-    ratingCategories = ratingCategories.filter(c => c.id !== id);
-    categoryRatings = categoryRatings.filter(r => r.category_id !== id);
+    ratingCategories = ratingCategories.filter((c) => c.id !== id);
+    categoryRatings = categoryRatings.filter((r) => r.category_id !== id);
   }
 
   function applyDetailedMode() {
     if (bookForm.rating && bookForm.rating > 0) {
-      if (!confirm('Esto reemplazará tu calificación simple de ' + bookForm.rating + ' estrellas. ¿Continuar?')) {
+      if (
+        !confirm(
+          "Esto reemplazará tu calificación simple de " +
+            bookForm.rating +
+            " estrellas. ¿Continuar?",
+        )
+      ) {
         return;
       }
     }
-    bookForm.rating_mode = 'calculated';
+    bookForm.rating_mode = "calculated";
     bookForm.rating = calculatedRating > 0 ? calculatedRating : undefined;
     detailedModeApplied = true;
   }
 
   function disableDetailedMode() {
-    bookForm.rating_mode = 'default';
+    bookForm.rating_mode = "default";
     detailedModeEnabled = false;
     detailedModeApplied = false;
   }
 
   async function saveBook() {
     saving = true;
-    const isFinished = bookForm.current_page >= bookForm.total_pages && bookForm.total_pages > 0;
+    const isFinished =
+      bookForm.current_page >= bookForm.total_pages && bookForm.total_pages > 0;
 
-    const finalRating = bookForm.rating_mode === 'calculated' 
-      ? (calculatedRating > 0 ? calculatedRating : undefined)
-      : bookForm.rating;
+    const finalRating =
+      bookForm.rating_mode === "calculated"
+        ? calculatedRating > 0
+          ? calculatedRating
+          : undefined
+        : bookForm.rating;
 
     const bookData = {
       ...bookForm,
-      rating: finalRating
+      rating: finalRating,
     };
 
     if (editingBook?.id) {
       const wasFinished = editingBook.current_page >= editingBook.total_pages;
-      bookData.notes = formatLinks(bookData.notes || '');
-      await repo.books.update(editingBook.id, { ...bookData, updated_at: new Date().toISOString() });
+      bookData.notes = formatLinks(bookData.notes || "");
+      await repo.books.update(editingBook.id, {
+        ...bookData,
+        updated_at: new Date().toISOString(),
+      });
 
-      if (bookForm.rating_mode === 'calculated' && editingBook.id) {
-        const ratingsToSave = categoryRatings.map(r => ({
+      if (bookForm.rating_mode === "calculated" && editingBook.id) {
+        const ratingsToSave = categoryRatings.map((r) => ({
           category_id: r.category_id,
-          rating: r.rating
+          rating: r.rating,
         }));
-        await repo.bookCategoryRatings.upsertMany(editingBook.id, ratingsToSave);
+        await repo.bookCategoryRatings.upsertMany(
+          editingBook.id,
+          ratingsToSave,
+        );
       }
 
-      if (isFinished && !wasFinished) await awardXP(userId, 'education', 'book_finished', XP_VALUES.book_finished, editingBook.id, bookForm.title);
-      else await awardXP(userId, 'education', 'book_page_update', XP_VALUES.book_page_update, undefined, bookForm.title);
+      if (isFinished && !wasFinished)
+        await awardXP(
+          userId,
+          "education",
+          "book_finished",
+          XP_VALUES.book_finished,
+          editingBook.id,
+          bookForm.title,
+        );
+      else
+        await awardXP(
+          userId,
+          "education",
+          "book_page_update",
+          XP_VALUES.book_page_update,
+          undefined,
+          bookForm.title,
+        );
     } else {
       const { data } = await repo.books.insert(bookData);
       if (data) {
-        if (bookForm.rating_mode === 'calculated') {
-          const ratingsToSave = categoryRatings.map(r => ({
+        if (bookForm.rating_mode === "calculated") {
+          const ratingsToSave = categoryRatings.map((r) => ({
             category_id: r.category_id,
-            rating: r.rating
+            rating: r.rating,
           }));
           await repo.bookCategoryRatings.upsertMany(data.id, ratingsToSave);
         }
-        if (isFinished) await awardXP(userId, 'education', 'book_finished', XP_VALUES.book_finished, data.id, bookForm.title);
+        if (isFinished)
+          await awardXP(
+            userId,
+            "education",
+            "book_finished",
+            XP_VALUES.book_finished,
+            data.id,
+            bookForm.title,
+          );
       }
     }
 
@@ -181,42 +240,46 @@
 
   async function editBook(b: Book) {
     editingBook = b;
-    bookForm = { ...b, rating_mode: b.rating_mode || 'default' };
-    detailedModeEnabled = b.rating_mode === 'calculated';
-    detailedModeApplied = b.rating_mode === 'calculated';
-    await loadCategoryRatings(b.id || '');
+    bookForm = { ...b, rating_mode: b.rating_mode || "default" };
+    detailedModeEnabled = b.rating_mode === "calculated";
+    detailedModeApplied = b.rating_mode === "calculated";
+    await loadCategoryRatings(b.id || "");
     showBookForm = true;
   }
 
   async function deleteBook(id: string) {
-    if (!confirm('¿Eliminar libro?')) return;
+    if (!confirm("¿Eliminar libro?")) return;
     await repo.books.remove(id);
     const { data } = await repo.books.list();
     books = data || [];
   }
 
   function bookProgress(b: Book) {
-    return b.total_pages ? Math.round((b.current_page / b.total_pages) * 100) : 0;
+    return b.total_pages
+      ? Math.round((b.current_page / b.total_pages) * 100)
+      : 0;
   }
 
   function getBookDisplayRating(book: Book): number {
-    if (book.rating_mode === 'default') {
+    if (book.rating_mode === "default") {
       return book.rating || 0;
     }
-    if (book.rating_mode === 'calculated') {
-      const ratings = bookCategoryRatingsMap[book.id || ''] || [];
+    if (book.rating_mode === "calculated") {
+      const ratings = bookCategoryRatingsMap[book.id || ""] || [];
       return calculateRating(ratings);
     }
     return book.rating || 0;
   }
 
   async function loadAllCalculatedBookRatings() {
-    const calculatedBooks = books.filter(b => b.rating_mode === 'calculated' && b.id);
+    const calculatedBooks = books.filter(
+      (b) => b.rating_mode === "calculated" && b.id,
+    );
     const entries: [string, BookCategoryRating[]][] = await Promise.all(
       calculatedBooks.map(async (b) => {
         const { data } = await repo.bookCategoryRatings.listByBook(b.id!);
         return [b.id!, data || []];
-      })
+      }),
     );
     bookCategoryRatingsMap = Object.fromEntries(entries);
   }
@@ -236,21 +299,38 @@
 
 <div class="fade-in">
   <div class="tab-actions">
-    <button class="btn btn-primary" onclick={() => { resetBookForm(); showBookForm = true; }}>+ Agregar libro</button>
-    <button class="btn btn-secondary" onclick={() => { showCategoryManager = !showCategoryManager; loadRatingCategories(); }}>
-      {showCategoryManager ? 'Ocultar categorías' : '⚙ Categorías'}
+    <button
+      class="btn btn-primary"
+      onclick={() => {
+        resetBookForm();
+        showBookForm = true;
+      }}>+ Agregar libro</button
+    >
+    <button
+      class="btn btn-secondary"
+      onclick={() => {
+        showCategoryManager = !showCategoryManager;
+        loadRatingCategories();
+      }}
+    >
+      {showCategoryManager ? "Ocultar categorías" : "⚙ Categorías"}
     </button>
   </div>
 
   {#if showCategoryManager}
     <div class="category-manager card">
       <h4>Categorías de calificación</h4>
-      <p class="category-manager-desc">Define las categorías que usarás para calificar libros</p>
+      <p class="category-manager-desc">
+        Define las categorías que usarás para calificar libros
+      </p>
       <div class="category-list">
         {#each ratingCategories as cat, i}
           <div class="category-item">
             <span class="category-name">{cat.name}</span>
-            <button class="small-btn btn-ghost" onclick={() => removeCategory(cat.id!)}>✕</button>
+            <button
+              class="small-btn btn-ghost"
+              onclick={() => removeCategory(cat.id!)}>✕</button
+            >
           </div>
         {/each}
         {#if ratingCategories.length === 0}
@@ -258,7 +338,13 @@
         {/if}
       </div>
       <div class="add-category">
-        <input bind:value={newCategoryName} placeholder="Nueva categoría (ej: Romántico)" onkeydown={(e) => { if (e.key === 'Enter') addCategory(); }} />
+        <input
+          bind:value={newCategoryName}
+          placeholder="Nueva categoría (ej: Romántico)"
+          onkeydown={(e) => {
+            if (e.key === "Enter") addCategory();
+          }}
+        />
         <button class="btn btn-primary btn-sm" onclick={addCategory}>+</button>
       </div>
     </div>
@@ -267,7 +353,7 @@
   <div class="books-grid">
     {#each books as book}
       {@const pct = bookProgress(book)}
-      {@const showNotes = expandedBookNotesSet.has(book.id || '')}
+      {@const showNotes = expandedBookNotesSet.has(book.id || "")}
       {@const displayRating = getBookDisplayRating(book)}
       <div class="book-card card" class:finished={pct >= 100}>
         {#if pct >= 100}
@@ -292,11 +378,18 @@
           <div class="book-info">
             <div class="book-title">{book.title}</div>
             <div class="book-progress">
-              <div class="book-progress-label">{book.current_page} / {book.total_pages} págs</div>
-              <div class="progress-track" style="margin:6px 0;">
-                <div class="progress-fill" style="width:{pct}%;background:{pct>=100?'var(--accent-yellow)':'var(--accent-green)'};"></div>
+              <div class="book-progress-label">
+                {book.current_page} / {book.total_pages} págs
               </div>
-              <div class="book-pct">{pct >= 100 ? '100%' : `${pct}%`}</div>
+              <div class="progress-track" style="margin:6px 0;">
+                <div
+                  class="progress-fill"
+                  style="width:{pct}%;background:{pct >= 100
+                    ? 'var(--accent-yellow)'
+                    : 'var(--accent-green)'};"
+                ></div>
+              </div>
+              <div class="book-pct">{pct >= 100 ? "100%" : `${pct}%`}</div>
             </div>
           </div>
         </div>
@@ -304,7 +397,7 @@
           <button
             class="book-notes-toggle"
             type="button"
-            onclick={() => toggleBookNotes(book.id || '')}
+            onclick={() => toggleBookNotes(book.id || "")}
             aria-expanded={showNotes}
           >
             <span>Notas</span>
@@ -315,8 +408,13 @@
           {/if}
         {/if}
         <div class="card-actions book-card-actions">
-          <button class="small-btn btn-ghost" onclick={() => editBook(book)}>🖋</button>
-          <button class="small-btn btn-ghost" onclick={() => deleteBook(book.id!)}>✕</button>
+          <button class="small-btn btn-ghost" onclick={() => editBook(book)}
+            >🖋</button
+          >
+          <button
+            class="small-btn btn-ghost"
+            onclick={() => deleteBook(book.id!)}>✕</button
+          >
         </div>
       </div>
     {/each}
@@ -327,59 +425,116 @@
 </div>
 
 {#if showBookForm}
-  <div 
-    class="modal-backdrop" 
-    onclick={(e) => { if (e.target === e.currentTarget) { showBookForm = false; resetBookForm(); } }}
-    onkeydown={(e) => { if (e.key === 'Escape') { showBookForm = false; resetBookForm(); } }}
+  <div
+    class="modal-backdrop"
+    onclick={(e) => {
+      if (e.target === e.currentTarget) {
+        showBookForm = false;
+        resetBookForm();
+      }
+    }}
+    onkeydown={(e) => {
+      if (e.key === "Escape") {
+        showBookForm = false;
+        resetBookForm();
+      }
+    }}
     role="presentation"
   >
-    <div class="modal modal-lg" role="dialog" aria-modal="true" aria-labelledby="book-form-title">
-      <h3 id="book-form-title">{editingBook ? 'Editar libro' : 'Nuevo libro'}</h3>
-      <form onsubmit={(e) => { e.preventDefault(); saveBook(); }}>
+    <div
+      class="modal modal-lg"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="book-form-title"
+    >
+      <h3 id="book-form-title">
+        {editingBook ? "Editar libro" : "Nuevo libro"}
+      </h3>
+      <form
+        onsubmit={(e) => {
+          e.preventDefault();
+          saveBook();
+        }}
+      >
         <div class="form-group">
           <label for="book-title">Título</label>
-          <input id="book-title" bind:value={bookForm.title} placeholder="Nombre del libro" />
+          <input
+            id="book-title"
+            bind:value={bookForm.title}
+            placeholder="Nombre del libro"
+          />
         </div>
         <div class="grid-2">
           <div class="form-group">
             <label for="book-current">Página actual</label>
-            <input id="book-current" type="number" bind:value={bookForm.current_page} min="0" />
+            <input
+              id="book-current"
+              type="number"
+              bind:value={bookForm.current_page}
+              min="0"
+            />
           </div>
           <div class="form-group">
             <label for="book-total">Total páginas</label>
-            <input id="book-total" type="number" bind:value={bookForm.total_pages} min="0" />
+            <input
+              id="book-total"
+              type="number"
+              bind:value={bookForm.total_pages}
+              min="0"
+            />
           </div>
         </div>
         <div class="form-group">
           <label for="book-cover">URL portada (opcional)</label>
-          <input id="book-cover" type="url" bind:value={bookForm.cover_url} placeholder="https://..." />
+          <input
+            id="book-cover"
+            type="url"
+            bind:value={bookForm.cover_url}
+            placeholder="https://..."
+          />
         </div>
         <div class="form-group">
           <label for="book-notes">Notas</label>
-          <textarea id="book-notes" bind:value={bookForm.notes} rows="8" placeholder="Reflexiones..."></textarea>
+          <textarea
+            id="book-notes"
+            bind:value={bookForm.notes}
+            rows="8"
+            placeholder="Reflexiones..."></textarea>
         </div>
 
         <div class="rating-section">
           <div class="rating-header">
             <span class="rating-title">Calificación</span>
-              <span class="rating-badge badge-simple">Modo {detailedModeEnabled ? 'detallado' : 'simple'}</span>
+            <span class="rating-badge badge-simple"
+              >Modo {detailedModeEnabled ? "detallado" : "simple"}</span
+            >
           </div>
 
-          <div class="rating-stars-container" class:disabled={detailedModeEnabled}>
+          <div
+            class="rating-stars-container"
+            class:disabled={detailedModeEnabled}
+          >
             <div class="star-picker">
-              {#each [1,2,3,4,5] as s}
+              {#each [1, 2, 3, 4, 5] as s}
                 <button
                   type="button"
                   class="star-btn"
                   class:filled={s <= (bookForm.rating || 0)}
-                  onclick={() => { if (!detailedModeEnabled) bookForm.rating = bookForm.rating === s ? 0 : s; }}
+                  onclick={() => {
+                    if (!detailedModeEnabled)
+                      bookForm.rating = bookForm.rating === s ? 0 : s;
+                  }}
                   disabled={detailedModeEnabled}
                   aria-label={`${s} estrellas`}
                 >
                   ★
                 </button>
               {/each}
-              <span class="star-label">{bookForm.rating ? `${bookForm.rating}/5` : 'Sin calificar'}</span>
+              <span class="star-label"
+                >{bookForm.rating
+                  ? `${bookForm.rating}/5`
+                  : "Sin calificar"}</span
+              >
             </div>
             {#if detailedModeEnabled}
               <div class="disabled-overlay">
@@ -390,7 +545,9 @@
 
           <div class="toggle-section">
             <label class="toggle-label">
-              <span class="toggle-text">Calificación detallada por categorías</span>
+              <span class="toggle-text"
+                >Calificación detallada por categorías</span
+              >
               <button
                 type="button"
                 class="toggle-switch"
@@ -416,7 +573,10 @@
               {#if ratingCategories.length === 0}
                 <div class="no-categories-msg">
                   <span class="no-categories-icon">📋</span>
-                  <span>No hay categorías definidas. Crea categorías primero con el botón "⚙ Categorías".</span>
+                  <span
+                    >No hay categorías definidas. Crea categorías primero con el
+                    botón "⚙ Categorías".</span
+                  >
                 </div>
               {:else}
                 <div class="category-ratings-list">
@@ -424,22 +584,26 @@
                     <div class="category-row">
                       <span class="cat-name">{cat.name}</span>
                       <div class="star-picker small">
-                        {#each [1,2,3,4,5] as s}
+                        {#each [1, 2, 3, 4, 5] as s}
                           <button
                             type="button"
                             class="star-btn"
-                            class:filled={s <= getCategoryRating(cat.id || '')}
-                            onclick={() => setCategoryRating(cat.id || '', getCategoryRating(cat.id || '') === s ? 0 : s)}
+                            class:filled={s <= getCategoryRating(cat.id || "")}
+                            onclick={() =>
+                              setCategoryRating(
+                                cat.id || "",
+                                getCategoryRating(cat.id || "") === s ? 0 : s,
+                              )}
                             aria-label={`${s} estrellas para ${cat.name}`}
                           >
                             ★
                           </button>
                         {/each}
-                        {#if getCategoryRating(cat.id || '') > 0}
+                        {#if getCategoryRating(cat.id || "") > 0}
                           <button
                             type="button"
                             class="clear-rating-btn"
-                            onclick={() => setCategoryRating(cat.id || '', 0)}
+                            onclick={() => setCategoryRating(cat.id || "", 0)}
                             aria-label="Limpiar calificación de {cat.name}"
                           >
                             ✕
@@ -453,8 +617,13 @@
                 <div class="calculated-result">
                   <div class="result-row">
                     <span class="result-label">Promedio calculado:</span>
-                    <span class="result-value" class:has-value={calculatedRating > 0}>
-                      {calculatedRating > 0 ? `${calculatedRating.toFixed(1)} / 5` : '—'}
+                    <span
+                      class="result-value"
+                      class:has-value={calculatedRating > 0}
+                    >
+                      {calculatedRating > 0
+                        ? `${calculatedRating.toFixed(1)} / 5`
+                        : "—"}
                     </span>
                   </div>
 
@@ -469,7 +638,8 @@
                     </button>
                     <p class="apply-warning">
                       {#if bookForm.rating && bookForm.rating > 0}
-                        ⚠ Esto reemplazará tu calificación simple de {bookForm.rating} estrellas
+                        ⚠ Esto reemplazará tu calificación simple de {bookForm.rating}
+                        estrellas
                       {:else}
                         Se guardará como la calificación del libro
                       {/if}
@@ -487,8 +657,17 @@
         </div>
 
         <div class="form-actions">
-          <button type="button" class="btn btn-secondary" onclick={() => { showBookForm = false; resetBookForm(); }}>Cancelar</button>
-          <button type="submit" class="btn btn-primary" disabled={saving}>{saving ? '...' : 'Guardar'}</button>
+          <button
+            type="button"
+            class="btn btn-secondary"
+            onclick={() => {
+              showBookForm = false;
+              resetBookForm();
+            }}>Cancelar</button
+          >
+          <button type="submit" class="btn btn-primary" disabled={saving}
+            >{saving ? "..." : "Guardar"}</button
+          >
         </div>
       </form>
     </div>
@@ -510,9 +689,13 @@
     transition: transform var(--transition);
   }
 
-  .book-card:hover { transform: translateY(-2px); }
+  .book-card:hover {
+    transform: translateY(-2px);
+  }
 
-  .book-card.finished { border-color: var(--accent-yellow); }
+  .book-card.finished {
+    border-color: var(--accent-yellow);
+  }
 
   .book-finished-badge {
     position: absolute;
@@ -557,13 +740,22 @@
     background: var(--surface2);
     font-size: 24px;
     font-weight: 700;
-    color: var(--accent-green);
+    color: var(--accent);
     overflow: hidden;
   }
 
-  .book-cover img { width: 100%; height: 100%; object-fit: cover; }
+  .book-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
 
-  .book-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .book-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
 
   .book-title {
     font-weight: 700;
@@ -589,7 +781,7 @@
 
   .book-pct {
     font-size: 11px;
-    color: var(--accent-green);
+    color: var(--accent);
     font-family: var(--font-mono);
   }
 
@@ -699,7 +891,13 @@
     transform: rotate(180deg);
   }
 
-  .book-notes { font-size: 12px; color: var(--text2); margin-top: 8px; border-top: 1px solid var(--border); padding-top: 8px; }
+  .book-notes {
+    font-size: 12px;
+    color: var(--text2);
+    margin-top: 8px;
+    border-top: 1px solid var(--border);
+    padding-top: 8px;
+  }
 
   .category-manager {
     margin-bottom: 16px;
@@ -1042,7 +1240,7 @@
     padding: 10px 16px;
     font-size: 13px;
     font-weight: 600;
-    background: var(--accent-green);
+    background: var(--accent);
     color: var(--text-dark);
     border: none;
     border-radius: 8px;

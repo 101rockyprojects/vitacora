@@ -329,7 +329,11 @@
   <div class="week-title" aria-hidden="true">
     <span class="skeleton skel-title"></span>
   </div>
-  <div class="week-section week-grid" aria-busy="true" aria-label="Cargando semana">
+  <div
+    class="week-section week-grid"
+    aria-busy="true"
+    aria-label="Cargando semana"
+  >
     {#each SKELETON_DAYS as day (day)}
       <div class="week-col">
         <div class="week-header">
@@ -345,481 +349,487 @@
     {/each}
   </div>
 {:else}
-<div class="week-title">{title}</div>
-<div class="week-section week-grid">
-  {#each weekDays as d (d.iso)}
-    {@const isToday = d.iso === todayIso}
-    {@const isSpecial = d.specialTitles.length > 0}
-    <div class="week-col">
-      <div
-        class="week-header"
-        class:current={isToday}
-        class:special={!isToday && isSpecial}
-      >
-        <div class="week-header-top">
-          <div class="week-day">{d.weekday}</div>
-          <div class="week-date">
-            {d.date.toLocaleDateString("es-ES", {
-              day: "numeric",
-              month: "short",
-            })}
-          </div>
-        </div>
-        {#if isSpecial}
-          <div class="week-special">{d.specialTitles.join(" · ")}</div>
-        {/if}
-      </div>
-
-      <div class="week-body">
-        {#if d.events.length === 0 && d.todos.length === 0}
-          <div class="week-empty">{isSpecial ? "Sin eventos" : "—"}</div>
-        {:else}
-          <div class="week-list">
-            {#each d.todos as td (td.id)}
-              <span class="week-todo">{td.name}</span>
-            {/each}
-            {#each d.events as ev (ev.id)}
-              <a class="week-event" href={`#event-${slugify(ev.event_name)}`}
-                >{ev.event_name}</a
-              >
-            {/each}
-          </div>
-        {/if}
-      </div>
-    </div>
-  {/each}
-</div>
-
-{#if showEventList}
-  <hr
-    style="border: none; border-top: 1px solid var(--border); margin: 16px 0;"
-  />
-
-  <div class="week-section cal-list">
-    <div class="week-title">Eventos y Fechas especiales</div>
-    <div class="cal-groups">
-      {#each nextEventGroups as g (g.iso)}
-        <div class="cal-group" class:today-group={g.isToday}>
-          <div class="cal-group-header">
-            <div class="cal-group-date">
-              {g.date.toLocaleDateString("es-ES", {
-                year: "numeric",
-                month: "long",
+  <div class="week-title">{title}</div>
+  <div class="week-section week-grid">
+    {#each weekDays as d (d.iso)}
+      {@const isToday = d.iso === todayIso}
+      {@const isSpecial = d.specialTitles.length > 0}
+      <div class="week-col">
+        <div
+          class="week-header"
+          class:current={isToday}
+          class:special={!isToday && isSpecial}
+        >
+          <div class="week-header-top">
+            <div class="week-day">{d.weekday}</div>
+            <div class="week-date">
+              {d.date.toLocaleDateString("es-ES", {
+                day: "numeric",
+                month: "short",
               })}
             </div>
-            <div class="cal-group-meta">
-              {#if g.isToday}
-                <span class="cal-pill">Hoy</span>
-              {/if}
-              <span class="cal-count">{g.events.length} eventos</span>
-              <span class="cal-count">{g.todos.length} pendientes</span>
-            </div>
           </div>
-          <div class="week-event-list">
-            {#each g.todos as td (td.id)}
-              {@const tdDate = new Date(td.todo_date)}
-              {@const isToday = toIsoDateLocal(tdDate) === todayIso}
-              <div class="cal-card card todo-card" class:today={isToday}>
-                <div class="cal-info">
-                  <div class="cal-name">{td.name}</div>
-                  <div class="cal-date">
-                    {new Date(td.todo_date).toLocaleDateString("es-ES", {
-                      weekday: "long",
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    })}
-                  </div>
-                  <span
-                    class="tag"
-                    style="background:var(--accent-orange);color:var(--text-dark)"
-                    >Tarea</span
-                  >
-                </div>
+          {#if isSpecial}
+            <div class="week-special">{d.specialTitles.join(" · ")}</div>
+          {/if}
+        </div>
+
+        <div class="week-body">
+          {#if d.events.length === 0 && d.todos.length === 0}
+            <div class="week-empty">{isSpecial ? "Sin eventos" : "—"}</div>
+          {:else}
+            <div class="week-list">
+              {#each d.todos as td (td.id)}
+                <span class="week-todo">{td.name}</span>
+              {/each}
+              {#each d.events as ev (ev.id)}
+                <a class="week-event" href={`#event-${slugify(ev.event_name)}`}
+                  >{ev.event_name}</a
+                >
+              {/each}
+            </div>
+          {/if}
+        </div>
+      </div>
+    {/each}
+  </div>
+
+  {#if showEventList}
+    <hr
+      style="border: none; border-top: 1px solid var(--border); margin: 16px 0;"
+    />
+
+    <div class="week-section cal-list">
+      <div class="week-title">Eventos y Fechas especiales</div>
+      <div class="cal-groups">
+        {#each nextEventGroups as g (g.iso)}
+          <div class="cal-group" class:today-group={g.isToday}>
+            <div class="cal-group-header">
+              <div class="cal-group-date">
+                {g.date.toLocaleDateString("es-ES", {
+                  year: "numeric",
+                  month: "long",
+                })}
               </div>
-            {/each}
-            {#each g.events as ev (ev.id)}
-              {@const evDate = dateFromIso(ev.event_date)}
-              {@const isToday = toIsoDateLocal(evDate) === todayIso}
-              {@const expired = toIsoDateLocal(evDate) < todayIso}
-              <div
-                class="cal-card card"
-                id="event-{slugify(ev.event_name)}"
-                class:today={isToday}
-                class:expired
-              >
-                {#if editingEventId === ev.id}
+              <div class="cal-group-meta">
+                {#if g.isToday}
+                  <span class="cal-pill">Hoy</span>
+                {/if}
+                <span class="cal-count">{g.events.length} eventos</span>
+                <span class="cal-count">{g.todos.length} pendientes</span>
+              </div>
+            </div>
+            <div class="week-event-list">
+              {#each g.todos as td (td.id)}
+                {@const tdDate = new Date(td.todo_date)}
+                {@const isToday = toIsoDateLocal(tdDate) === todayIso}
+                <div class="cal-card card todo-card" class:today={isToday}>
                   <div class="cal-info">
-                    <input
-                      class="todo-edit-input"
-                      type="text"
-                      bind:value={editEventName}
-                      onkeydown={(e) => e.key === "Enter" && saveEditEvent()}
-                    />
-                    <input
-                      class="todo-edit-date"
-                      type="date"
-                      bind:value={editEventDate}
-                      oninput={(e) =>
-                        (editEventDate = normalizeDate(
-                          (e.currentTarget as HTMLInputElement).value,
-                        ))}
-                    />
-                    <select class="todo-edit-date" bind:value={editEventType}>
-                      <option value="event">Evento</option>
-                      <option value="special_day">Día especial</option>
-                    </select>
-                  </div>
-                  <div class="cal-actions">
-                    <button
-                      class="small-btn btn-primary"
-                      onclick={saveEditEvent}
-                      disabled={saving}>Guardar</button
-                    >
-                    <button
-                      class="small-btn btn-secondary"
-                      onclick={cancelEditEvent}
-                      disabled={saving}>Cancelar</button
-                    >
-                  </div>
-                {:else}
-                  <div class="cal-info">
-                    <div class="cal-name">{ev.event_name}</div>
+                    <div class="cal-name">{td.name}</div>
                     <div class="cal-date">
-                      {evDate.toLocaleDateString("es-ES", {
+                      {new Date(td.todo_date).toLocaleDateString("es-ES", {
                         weekday: "long",
                         year: "numeric",
                         month: "long",
                         day: "numeric",
                       })}
                     </div>
-                    {#if !expired}
-                      <span
-                        class="tag"
-                        style="background:{ev.type === 'special_day'
-                          ? 'var(--accent-purple)'
-                          : 'var(--accent-green)'};color:var(--text-dark)"
-                        >{ev.type === "special_day"
-                          ? "Dia especial"
-                          : "Evento"}</span
+                    <span
+                      class="tag"
+                      style="background:var(--accent-orange);color:var(--text-dark)"
+                      >Tarea</span
+                    >
+                  </div>
+                </div>
+              {/each}
+              {#each g.events as ev (ev.id)}
+                {@const evDate = dateFromIso(ev.event_date)}
+                {@const isToday = toIsoDateLocal(evDate) === todayIso}
+                {@const expired = toIsoDateLocal(evDate) < todayIso}
+                <div
+                  class="cal-card card"
+                  id="event-{slugify(ev.event_name)}"
+                  class:today={isToday}
+                  class:expired
+                >
+                  {#if editingEventId === ev.id}
+                    <div class="cal-info">
+                      <input
+                        class="todo-edit-input"
+                        type="text"
+                        bind:value={editEventName}
+                        onkeydown={(e) => e.key === "Enter" && saveEditEvent()}
+                      />
+                      <input
+                        class="todo-edit-date"
+                        type="date"
+                        bind:value={editEventDate}
+                        oninput={(e) =>
+                          (editEventDate = normalizeDate(
+                            (e.currentTarget as HTMLInputElement).value,
+                          ))}
+                      />
+                      <select class="todo-edit-date" bind:value={editEventType}>
+                        <option value="event">Evento</option>
+                        <option value="special_day">Día especial</option>
+                      </select>
+                    </div>
+                    <div class="cal-actions">
+                      <button
+                        class="small-btn btn-primary"
+                        onclick={saveEditEvent}
+                        disabled={saving}>Guardar</button
                       >
-                    {/if}
-                  </div>
-                  <div class="cal-actions">
-                    <button
-                      class="small-btn btn-secondary"
-                      onclick={() => startEditEvent(ev)}>🖋</button
-                    >
-                    <button
-                      class="small-btn btn-ghost"
-                      onclick={() => deleteCal(ev.id!)}>✕</button
-                    >
-                  </div>
-                {/if}
-              </div>
-            {/each}
+                      <button
+                        class="small-btn btn-secondary"
+                        onclick={cancelEditEvent}
+                        disabled={saving}>Cancelar</button
+                      >
+                    </div>
+                  {:else}
+                    <div class="cal-info">
+                      <div class="cal-name">{ev.event_name}</div>
+                      <div class="cal-date">
+                        {evDate.toLocaleDateString("es-ES", {
+                          weekday: "long",
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        })}
+                      </div>
+                      {#if !expired}
+                        <span
+                          class="tag"
+                          style="background:{ev.type === 'special_day'
+                            ? 'var(--accent-purple)'
+                            : 'var(--accent)'};color:var(--text-dark)"
+                          >{ev.type === "special_day"
+                            ? "Dia especial"
+                            : "Evento"}</span
+                        >
+                      {/if}
+                    </div>
+                    <div class="cal-actions">
+                      <button
+                        class="small-btn btn-secondary"
+                        onclick={() => startEditEvent(ev)}>🖋</button
+                      >
+                      <button
+                        class="small-btn btn-ghost"
+                        onclick={() => deleteCal(ev.id!)}>✕</button
+                      >
+                    </div>
+                  {/if}
+                </div>
+              {/each}
+            </div>
           </div>
-        </div>
-      {/each}
+        {/each}
 
-      {#if futureEventGroups.length > 0}
-        <div class="cal-past">
-          <button
-            class="cal-past-toggle"
-            type="button"
-            aria-expanded={showFutureEvents}
-            onclick={() => (showFutureEvents = !showFutureEvents)}
-          >
-            <span>
-              Eventos futuros ({">30 días"})
-              <span class="cal-count"
-                >{futureEventGroups.reduce((n, g) => n + g.events.length, 0)} eventos
-                o pendientes</span
-              >
-            </span>
-            <span class="cal-chevron" class:open={showFutureEvents}>▾</span>
-          </button>
+        {#if futureEventGroups.length > 0}
+          <div class="cal-past">
+            <button
+              class="cal-past-toggle"
+              type="button"
+              aria-expanded={showFutureEvents}
+              onclick={() => (showFutureEvents = !showFutureEvents)}
+            >
+              <span>
+                Eventos futuros ({">30 días"})
+                <span class="cal-count"
+                  >{futureEventGroups.reduce((n, g) => n + g.events.length, 0)} eventos
+                  o pendientes</span
+                >
+              </span>
+              <span class="cal-chevron" class:open={showFutureEvents}>▾</span>
+            </button>
 
-          {#if showFutureEvents}
-            <div class="cal-past-body">
-              {#each futureEventGroups as g (g.iso)}
-                <div class="cal-group">
-                  <div class="cal-group-header">
-                    <div class="cal-group-date">
-                      {g.date.toLocaleDateString("es-ES", {
-                        year: "numeric",
-                        month: "long",
-                      })}
-                    </div>
-                    <div class="cal-group-meta">
-                      <span class="cal-count">{g.events.length} eventos</span>
-                      <span class="cal-count">{g.todos.length} pendientes</span>
-                    </div>
-                  </div>
-                  <div class="week-event-list">
-                    {#each g.todos as td (td.id)}
-                      {@const tdDate = new Date(td.todo_date)}
-                      {@const isToday = toIsoDateLocal(tdDate) === todayIso}
-                      <div
-                        class="cal-card card todo-card"
-                        class:today={isToday}
-                      >
-                        <div class="cal-info">
-                          <div class="cal-name">{td.name}</div>
-                          <div class="cal-date">
-                            {new Date(td.todo_date).toLocaleDateString(
-                              "es-ES",
-                              {
-                                weekday: "long",
-                                year: "numeric",
-                                month: "long",
-                                day: "numeric",
-                              },
-                            )}
-                          </div>
-                          <span
-                            class="tag"
-                            style="background:var(--accent-orange);color:var(--text-dark)"
-                            >Tarea</span
-                          >
-                        </div>
+            {#if showFutureEvents}
+              <div class="cal-past-body">
+                {#each futureEventGroups as g (g.iso)}
+                  <div class="cal-group">
+                    <div class="cal-group-header">
+                      <div class="cal-group-date">
+                        {g.date.toLocaleDateString("es-ES", {
+                          year: "numeric",
+                          month: "long",
+                        })}
                       </div>
-                    {/each}
-                    {#each g.events as ev (ev.id)}
-                      {@const evDate = dateFromIso(ev.event_date)}
-                      {@const isToday = toIsoDateLocal(evDate) === todayIso}
-                      {@const expired = toIsoDateLocal(evDate) < todayIso}
-                      <div
-                        class="cal-card card"
-                        id="event-{slugify(ev.event_name)}"
-                        class:today={isToday}
-                        class:expired
-                      >
-                        {#if editingEventId === ev.id}
+                      <div class="cal-group-meta">
+                        <span class="cal-count">{g.events.length} eventos</span>
+                        <span class="cal-count"
+                          >{g.todos.length} pendientes</span
+                        >
+                      </div>
+                    </div>
+                    <div class="week-event-list">
+                      {#each g.todos as td (td.id)}
+                        {@const tdDate = new Date(td.todo_date)}
+                        {@const isToday = toIsoDateLocal(tdDate) === todayIso}
+                        <div
+                          class="cal-card card todo-card"
+                          class:today={isToday}
+                        >
                           <div class="cal-info">
-                            <input
-                              class="todo-edit-input"
-                              type="text"
-                              bind:value={editEventName}
-                              onkeydown={(e) =>
-                                e.key === "Enter" && saveEditEvent()}
-                            />
-                            <input
-                              class="todo-edit-date"
-                              type="date"
-                              bind:value={editEventDate}
-                              oninput={(e) =>
-                                (editEventDate = normalizeDate(
-                                  (e.currentTarget as HTMLInputElement).value,
-                                ))}
-                            />
-                            <select
-                              class="todo-edit-date"
-                              bind:value={editEventType}
-                            >
-                              <option value="event">Evento</option>
-                              <option value="special_day">Día especial</option>
-                            </select>
-                          </div>
-                          <div class="cal-actions">
-                            <button
-                              class="small-btn btn-primary"
-                              onclick={saveEditEvent}
-                              disabled={saving}>Guardar</button
-                            >
-                            <button
-                              class="small-btn btn-secondary"
-                              onclick={cancelEditEvent}
-                              disabled={saving}>Cancelar</button
-                            >
-                          </div>
-                        {:else}
-                          <div class="cal-info">
-                            <div class="cal-name">{ev.event_name}</div>
+                            <div class="cal-name">{td.name}</div>
                             <div class="cal-date">
-                              {evDate.toLocaleDateString("es-ES", {
-                                weekday: "long",
-                                year: "numeric",
-                                month: "long",
-                                day: "numeric",
-                              })}
+                              {new Date(td.todo_date).toLocaleDateString(
+                                "es-ES",
+                                {
+                                  weekday: "long",
+                                  year: "numeric",
+                                  month: "long",
+                                  day: "numeric",
+                                },
+                              )}
                             </div>
-                            {#if !expired}
-                              <span
-                                class="tag"
-                                style="background:{ev.type === 'special_day'
-                                  ? 'var(--accent-purple)'
-                                  : 'var(--accent-green)'};;color:var(--text-dark)"
-                                >{ev.type === "special_day"
-                                  ? "Dia especial"
-                                  : "Evento"}</span
+                            <span
+                              class="tag"
+                              style="background:var(--accent-orange);color:var(--text-dark)"
+                              >Tarea</span
+                            >
+                          </div>
+                        </div>
+                      {/each}
+                      {#each g.events as ev (ev.id)}
+                        {@const evDate = dateFromIso(ev.event_date)}
+                        {@const isToday = toIsoDateLocal(evDate) === todayIso}
+                        {@const expired = toIsoDateLocal(evDate) < todayIso}
+                        <div
+                          class="cal-card card"
+                          id="event-{slugify(ev.event_name)}"
+                          class:today={isToday}
+                          class:expired
+                        >
+                          {#if editingEventId === ev.id}
+                            <div class="cal-info">
+                              <input
+                                class="todo-edit-input"
+                                type="text"
+                                bind:value={editEventName}
+                                onkeydown={(e) =>
+                                  e.key === "Enter" && saveEditEvent()}
+                              />
+                              <input
+                                class="todo-edit-date"
+                                type="date"
+                                bind:value={editEventDate}
+                                oninput={(e) =>
+                                  (editEventDate = normalizeDate(
+                                    (e.currentTarget as HTMLInputElement).value,
+                                  ))}
+                              />
+                              <select
+                                class="todo-edit-date"
+                                bind:value={editEventType}
                               >
-                            {/if}
-                          </div>
-                          <div class="cal-actions">
-                            <button
-                              class="small-btn btn-secondary"
-                              onclick={() => startEditEvent(ev)}>🖋</button
-                            >
-                            <button
-                              class="small-btn btn-ghost"
-                              onclick={() => deleteCal(ev.id!)}>✕</button
-                            >
-                          </div>
-                        {/if}
-                      </div>
-                    {/each}
-                  </div>
-                </div>
-              {/each}
-            </div>
-          {/if}
-        </div>
-      {/if}
-
-      {#if pastEventGroups.length > 0}
-        <div class="cal-past">
-          <button
-            class="cal-past-toggle"
-            type="button"
-            aria-expanded={showPastEvents}
-            onclick={() => (showPastEvents = !showPastEvents)}
-          >
-            <span>
-              Eventos pasados <span class="cal-count"
-                >{pastEventGroups.reduce((n, g) => n + g.events.length, 0)} eventos
-                o pendientes</span
-              >
-            </span>
-            <span class="cal-chevron" class:open={showPastEvents}>▾</span>
-          </button>
-
-          {#if showPastEvents}
-            <div class="cal-past-body">
-              {#each pastEventGroups as g (g.iso)}
-                <div class="cal-group expired-group">
-                  <div class="cal-group-header">
-                    <div class="cal-group-date">
-                      {g.date.toLocaleDateString("es-ES", {
-                        year: "numeric",
-                        month: "long",
-                      })}
-                    </div>
-                    <div class="cal-group-meta">
-                      <span class="cal-count">{g.events.length} eventos</span>
-                      <span class="cal-count">{g.todos.length} pendientes</span>
-                    </div>
-                  </div>
-                  <div class="week-event-list">
-                    {#each g.todos as td (td.id)}
-                      <div class="cal-card card todo-card expired">
-                        <div class="cal-info">
-                          <div class="cal-name">{td.name}</div>
-                          <div class="cal-date">
-                            {new Date(td.todo_date).toLocaleDateString(
-                              "es-ES",
-                              {
-                                weekday: "long",
-                                year: "numeric",
-                                month: "long",
-                                day: "numeric",
-                              },
-                            )}
-                          </div>
-                          <span
-                            class="tag"
-                            style="background:var(--accent-orange);color:var(--text-dark)"
-                            >Tarea</span
-                          >
-                        </div>
-                      </div>
-                    {/each}
-                    {#each g.events as ev (ev.id)}
-                      {@const evDate = dateFromIso(ev.event_date)}
-                      {@const isToday = toIsoDateLocal(evDate) === todayIso}
-                      {@const expired = toIsoDateLocal(evDate) < todayIso}
-                      <div
-                        class="cal-card card"
-                        id="event-{slugify(ev.event_name)}"
-                        class:today={isToday}
-                        class:expired
-                      >
-                        {#if editingEventId === ev.id}
-                          <div class="cal-info">
-                            <input
-                              class="todo-edit-input"
-                              type="text"
-                              bind:value={editEventName}
-                              onkeydown={(e) =>
-                                e.key === "Enter" && saveEditEvent()}
-                            />
-                            <input
-                              class="todo-edit-date"
-                              type="date"
-                              bind:value={editEventDate}
-                              oninput={(e) =>
-                                (editEventDate = normalizeDate(
-                                  (e.currentTarget as HTMLInputElement).value,
-                                ))}
-                            />
-                            <select
-                              class="todo-edit-date"
-                              bind:value={editEventType}
-                            >
-                              <option value="event">Evento</option>
-                              <option value="special_day">Día especial</option>
-                            </select>
-                          </div>
-                          <div class="cal-actions">
-                            <button
-                              class="small-btn btn-primary"
-                              onclick={saveEditEvent}
-                              disabled={saving}>Guardar</button
-                            >
-                            <button
-                              class="small-btn btn-secondary"
-                              onclick={cancelEditEvent}
-                              disabled={saving}>Cancelar</button
-                            >
-                          </div>
-                        {:else}
-                          <div class="cal-info">
-                            <div class="cal-name">{ev.event_name}</div>
-                            <div class="cal-date">
-                              {evDate.toLocaleDateString("es-ES", {
-                                weekday: "long",
-                                year: "numeric",
-                                month: "long",
-                                day: "numeric",
-                              })}
+                                <option value="event">Evento</option>
+                                <option value="special_day">Día especial</option
+                                >
+                              </select>
                             </div>
-                          </div>
-                          <div class="cal-actions">
-                            <button
-                              class="small-btn btn-secondary"
-                              onclick={() => startEditEvent(ev)}>🖋</button
-                            >
-                            <button
-                              class="small-btn btn-ghost"
-                              onclick={() => deleteCal(ev.id!)}>✕</button
-                            >
-                          </div>
-                        {/if}
-                      </div>
-                    {/each}
+                            <div class="cal-actions">
+                              <button
+                                class="small-btn btn-primary"
+                                onclick={saveEditEvent}
+                                disabled={saving}>Guardar</button
+                              >
+                              <button
+                                class="small-btn btn-secondary"
+                                onclick={cancelEditEvent}
+                                disabled={saving}>Cancelar</button
+                              >
+                            </div>
+                          {:else}
+                            <div class="cal-info">
+                              <div class="cal-name">{ev.event_name}</div>
+                              <div class="cal-date">
+                                {evDate.toLocaleDateString("es-ES", {
+                                  weekday: "long",
+                                  year: "numeric",
+                                  month: "long",
+                                  day: "numeric",
+                                })}
+                              </div>
+                              {#if !expired}
+                                <span
+                                  class="tag"
+                                  style="background:{ev.type === 'special_day'
+                                    ? 'var(--accent-purple)'
+                                    : 'var(--accent)'};;color:var(--text-dark)"
+                                  >{ev.type === "special_day"
+                                    ? "Dia especial"
+                                    : "Evento"}</span
+                                >
+                              {/if}
+                            </div>
+                            <div class="cal-actions">
+                              <button
+                                class="small-btn btn-secondary"
+                                onclick={() => startEditEvent(ev)}>🖋</button
+                              >
+                              <button
+                                class="small-btn btn-ghost"
+                                onclick={() => deleteCal(ev.id!)}>✕</button
+                              >
+                            </div>
+                          {/if}
+                        </div>
+                      {/each}
+                    </div>
                   </div>
-                </div>
-              {/each}
-            </div>
-          {/if}
-        </div>
+                {/each}
+              </div>
+            {/if}
+          </div>
+        {/if}
+
+        {#if pastEventGroups.length > 0}
+          <div class="cal-past">
+            <button
+              class="cal-past-toggle"
+              type="button"
+              aria-expanded={showPastEvents}
+              onclick={() => (showPastEvents = !showPastEvents)}
+            >
+              <span>
+                Eventos pasados <span class="cal-count"
+                  >{pastEventGroups.reduce((n, g) => n + g.events.length, 0)} eventos
+                  o pendientes</span
+                >
+              </span>
+              <span class="cal-chevron" class:open={showPastEvents}>▾</span>
+            </button>
+
+            {#if showPastEvents}
+              <div class="cal-past-body">
+                {#each pastEventGroups as g (g.iso)}
+                  <div class="cal-group expired-group">
+                    <div class="cal-group-header">
+                      <div class="cal-group-date">
+                        {g.date.toLocaleDateString("es-ES", {
+                          year: "numeric",
+                          month: "long",
+                        })}
+                      </div>
+                      <div class="cal-group-meta">
+                        <span class="cal-count">{g.events.length} eventos</span>
+                        <span class="cal-count"
+                          >{g.todos.length} pendientes</span
+                        >
+                      </div>
+                    </div>
+                    <div class="week-event-list">
+                      {#each g.todos as td (td.id)}
+                        <div class="cal-card card todo-card expired">
+                          <div class="cal-info">
+                            <div class="cal-name">{td.name}</div>
+                            <div class="cal-date">
+                              {new Date(td.todo_date).toLocaleDateString(
+                                "es-ES",
+                                {
+                                  weekday: "long",
+                                  year: "numeric",
+                                  month: "long",
+                                  day: "numeric",
+                                },
+                              )}
+                            </div>
+                            <span
+                              class="tag"
+                              style="background:var(--accent-orange);color:var(--text-dark)"
+                              >Tarea</span
+                            >
+                          </div>
+                        </div>
+                      {/each}
+                      {#each g.events as ev (ev.id)}
+                        {@const evDate = dateFromIso(ev.event_date)}
+                        {@const isToday = toIsoDateLocal(evDate) === todayIso}
+                        {@const expired = toIsoDateLocal(evDate) < todayIso}
+                        <div
+                          class="cal-card card"
+                          id="event-{slugify(ev.event_name)}"
+                          class:today={isToday}
+                          class:expired
+                        >
+                          {#if editingEventId === ev.id}
+                            <div class="cal-info">
+                              <input
+                                class="todo-edit-input"
+                                type="text"
+                                bind:value={editEventName}
+                                onkeydown={(e) =>
+                                  e.key === "Enter" && saveEditEvent()}
+                              />
+                              <input
+                                class="todo-edit-date"
+                                type="date"
+                                bind:value={editEventDate}
+                                oninput={(e) =>
+                                  (editEventDate = normalizeDate(
+                                    (e.currentTarget as HTMLInputElement).value,
+                                  ))}
+                              />
+                              <select
+                                class="todo-edit-date"
+                                bind:value={editEventType}
+                              >
+                                <option value="event">Evento</option>
+                                <option value="special_day">Día especial</option
+                                >
+                              </select>
+                            </div>
+                            <div class="cal-actions">
+                              <button
+                                class="small-btn btn-primary"
+                                onclick={saveEditEvent}
+                                disabled={saving}>Guardar</button
+                              >
+                              <button
+                                class="small-btn btn-secondary"
+                                onclick={cancelEditEvent}
+                                disabled={saving}>Cancelar</button
+                              >
+                            </div>
+                          {:else}
+                            <div class="cal-info">
+                              <div class="cal-name">{ev.event_name}</div>
+                              <div class="cal-date">
+                                {evDate.toLocaleDateString("es-ES", {
+                                  weekday: "long",
+                                  year: "numeric",
+                                  month: "long",
+                                  day: "numeric",
+                                })}
+                              </div>
+                            </div>
+                            <div class="cal-actions">
+                              <button
+                                class="small-btn btn-secondary"
+                                onclick={() => startEditEvent(ev)}>🖋</button
+                              >
+                              <button
+                                class="small-btn btn-ghost"
+                                onclick={() => deleteCal(ev.id!)}>✕</button
+                              >
+                            </div>
+                          {/if}
+                        </div>
+                      {/each}
+                    </div>
+                  </div>
+                {/each}
+              </div>
+            {/if}
+          </div>
+        {/if}
+      </div>
+      {#if events.length === 0}
+        <div class="empty-state card">Agrega tus fechas importantes</div>
       {/if}
     </div>
-    {#if events.length === 0}
-      <div class="empty-state card">Agrega tus fechas importantes</div>
-    {/if}
-  </div>
-{/if}
+  {/if}
 {/if}
 
 <style>
@@ -909,7 +919,7 @@
   }
 
   .today-group .cal-group-date {
-    color: var(--accent-green);
+    color: var(--accent);
   }
 
   .cal-past {
@@ -967,7 +977,7 @@
   }
 
   .cal-card:target {
-    outline: 2px solid var(--accent-green);
+    outline: 2px solid var(--accent);
     outline-offset: 2px;
   }
 
@@ -1100,11 +1110,11 @@
     padding: 6px 8px;
     border-radius: 8px;
     border: 1px solid rgba(51, 61, 87, 0.7);
-    background: var(--accent-blue);
+    background: var(--accent);
   }
 
   .week-event:hover {
-    background: var(--accent-green);
+    background: var(--accent-blue);
   }
 
   .week-todo {

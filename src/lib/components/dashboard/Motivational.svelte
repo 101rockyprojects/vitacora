@@ -5,11 +5,11 @@
   <div class="motive-glyph">⊶</div>
   <blockquote class="motive-quote">
     "1% better every day"
-    <br> <br>
-    
+    <br /> <br />
+
     "DO NOT WASTE YOUR POTENTIAL"
-    
-    <br> <br>
+
+    <br /> <br />
     "¡Commit yourself!"
   </blockquote>
   <div class="motive-links">
@@ -21,8 +21,12 @@
 
 <style>
   .motive-card {
-    background: linear-gradient(135deg, rgba(168,230,207,0.08), rgba(255,217,61,0.04));
-    border-color: rgba(168,230,207,0.25);
+    background: linear-gradient(
+      135deg,
+      rgba(168, 230, 207, 0.08),
+      rgba(255, 217, 61, 0.04)
+    );
+    border-color: rgba(168, 230, 207, 0.25);
     display: flex;
     flex-direction: column;
     align-items: flex-start;
@@ -32,7 +36,7 @@
 
   .motive-glyph {
     font-size: 32px;
-    color: var(--accent-green);
+    color: var(--accent);
     margin-bottom: 12px;
   }
 
@@ -53,10 +57,12 @@
 
   .motive-link {
     font-size: 13px;
-    color: var(--accent-green);
+    color: var(--accent);
     font-family: var(--font-mono);
     transition: opacity var(--transition);
   }
 
-  .motive-link:hover { opacity: 0.7; }
+  .motive-link:hover {
+    opacity: 0.7;
+  }
 </style>

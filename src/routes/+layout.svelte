@@ -1,16 +1,16 @@
 <script lang="ts">
-  import '../app.css';
-  import { page, navigating } from '$app/state';
-  import { onMount } from 'svelte';
-  import Sidebar from '$lib/components/Sidebar.svelte';
-  import NotificationContainer from '$lib/components/NotificationContainer.svelte';
-  import XpToasts from '$lib/components/XpToasts.svelte';
-  
+  import "../app.css";
+  import { page, navigating } from "$app/state";
+  import { onMount } from "svelte";
+  import Sidebar from "$lib/components/Sidebar.svelte";
+  import NotificationContainer from "$lib/components/NotificationContainer.svelte";
+  import XpToasts from "$lib/components/XpToasts.svelte";
+
   let { data, children } = $props();
-  
-  const isAuthPage = $derived(page.url.pathname.startsWith('/auth'));
+
+  const isAuthPage = $derived(page.url.pathname.startsWith("/auth"));
   const sectionLoading = $derived(
-    navigating.to !== null && navigating.to.url.pathname !== page.url.pathname
+    navigating.to !== null && navigating.to.url.pathname !== page.url.pathname,
   );
 
   const routeMeta = $derived(getRouteMeta(page.url.pathname));
@@ -18,33 +18,53 @@
 
   onMount(() => {
     const onVisibilityChange = () => {
-      isTabHidden = document.visibilityState === 'hidden';
+      isTabHidden = document.visibilityState === "hidden";
     };
     onVisibilityChange();
-    document.addEventListener('visibilitychange', onVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () =>
+      document.removeEventListener("visibilitychange", onVisibilityChange);
   });
 
-  const documentTitle = $derived(isTabHidden ? '¡PLUS ULTRA!' : routeMeta.title);
+  const documentTitle = $derived(
+    isTabHidden ? "¡PLUS ULTRA!" : routeMeta.title,
+  );
 
-  function getRouteMeta(pathname: string): { title: string; description: string } {
-    const base = 'VitaCora';
-    const normalized = pathname.replace(/\/+$/, '') || '/';
+  function getRouteMeta(pathname: string): {
+    title: string;
+    description: string;
+  } {
+    const base = "VitaCora";
+    const normalized = pathname.replace(/\/+$/, "") || "/";
 
     const known: Record<string, { label: string; description: string }> = {
-      '/': { label: 'Home', description: 'Redirecting to your session.' },
-      '/auth': { label: 'Auth', description: 'Sign in to VitaCora.' },
-      '/dashboard': { label: 'Dashboard', description: 'Your overview and progress.' },
-      '/goals': { label: 'Goals', description: 'Vision, habits, and growth.' },
-      '/work': { label: 'Work', description: 'Kanban, projects, links, and skills.' },
-      '/partner': { label: 'Partner', description: 'Shared ideas and plans.' },
-      '/profile': { label: 'Profile', description: 'XP, badges, and your progress.' },
-      '/settings': { label: 'Settings', description: 'Profile, theme and sections.' }
+      "/": { label: "Home", description: "Redirecting to your session." },
+      "/auth": { label: "Auth", description: "Sign in to VitaCora." },
+      "/dashboard": {
+        label: "Dashboard",
+        description: "Your overview and progress.",
+      },
+      "/goals": { label: "Goals", description: "Vision, habits, and growth." },
+      "/work": {
+        label: "Work",
+        description: "Kanban, projects, links, and skills.",
+      },
+      "/partner": { label: "Partner", description: "Shared ideas and plans." },
+      "/profile": {
+        label: "Profile",
+        description: "XP, badges, and your progress.",
+      },
+      "/settings": {
+        label: "Settings",
+        description: "Profile, theme and sections.",
+      },
     };
 
     const entry = known[normalized] ?? {
-      label: normalized.split('/').filter(Boolean)[0]?.replace(/[-_]/g, ' ') ?? 'Page',
-      description: 'Vitacora.'
+      label:
+        normalized.split("/").filter(Boolean)[0]?.replace(/[-_]/g, " ") ??
+        "Page",
+      description: "Vitacora.",
     };
 
     const pretty = entry.label.charAt(0).toUpperCase() + entry.label.slice(1);
@@ -66,7 +86,12 @@
   {#if data.session && !isAuthPage}
     <Sidebar user={data.user} />
   {/if}
-  <main class="main-content" class:full-width={isAuthPage || !data.session} id="main-content" tabindex="-1">
+  <main
+    class="main-content"
+    class:full-width={isAuthPage || !data.session}
+    id="main-content"
+    tabindex="-1"
+  >
     {#if sectionLoading}
       <div class="section-overlay" role="status" aria-live="polite">
         <span class="section-spinner" aria-hidden="true"></span>
@@ -106,16 +131,20 @@
     width: 36px;
     height: 36px;
     border: 3px solid var(--border);
-    border-top-color: var(--accent-green);
+    border-top-color: var(--accent);
     border-radius: 50%;
     animation: section-spin 0.8s linear infinite;
   }
 
   @keyframes section-spin {
-    to { transform: rotate(360deg); }
+    to {
+      transform: rotate(360deg);
+    }
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .section-spinner { animation-duration: 2.4s; }
+    .section-spinner {
+      animation-duration: 2.4s;
+    }
   }
 </style>

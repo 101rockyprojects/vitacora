@@ -49,7 +49,11 @@
     >
   </h3>
   {#if loading}
-    <div class="flex flex-1 flex-col items-center justify-center gap-4" aria-busy="true" aria-label="Cargando gastos">
+    <div
+      class="flex flex-1 flex-col items-center justify-center gap-4"
+      aria-busy="true"
+      aria-label="Cargando gastos"
+    >
       <div class="skeleton skeleton-circle h-56 w-56"></div>
       <div class="skeleton h-5 w-40"></div>
     </div>
@@ -90,7 +94,7 @@
 
   .card-link {
     font-size: 12px;
-    color: var(--accent-green);
+    color: var(--accent);
     font-weight: 500;
     font-family: var(--font-body);
   }
