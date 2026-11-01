@@ -514,9 +514,11 @@
 <style>
   .settings-page {
     width: 100%;
+    min-width: 0;
   }
 
   .settings-card {
+    min-width: 0;
     padding: 20px;
     margin-bottom: 16px;
   }
@@ -698,6 +700,8 @@
 
   .preview {
     display: flex;
+    width: 100%;
+    min-width: 0;
     background: var(--bg);
     border: 1px solid var(--border);
     border-radius: var(--radius);
@@ -750,6 +754,7 @@
 
   .preview-content {
     flex: 1;
+    min-width: 0;
     padding: 12px;
     display: flex;
     flex-direction: column;
