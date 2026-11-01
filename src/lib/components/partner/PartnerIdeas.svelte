@@ -90,7 +90,7 @@
   async function addIdea() {
     saving = true;
     await repo.dateIdeas.insert(newIdea);
-    await awardXP(userId, 'social', 'date_idea_added', XP_VALUES.date_idea_added);
+    await awardXP(userId, 'social', 'date_idea_added', XP_VALUES.date_idea_added, undefined, newIdea.idea_text);
     newIdea = { idea_text: '', status: 'pending' };
     showForm = false;
     await loadIdeas();

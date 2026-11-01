@@ -6,7 +6,7 @@
 
   function handleClick(notification: Notification) {
     notificationStore.markAsRead(notification.id);
-    notificationStore.removeNotification(notification.id);
+    notificationStore.closeMenu();
     if (notification.link) goto(notification.link);
   }
 
@@ -95,18 +95,28 @@
         {:else}
           <div class="menu-list">
             {#each notifications as notification (notification.id)}
-              <button
+              <div
                 class="menu-item {getTypeStyles(notification.type)}"
                 class:unread={!notification.read}
                 onclick={() => handleClick(notification)}
-                type="button"
+                onkeydown={(e) => e.key === 'Enter' && handleClick(notification)}
+                role="button"
+                tabindex="0"
               >
                 <div class="menu-item-content">
                   <div class="menu-item-title">{notification.title}</div>
                   <div class="menu-item-message">{notification.message}</div>
                   <div class="menu-item-time">{formatTime(notification.createdAt)}</div>
                 </div>
-              </button>
+                <button
+                  class="menu-item-remove"
+                  type="button"
+                  aria-label="Eliminar notificación"
+                  onclick={(e) => { e.stopPropagation(); notificationStore.removeNotification(notification.id); }}
+                >
+                  ✕
+                </button>
+              </div>
             {/each}
           </div>
         {/if}
@@ -280,7 +290,9 @@
   }
 
   .menu-item {
-    display: block;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
     width: 100%;
     padding: 12px 16px;
     text-align: left;
@@ -289,6 +301,28 @@
     border-bottom: 1px solid var(--border);
     cursor: pointer;
     transition: background var(--transition);
+  }
+
+  .menu-item-content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .menu-item-remove {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    color: var(--text3);
+    font-size: 12px;
+    line-height: 1;
+    padding: 4px;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: color var(--transition);
+  }
+
+  .menu-item-remove:hover {
+    color: var(--accent-red);
   }
 
   .menu-item:hover {

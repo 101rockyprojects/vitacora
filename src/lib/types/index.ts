@@ -138,6 +138,7 @@ export interface XpLog {
   xp_gained: number;
   area: string;
   date?: string;
+  message?: string;
 }
 
 export interface Badge {

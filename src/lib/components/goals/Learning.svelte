@@ -24,7 +24,7 @@
       await repo.learning.update(editingLearnId, learnForm);
     } else {
       await repo.learning.insert(learnForm);
-      await awardXP(userId, 'education', 'learning_added', XP_VALUES.learning_added);
+      await awardXP(userId, 'education', 'learning_added', XP_VALUES.learning_added, undefined, learnForm.topic);
     }
     learnForm = { topic: '' };
     editingLearnId = null;

@@ -180,16 +180,15 @@
     {/if}
   </div>
 
-  {#if loading}
-  <div class="loading">Cargando...</div>
-  {:else}
-    <WorkTodos {userId} todos={workTodos} onTodosChange={(t) => (workTodos = t)} />
-    <Kanban 
-      {userId} 
-      tasks={tasks} 
-      onTasksChange={handleTasksChange}
-      useWorkFilter={true}
-    />
+  <WorkTodos {userId} todos={workTodos} onTodosChange={(t) => (workTodos = t)} {loading} />
+  <Kanban
+    {userId}
+    tasks={tasks}
+    onTasksChange={handleTasksChange}
+    useWorkFilter={true}
+    {loading}
+  />
+  {#if !loading}
     <article class="resume-section">
     <div class="resume-header">
       <div class="resume-info">
@@ -225,12 +224,6 @@
 </div>
 
 <style>
-  .loading {
-    text-align: center;
-    padding: 40px;
-    color: var(--text3);
-  }
-
   .filter-kanban {
     display: flex;
     justify-content: flex-start;

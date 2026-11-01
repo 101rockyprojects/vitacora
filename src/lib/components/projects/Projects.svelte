@@ -30,6 +30,7 @@
   let links = $state<UsefulLink[]>([]);
   let skills = $state<SkillsMd[]>([]);
   let copyToast = $state(false);
+  let loading = $state(true);
 
   $effect(() => {
     if (userId && !initialized) {
@@ -75,6 +76,7 @@
     projects = p.data || [];
     links = l.data || [];
     skills = s.data || [];
+    loading = false;
   }
 
   $effect(() => {
@@ -102,7 +104,7 @@
   </div>
   
   {#if activeTab === 'kanban'}
-  <Kanban {userId} bind:tasks />
+  <Kanban {userId} bind:tasks {loading} />
   {:else if activeTab === 'projects'}
   <Projects userId={userId} bind:projects />
   {:else if activeTab === 'links'}

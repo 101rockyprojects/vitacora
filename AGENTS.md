@@ -126,6 +126,7 @@ npm run watch    # wrangler tail (production logs)
 - Always review consistency of codebase and the new code added
 - Avoid use of type `any` in .ts files, avoid hard-coded colors in styles (recycle already created colors)
 - NEVER execute `npm run` commands without explicit user authorization
+- ONLY AFTER deploy, all the local branches merged has to be deleted
 
 ## Contraints
 

@@ -1,13 +1,17 @@
 <script lang="ts">
   import '../app.css';
-  import { page } from '$app/state';
+  import { page, navigating } from '$app/state';
   import { onMount } from 'svelte';
   import Sidebar from '$lib/components/Sidebar.svelte';
   import NotificationContainer from '$lib/components/NotificationContainer.svelte';
+  import XpToasts from '$lib/components/XpToasts.svelte';
   
   let { data, children } = $props();
   
   const isAuthPage = $derived(page.url.pathname.startsWith('/auth'));
+  const sectionLoading = $derived(
+    navigating.to !== null && navigating.to.url.pathname !== page.url.pathname
+  );
 
   const routeMeta = $derived(getRouteMeta(page.url.pathname));
   let isTabHidden = $state(false);
@@ -63,10 +67,17 @@
     <Sidebar user={data.user} />
   {/if}
   <main class="main-content" class:full-width={isAuthPage || !data.session} id="main-content" tabindex="-1">
+    {#if sectionLoading}
+      <div class="section-overlay" role="status" aria-live="polite">
+        <span class="section-spinner" aria-hidden="true"></span>
+        <span class="sr-only">Cargando sección</span>
+      </div>
+    {/if}
     {@render children()}
   </main>
   {#if data.session && !isAuthPage}
     <NotificationContainer />
+    <XpToasts />
   {/if}
 </div>
 
@@ -74,5 +85,37 @@
   .full-width {
     margin-left: 0 !important;
     max-width: 100vw !important;
+  }
+
+  main.main-content {
+    position: relative;
+  }
+
+  .section-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in srgb, var(--bg) 70%, transparent);
+    backdrop-filter: blur(2px);
+  }
+
+  .section-spinner {
+    width: 36px;
+    height: 36px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent-green);
+    border-radius: 50%;
+    animation: section-spin 0.8s linear infinite;
+  }
+
+  @keyframes section-spin {
+    to { transform: rotate(360deg); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .section-spinner { animation-duration: 2.4s; }
   }
 </style>

@@ -24,7 +24,7 @@
       await repo.rewards.update(editingRewardId, rewardForm);
     } else {
       await repo.rewards.insert(rewardForm);
-      await awardXP(userId, 'selfcare', 'reward_earned', XP_VALUES.reward_earned);
+      await awardXP(userId, 'selfcare', 'reward_earned', XP_VALUES.reward_earned, undefined, rewardForm.achievement_name);
     }
     rewardForm = { achievement_name: '', reward_given: '', date_awarded: new Date().toISOString().split('T')[0] };
     editingRewardId = null;

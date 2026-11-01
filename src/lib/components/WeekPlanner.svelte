@@ -13,12 +13,16 @@
     todos = [],
     title = "Semana actual",
     showEventList = true,
+    loading = false,
   }: {
     events: CalendarEvent[];
     todos?: CalendarTodo[];
     title?: string;
     showEventList?: boolean;
+    loading?: boolean;
   } = $props();
+
+  const SKELETON_DAYS = [0, 1, 2, 3, 4, 5, 6];
 
   function slugify(text: string): string {
     return text
@@ -321,6 +325,26 @@
   }
 </script>
 
+{#if loading}
+  <div class="week-title" aria-hidden="true">
+    <span class="skeleton skel-title"></span>
+  </div>
+  <div class="week-section week-grid" aria-busy="true" aria-label="Cargando semana">
+    {#each SKELETON_DAYS as day (day)}
+      <div class="week-col">
+        <div class="week-header">
+          <span class="skeleton skel-day"></span>
+        </div>
+        <div class="week-body">
+          <div class="week-list">
+            <span class="skeleton skel-chip"></span>
+            <span class="skeleton skel-chip skel-chip-short"></span>
+          </div>
+        </div>
+      </div>
+    {/each}
+  </div>
+{:else}
 <div class="week-title">{title}</div>
 <div class="week-section week-grid">
   {#each weekDays as d (d.iso)}
@@ -796,8 +820,31 @@
     {/if}
   </div>
 {/if}
+{/if}
 
 <style>
+  .skel-title {
+    display: block;
+    width: 160px;
+    height: 12px;
+  }
+
+  .skel-day {
+    display: block;
+    width: 70%;
+    height: 12px;
+  }
+
+  .skel-chip {
+    display: block;
+    width: 100%;
+    height: 22px;
+  }
+
+  .skel-chip-short {
+    width: 60%;
+  }
+
   .week-section {
     margin-top: 16px;
   }
@@ -951,7 +998,7 @@
   .week-title {
     font-family: var(--font-mono);
     font-size: 12px;
-    font-weight: 600;
+    font-weight: 700;
     color: var(--text);
     text-transform: uppercase;
     letter-spacing: 0.08em;

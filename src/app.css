@@ -1,7 +1,12 @@
 /* Vitacora — Global Styles */
+@import 'tailwindcss';
 @import 'gridstack/dist/gridstack.min.css';
+@import '@skeletonlabs/skeleton'; 
+@import '@skeletonlabs/skeleton-svelte'; 
+@import '@skeletonlabs/skeleton/themes/rocket';
 
 :root {
+  color-scheme: dark;
   --bg: #0f1117;
   --bg2: #161b25;
   --bg3: #1e2535;
@@ -83,6 +88,10 @@ body {
   line-height: 1.6;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-optical-sizing: auto;
+  font-synthesis-weight: none;
+  text-rendering: optimizeLegibility;
 }
 
 h1, h2, h3, h4 {
@@ -404,6 +413,8 @@ input[type="checkbox"]:disabled {
 .fade-in { animation: fadeIn 0.3s ease; }
 
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+.skeleton { background: var(--surface2); border-radius: var(--radius-sm); animation: pulse 1.5s ease-in-out infinite; }
+.skeleton-circle { border-radius: 50%; }
 .pulse { animation: pulse 2s infinite; }
 
 /* XP badge glow */

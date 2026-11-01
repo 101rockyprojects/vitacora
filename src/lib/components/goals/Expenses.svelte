@@ -26,6 +26,16 @@
   });
   let isSubscription = $state(false);
   let subscriptionPeriod = $state(1);
+  let showSubForm = $state(false);
+  let editingSubId = $state<string | null>(null);
+  let subForm = $state<Subscription>({
+    name: "",
+    category: "",
+    cost: 0,
+    start_date: "",
+    period_months: 1,
+    is_active: true,
+  });
 
   let expenseFilterCategory = $state("");
   let expenseFilterStartDate = $state("");
@@ -128,6 +138,47 @@
       }));
   });
 
+  function openSubForm(sub: Subscription) {
+    editingSubId = sub.id ?? null;
+    subForm = { ...sub };
+    showSubForm = true;
+  }
+
+  function resetSubForm() {
+    editingSubId = null;
+    subForm = {
+      name: "",
+      category: "",
+      cost: 0,
+      start_date: "",
+      period_months: 1,
+      is_active: true,
+    };
+  }
+
+  async function saveSub() {
+    if (
+      !editingSubId ||
+      !subForm.name.trim() ||
+      subForm.cost <= 0 ||
+      !subForm.start_date
+    )
+      return;
+    saving = true;
+    await repo.subscriptions.update(editingSubId, {
+      name: subForm.name.trim(),
+      category: subForm.category.trim(),
+      cost: subForm.cost,
+      start_date: subForm.start_date,
+      period_months: subForm.period_months,
+      is_active: subForm.is_active,
+    });
+    saving = false;
+    showSubForm = false;
+    resetSubForm();
+    await loadData();
+  }
+
   function getNextPaymentDate(sub: Subscription): string {
     const base = sub.last_paid_date || sub.start_date;
     const next = new Date(base);
@@ -174,6 +225,8 @@
         "selfcare",
         "expense_logged",
         XP_VALUES.expense_logged,
+        undefined,
+        expenseForm.name,
       );
     }
 
@@ -313,7 +366,12 @@
     {/if}
   </div>
 
-  {#if !expenseFilterCategory && expensesByCategory.length > 0}
+  {#if loading}
+    <div class="card flex flex-col items-center gap-4 p-6" aria-busy="true" aria-label="Cargando gastos">
+      <div class="skeleton skeleton-circle h-56 w-56"></div>
+      <div class="skeleton h-5 w-40"></div>
+    </div>
+  {:else if !expenseFilterCategory && expensesByCategory.length > 0}
     <div class="card expenses-chart-card">
       <PieChart
         data={expensesByCategory}
@@ -345,7 +403,19 @@
     </div>
   {/if}
 
-  {#if expensesByMonth.length === 0}
+  {#if loading}
+    <div class="expenses-groups" aria-busy="true" aria-label="Cargando gastos">
+      {#each [1, 2, 3] as _}
+        <div class="expense-item card">
+          <div class="flex flex-1 flex-col gap-2">
+            <div class="skeleton h-4 w-1/3"></div>
+            <div class="skeleton h-3 w-1/5"></div>
+          </div>
+          <div class="skeleton h-4 w-20"></div>
+        </div>
+      {/each}
+    </div>
+  {:else if expensesByMonth.length === 0}
     <div class="empty-state card">Agrega tus primeros gastos</div>
   {:else}
     <div class="expenses-groups">
@@ -414,6 +484,10 @@
             </div>
             <div class="sub-cost">{formatCurrency(sub.cost)}</div>
             <div class="sub-actions">
+              <button
+                class="small-btn btn-secondary"
+                onclick={() => openSubForm(sub)}>Editar</button
+              >
               {#if sub.is_active}
                 <button
                   class="small-btn btn-primary"
@@ -525,6 +599,89 @@
             !expenseForm.name.trim() ||
             !expenseForm.category.trim() ||
             expenseForm.cost <= 0}>{saving ? "..." : "Guardar"}</button
+        >
+      </div>
+    </div>
+  </div>
+{/if}
+
+{#if showSubForm}
+  <div
+    class="modal-backdrop"
+    role="presentation"
+    onclick={(e) => {
+      if (e.target === e.currentTarget) {
+        showSubForm = false;
+        resetSubForm();
+      }
+    }}
+    onkeydown={(e) =>
+      e.key === "Escape" && ((showSubForm = false), resetSubForm())}
+  >
+    <div class="modal" role="document">
+      <h3>Editar suscripción</h3>
+      <div class="form-group">
+        <label for="sub-name">Nombre</label><input
+          id="sub-name"
+          bind:value={subForm.name}
+          placeholder="Ej: Netflix, Spotify..."
+        />
+      </div>
+      <div class="form-group">
+        <label for="sub-category">Categoría</label>
+        <input
+          id="sub-category"
+          bind:value={subForm.category}
+          placeholder="Ej: Ocio, Software..."
+          list="expense-categories"
+        />
+      </div>
+      <div class="form-group">
+        <label for="sub-cost">Costo ({currencyStore.symbol})</label><input
+          id="sub-cost"
+          type="number"
+          bind:value={subForm.cost}
+          min="0"
+          step="0.01"
+        />
+      </div>
+      <div class="form-group">
+        <label for="sub-start">Fecha de inicio</label><input
+          id="sub-start"
+          type="date"
+          bind:value={subForm.start_date}
+        />
+      </div>
+      <div class="form-group">
+        <label for="sub-period-modal">Cada cuántos meses</label><input
+          id="sub-period-modal"
+          type="number"
+          bind:value={subForm.period_months}
+          min="1"
+          max="24"
+        />
+      </div>
+      <div class="form-group form-check">
+        <label class="check-label">
+          <input type="checkbox" bind:checked={subForm.is_active} />
+          <span>Activa</span>
+        </label>
+      </div>
+      <div class="form-actions">
+        <button
+          class="btn btn-secondary"
+          onclick={() => {
+            showSubForm = false;
+            resetSubForm();
+          }}>Cancelar</button
+        >
+        <button
+          class="btn btn-primary"
+          onclick={saveSub}
+          disabled={saving ||
+            !subForm.name.trim() ||
+            !subForm.start_date ||
+            subForm.cost <= 0}>{saving ? "..." : "Guardar"}</button
         >
       </div>
     </div>
@@ -762,8 +919,8 @@
   }
 
   .check-label {
-    display: flex;
-    align-items: center;
+    display: grid;
+    grid-template-columns: 25px 1fr;
     gap: 8px;
     font-size: 13px;
     color: var(--text2);
@@ -772,5 +929,7 @@
 
   .check-label input[type="checkbox"] {
     accent-color: var(--accent-green);
+    border: 0;
+    outline: var(--accent-green);
   }
 </style>

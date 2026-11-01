@@ -9,9 +9,10 @@
     calEvents?: CalendarEvent[];
     calendarTodos?: CalendarTodo[];
     onRefresh?: () => void;
+    loading?: boolean;
   }
 
-  let { userId, calEvents = $bindable([]), calendarTodos = $bindable([]), onRefresh }: Props = $props();
+  let { userId, calEvents = $bindable([]), calendarTodos = $bindable([]), onRefresh, loading = false }: Props = $props();
 
   const repo = $derived(createRepository(userId));
 
@@ -62,7 +63,7 @@
     if (!name || !todoDateInput) return;
     saving = true;
     await repo.calendarTodos.insert({ name, todo_date: normalizeDate(todoDateInput) });
-    await awardXP(userId, 'selfcare', 'calendar_todo_added', XP_VALUES.calendar_todo_added);
+    await awardXP(userId, 'selfcare', 'calendar_todo_added', XP_VALUES.calendar_todo_added, undefined, name);
     todoInput = '';
     todoDateInput = toIsoDateLocal(new Date());
     const { data } = await repo.calendarTodos.list();
@@ -99,7 +100,8 @@
 
   async function completeTodo(id: string) {
     if (!confirm('¿Marcar tarea como completada?')) return;
-    await awardXP(userId, 'selfcare', 'calendar_todo_added', XP_VALUES.calendar_todo_added);
+    const todoName = calendarTodos.find((t) => t.id === id)?.name;
+    await awardXP(userId, 'selfcare', 'calendar_todo_added', XP_VALUES.calendar_todo_added, undefined, todoName);
     await repo.calendarTodos.remove(id);
     const { data } = await repo.calendarTodos.list();
     calendarTodos = data || [];
@@ -115,7 +117,7 @@
   async function saveCal() {
     saving = true;
     await repo.calendar.insert(calForm);
-    await awardXP(userId, 'selfcare', 'calendar_event_added', XP_VALUES.calendar_event_added);
+    await awardXP(userId, 'selfcare', 'calendar_event_added', XP_VALUES.calendar_event_added, undefined, calForm.event_name);
     calForm = { event_name: '', event_date: '', type: 'event' };
     showCalForm = false;
     const { data } = await repo.calendar.list();
@@ -148,7 +150,13 @@
         <button class="btn btn-primary" onclick={addTodo} disabled={!todoInput.trim()}>+</button>
       </div>
     </div>
-    {#if calendarTodos.length === 0}
+    {#if loading}
+      <div class="todo-list" aria-busy="true" aria-label="Cargando pendientes">
+        {#each [1, 2, 3] as _}
+          <div class="skeleton skel-todo"></div>
+        {/each}
+      </div>
+    {:else if calendarTodos.length === 0}
       <div class="empty-todos">Sin tareas pendientes</div>
     {:else}
       <div class="todo-list">
@@ -192,7 +200,7 @@
   <div class="tab-actions">
     <button class="btn btn-primary" onclick={() => { calForm = { event_name: '', event_date: '', type: 'event' }; showCalForm = true; }}>+ Agregar evento o día especial</button>
   </div>
-  <WeekPlanner events={calEvents} todos={calendarTodos} />
+  <WeekPlanner events={calEvents} todos={calendarTodos} {loading} />
 </div>
 
 {#if showCalForm}
@@ -224,7 +232,7 @@
   .task-title {
     font-family: var(--font-mono);
     font-size: 12px;
-    font-weight: 600;
+    font-weight: 700;
     color: var(--text);
     text-transform: uppercase;
     letter-spacing: 0.08em;
@@ -311,5 +319,10 @@
 
   .todo-edit-date {
     width: 150px;
+  }
+
+  .skel-todo {
+    width: 100%;
+    height: 44px;
   }
 </style>

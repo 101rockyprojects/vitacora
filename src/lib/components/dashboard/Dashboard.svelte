@@ -123,16 +123,16 @@
     </div>
   </div>
 
-  <Stats {totalXP} {tasks} {books} {userBadgesCount} />
+  <Stats {totalXP} {tasks} {books} {userBadgesCount} {loading} />
 
   <div class="dash-grid">
     <div class="bento-tasks"><TasksPanel {tasks} {loading} /></div>
-    <div class="bento-books"><BooksPanel {books} /></div>
+    <div class="bento-books"><BooksPanel {books} {loading} /></div>
     <div class="bento-motive"><Motivational /></div>
-    <div class="bento-expenses"><ExpensesPanel {expenses} /></div>
+    <div class="bento-expenses"><ExpensesPanel {expenses} {loading} /></div>
     <div class="bento-xp"><AreaXP bind:areaXP /></div>
     <div class="card week-card">
-      <WeekPlanner events={calEvents} showEventList={false} />
+      <WeekPlanner events={calEvents} showEventList={false} {loading} />
     </div>
   </div>
 </div>

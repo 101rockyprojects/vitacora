@@ -107,7 +107,7 @@
     }
 
     await repo.memories.insert({ ...memForm, photo_url: photo_path });
-    await awardXP(userId, 'social', 'memory_added', XP_VALUES.memory_added);
+    await awardXP(userId, 'social', 'memory_added', XP_VALUES.memory_added, undefined, memForm.description || undefined);
 
     memForm = { date: '', description: '' };
     memFile = null;
