@@ -6,39 +6,48 @@
     tasks?: Task[];
     books?: Book[];
     userBadgesCount: number;
+    loading?: boolean;
   }
 
-  let { totalXP, tasks = [], books = [], userBadgesCount = 0 }: Props = $props();
+  let { totalXP, tasks = [], books = [], userBadgesCount = 0, loading = false }: Props = $props();
 
   const todayTasks = $derived(tasks.filter(t => t.status !== 'done').slice(0, 5));
 </script>
+
+{#snippet num(value: number)}
+  {#if loading}
+    <div class="skeleton h-6 w-12" aria-label="Cargando"></div>
+  {:else}
+    <div class="stat-num">{value}</div>
+  {/if}
+{/snippet}
 
 <div class="stats-row">
   <div class="stat-card">
     <span class="stat-icon">⚡</span>
     <div>
-      <div class="stat-num">{totalXP}</div>
+      {@render num(totalXP)}
       <div class="stat-label">XP Total</div>
     </div>
   </div>
   <div class="stat-card">
     <span class="stat-icon">📋</span>
     <div>
-      <div class="stat-num">{todayTasks.length}</div>
+      {@render num(todayTasks.length)}
       <div class="stat-label">Tareas activas</div>
     </div>
   </div>
   <div class="stat-card">
     <span class="stat-icon">📚</span>
     <div>
-      <div class="stat-num">{books.length}</div>
+      {@render num(books.length)}
       <div class="stat-label">Libros</div>
     </div>
   </div>
   <div class="stat-card">
     <span class="stat-icon">🏅</span>
     <div>
-      <div class="stat-num">{userBadgesCount}</div>
+      {@render num(userBadgesCount)}
       <div class="stat-label">Logros</div>
     </div>
   </div>

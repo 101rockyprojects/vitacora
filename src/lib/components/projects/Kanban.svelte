@@ -11,6 +11,7 @@
     tasks?: Task[];
     onTasksChange?: (tasks: Task[]) => void;
     useWorkFilter?: boolean;
+    loading?: boolean;
   }
 
   let {
@@ -18,6 +19,7 @@
     tasks = $bindable([]),
     onTasksChange,
     useWorkFilter = false,
+    loading = false,
   }: Props = $props();
 
   const filterTag = $derived(useWorkFilter ? workFilterTag.value : null);
@@ -339,7 +341,23 @@
       </button>
     </div>
   </div>
-  {#if showArchive}
+  {#if loading}
+    <div class="kanban-board" aria-busy="true" aria-label="Cargando tablero">
+      {#each statuses as sta}
+        <div class="kanban-sta">
+          <div class="kanban-sta-header">
+            <span class="skeleton skel-dot"></span>
+            <span class="skeleton skel-label"></span>
+          </div>
+          <div class="kanban-cards">
+            {#each [1, 2] as _}
+              <div class="skeleton skel-card"></div>
+            {/each}
+          </div>
+        </div>
+      {/each}
+    </div>
+  {:else if showArchive}
     <div class="kanban-archive">
       {#each statuses as sta}
         {@const group = archivedTasks.filter((t) => t.status === sta.id)}
@@ -917,6 +935,23 @@
     max-height: 600px;
     overflow-y: auto;
     transition: all var(--transition);
+  }
+
+  .skel-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .skel-label {
+    width: 96px;
+    height: 12px;
+  }
+
+  .skel-card {
+    width: 100%;
+    height: 80px;
   }
 
   .kanban-sta.collapsed {

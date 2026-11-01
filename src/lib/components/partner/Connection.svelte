@@ -1,6 +1,6 @@
 <script lang="ts">
-  import Toast from '$lib/components/Toast.svelte';
-  import { createRepository } from '$lib/services/repository';
+  import Toast from "$lib/components/Toast.svelte";
+  import { createRepository } from "$lib/services/repository";
 
   interface Props {
     userId: string;
@@ -9,7 +9,11 @@
   let { userId }: Props = $props();
   const repo = $derived(createRepository(userId));
 
-  let partnerProfile = $state<{ id: string; email: string; partner_since?: string } | null>(null);
+  let partnerProfile = $state<{
+    id: string;
+    email: string;
+    partner_since?: string;
+  } | null>(null);
 
   const daysTogether = $derived(() => {
     if (!partnerProfile?.partner_since) return 0;
@@ -18,14 +22,15 @@
     const diffTime = now.getTime() - connected.getTime();
     return Math.floor(diffTime / (1000 * 60 * 60 * 24));
   });
-  let myPartnerCode = $state('');
-  let partnerCodeInput = $state('');
+  let myPartnerCode = $state("");
+  let partnerCodeInput = $state("");
   let showConnectForm = $state(false);
   let connecting = $state(false);
-  let partnerError = $state('');
+  let partnerError = $state("");
   let copyToast = $state(false);
   let copyToastTimer: ReturnType<typeof setTimeout> | null = $state(null);
   let initialized = $state(false);
+  let loading = $state(true);
 
   $effect(() => {
     if (userId && !initialized) {
@@ -35,21 +40,25 @@
   });
 
   async function loadPartnerData() {
-    const profile = await repo.partner.getProfile();
-    if (profile) {
-      myPartnerCode = profile.partner_code || '';
-      if (profile.partner_id) {
-        partnerProfile = await repo.partner.getPartnerProfile();
+    try {
+      const profile = await repo.partner.getProfile();
+      if (profile) {
+        myPartnerCode = profile.partner_code || "";
+        if (profile.partner_id) {
+          partnerProfile = await repo.partner.getPartnerProfile();
+        }
       }
-    }
 
-    if (!myPartnerCode) {
-      myPartnerCode = repo.partner.generateCode();
-      try {
-        await repo.partner.setPartnerCode(myPartnerCode);
-      } catch (e) {
-        console.error('Failed to set partner code:', e);
+      if (!myPartnerCode) {
+        myPartnerCode = repo.partner.generateCode();
+        try {
+          await repo.partner.setPartnerCode(myPartnerCode);
+        } catch (e) {
+          console.error("Failed to set partner code:", e);
+        }
       }
+    } finally {
+      loading = false;
     }
   }
 
@@ -63,47 +72,51 @@
         copyToastTimer = null;
       }, 2500);
     } catch (err) {
-      console.error('Failed to copy:', err);
+      console.error("Failed to copy:", err);
     }
   }
 
   async function connectWithPartner() {
     if (!partnerCodeInput.trim()) {
-      partnerError = 'El código no puede estar vacío';
+      partnerError = "El código no puede estar vacío";
       return;
     }
     connecting = true;
-    partnerError = '';
+    partnerError = "";
     try {
-      if (partnerCodeInput.trim().toUpperCase() === myPartnerCode.toUpperCase()) {
-        partnerError = 'No puedes conectar contigo mismo/a (aunque es adorable, ámate mucho)';
+      if (
+        partnerCodeInput.trim().toUpperCase() === myPartnerCode.toUpperCase()
+      ) {
+        partnerError =
+          "No puedes conectar contigo mismo/a (aunque es adorable, ámate mucho)";
         connecting = false;
         return;
       }
       const found = await repo.partner.searchByCode(partnerCodeInput.trim());
       if (!found) {
-        partnerError = 'Código inválido';
+        partnerError = "Código inválido";
         connecting = false;
         return;
       }
       if (found.partner_id) {
-        partnerError = 'Este usuario ya tiene pareja. (Aquí apoyamos la monogamia)';
+        partnerError =
+          "Este usuario ya tiene pareja. (Aquí apoyamos la monogamia)";
         connecting = false;
         return;
       }
       await repo.partner.connect(found.id);
-      partnerProfile = { id: found.id, email: found.email || '' };
+      partnerProfile = { id: found.id, email: found.email || "" };
       showConnectForm = false;
-      partnerCodeInput = '';
+      partnerCodeInput = "";
     } catch (e: any) {
-      partnerError = e.message || 'Error al conectar';
+      partnerError = e.message || "Error al conectar";
     }
     connecting = false;
   }
 
   async function disconnectPartner() {
-    if (!confirm('¿Desconectar de tu pareja?')) return;
-    if (!confirm('¿Estás seguro/a?')) return;
+    if (!confirm("¿Desconectar de tu pareja?")) return;
+    if (!confirm("¿Estás seguro/a?")) return;
     await repo.partner.disconnect();
     partnerProfile = null;
   }
@@ -113,7 +126,15 @@
 
 <div class="partner-connection">
   <div class="partner-connection-status card">
-    {#if partnerProfile}
+    {#if loading}
+      <div class="flex w-full items-center justify-between gap-4" aria-busy="true" aria-label="Cargando conexión">
+        <div class="flex flex-1 flex-col gap-3">
+          <div class="skeleton h-3 w-24"></div>
+          <div class="skeleton h-8 w-48"></div>
+        </div>
+        <div class="skeleton h-9 w-36"></div>
+      </div>
+    {:else if partnerProfile}
       <div class="connected-section">
         <div class="partner-info">
           <span class="partner-icon">💑</span>
@@ -125,7 +146,9 @@
             {/if}
           </div>
         </div>
-        <button class="btn btn-danger" onclick={disconnectPartner}>Desconectar</button>
+        <button class="btn btn-danger" onclick={disconnectPartner}
+          >Desconectar</button
+        >
       </div>
     {:else}
       <div class="disconnected-section">
@@ -134,19 +157,26 @@
             <span class="code-label">Tu código</span>
             <div class="code-display">
               <span class="code">{myPartnerCode}</span>
-              <button class="copy-btn" onclick={() => copyPartnerCode(myPartnerCode)} title="Copiar">❏</button>
+              <button
+                class="copy-btn"
+                onclick={() => copyPartnerCode(myPartnerCode)}
+                title="Copiar">❏</button
+              >
             </div>
           </div>
           <div class="connect-action">
-            <button class="btn btn-secondary" onclick={() => showConnectForm = !showConnectForm}>
-              {showConnectForm ? 'Cancelar' : 'Conectar con pareja'}
+            <button
+              class="btn btn-secondary"
+              onclick={() => (showConnectForm = !showConnectForm)}
+            >
+              {showConnectForm ? "Cancelar" : "Conectar con pareja"}
             </button>
           </div>
         </section>
       </div>
     {/if}
   </div>
-  
+
   {#if showConnectForm && !partnerProfile}
     <form class="connect-form card">
       <div class="my-code-form">
@@ -158,19 +188,23 @@
             placeholder="123456"
             maxlength="6"
             class="code-input"
-            onkeydown={(e) => e.key === 'Enter' && connectWithPartner()}
+            onkeydown={(e) => e.key === "Enter" && connectWithPartner()}
           />
         </div>
       </div>
-      <button class="btn btn-primary" onclick={connectWithPartner} disabled={connecting}>
-        {connecting ? '...' : 'Conectar'}
+      <button
+        class="btn btn-primary"
+        onclick={connectWithPartner}
+        disabled={connecting}
+      >
+        {connecting ? "..." : "Conectar"}
       </button>
     </form>
-    {/if}
-  </div>
-  {#if partnerError && !connecting && showConnectForm}
-    <div class="error-msg">{partnerError}</div>
   {/if}
+</div>
+{#if partnerError && !connecting && showConnectForm}
+  <div class="error-msg">{partnerError}</div>
+{/if}
 
 <style>
   .partner-connection {
@@ -184,7 +218,7 @@
     flex: 1;
     padding: 15px;
   }
-  
+
   .connect-form {
     flex: 0 1 auto;
   }

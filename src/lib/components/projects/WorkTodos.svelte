@@ -6,9 +6,10 @@
     userId: string;
     todos?: WorkTodo[];
     onTodosChange?: (todos: WorkTodo[]) => void;
+    loading?: boolean;
   }
 
-  let { userId, todos = $bindable([]), onTodosChange }: Props = $props();
+  let { userId, todos = $bindable([]), onTodosChange, loading = false }: Props = $props();
 
   const repo = $derived(createRepository(userId));
   let todoInput = $state('');
@@ -59,7 +60,13 @@
     />
     <button class="btn btn-primary" onclick={addTodo} disabled={!todoInput.trim() || saving} title="Agregar pendiente">+</button>
   </div>
-  {#if todos.length === 0}
+  {#if loading}
+    <div class="todos-list" aria-busy="true" aria-label="Cargando pendientes">
+      {#each [1, 2, 3] as _}
+        <div class="skeleton skel-todo"></div>
+      {/each}
+    </div>
+  {:else if todos.length === 0}
     <div class="todos-empty">Agrega tus pendientes aquí</div>
   {:else}
     <ul class="todos-list">
@@ -164,6 +171,11 @@
     background: var(--bg2);
     border: 1px solid var(--border);
     border-radius: var(--radius);
+  }
+
+  .skel-todo {
+    width: 100%;
+    height: 32px;
   }
 
   .todo-item.done { opacity: 0.55; }

@@ -3,9 +3,10 @@
 
   interface Props {
     books?: Book[];
+    loading?: boolean;
   }
 
-  let { books = [] }: Props = $props();
+  let { books = [], loading = false }: Props = $props();
 
   const recentBooks = $derived(books.slice(0, 3));
 
@@ -17,7 +18,19 @@
 
 <div class="card">
   <h3 class="card-title">Lecturas <a href="/goals?tab=books" class="card-link">Ver libros →</a></h3>
-  {#if recentBooks.length === 0}
+  {#if loading}
+    <div class="flex flex-col gap-3" aria-busy="true" aria-label="Cargando lecturas">
+      {#each [1, 2, 3] as _}
+        <div class="flex items-center gap-3">
+          <div class="skeleton h-14 w-10 shrink-0"></div>
+          <div class="flex flex-1 flex-col gap-2">
+            <div class="skeleton h-4 w-3/4"></div>
+            <div class="skeleton h-2 w-full"></div>
+          </div>
+        </div>
+      {/each}
+    </div>
+  {:else if recentBooks.length === 0}
     <div class="empty-state">Agrega libros en Visión & Metas</div>
   {:else}
     <div class="book-list">

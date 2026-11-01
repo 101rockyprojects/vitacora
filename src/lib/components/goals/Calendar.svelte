@@ -9,9 +9,10 @@
     calEvents?: CalendarEvent[];
     calendarTodos?: CalendarTodo[];
     onRefresh?: () => void;
+    loading?: boolean;
   }
 
-  let { userId, calEvents = $bindable([]), calendarTodos = $bindable([]), onRefresh }: Props = $props();
+  let { userId, calEvents = $bindable([]), calendarTodos = $bindable([]), onRefresh, loading = false }: Props = $props();
 
   const repo = $derived(createRepository(userId));
 
@@ -149,7 +150,13 @@
         <button class="btn btn-primary" onclick={addTodo} disabled={!todoInput.trim()}>+</button>
       </div>
     </div>
-    {#if calendarTodos.length === 0}
+    {#if loading}
+      <div class="todo-list" aria-busy="true" aria-label="Cargando pendientes">
+        {#each [1, 2, 3] as _}
+          <div class="skeleton skel-todo"></div>
+        {/each}
+      </div>
+    {:else if calendarTodos.length === 0}
       <div class="empty-todos">Sin tareas pendientes</div>
     {:else}
       <div class="todo-list">
@@ -193,7 +200,7 @@
   <div class="tab-actions">
     <button class="btn btn-primary" onclick={() => { calForm = { event_name: '', event_date: '', type: 'event' }; showCalForm = true; }}>+ Agregar evento o día especial</button>
   </div>
-  <WeekPlanner events={calEvents} todos={calendarTodos} />
+  <WeekPlanner events={calEvents} todos={calendarTodos} {loading} />
 </div>
 
 {#if showCalForm}
@@ -312,5 +319,10 @@
 
   .todo-edit-date {
     width: 150px;
+  }
+
+  .skel-todo {
+    width: 100%;
+    height: 44px;
   }
 </style>

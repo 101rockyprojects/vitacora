@@ -14,9 +14,9 @@
 <div class="card">
   <h3 class="card-title">Pendientes <a href="/work" class="card-link">Ver pendientes →</a></h3>
   {#if loading}
-    <div class="placeholder-list">
-      {#each [1,2,3] as _}
-        <div class="placeholder-item pulse"></div>
+    <div class="flex flex-col gap-2" aria-busy="true" aria-label="Cargando pendientes">
+      {#each [1, 2, 3] as _}
+        <div class="skeleton h-10 w-full"></div>
       {/each}
     </div>
   {:else if todayTasks.length === 0}
@@ -100,12 +100,5 @@
     padding: 2px 6px;
     border-radius: 4px;
     white-space: nowrap;
-  }
-
-  .placeholder-list { display: flex; flex-direction: column; gap: 8px; }
-  .placeholder-item {
-    height: 40px;
-    background: var(--bg3);
-    border-radius: 8px;
   }
 </style>

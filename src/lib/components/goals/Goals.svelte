@@ -38,6 +38,7 @@
   let memories = $state<MemoryPhoto[]>([]);
   let calEvents = $state<CalendarEvent[]>([]);
   let calendarTodos = $state<CalendarTodo[]>([]);
+  let loading = $state(true);
   let successes = $state<SuccessExperience[]>([]);
   let rewards = $state<Reward[]>([]);
 
@@ -103,6 +104,7 @@
     if (visionBoardLink?.link_type === 'vision_board_canva') visionLinkMode = 'canva';
     if (visionBoardLink?.link_type === 'vision_board_image') visionLinkMode = 'image';
     visionLinkInput = visionBoardLink?.url || '';
+    loading = false;
   }
 
   onDestroy(() => {
@@ -162,7 +164,7 @@
   </div>
 
   {#if activeTab === 'calendar'}
-    <Calendar userId={userId} bind:calEvents bind:calendarTodos onRefresh={loadAll} />
+    <Calendar userId={userId} bind:calEvents bind:calendarTodos onRefresh={loadAll} {loading} />
   {:else if activeTab === 'vision'}
     <Vision
       bind:visionBoardLink

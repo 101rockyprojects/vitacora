@@ -366,7 +366,12 @@
     {/if}
   </div>
 
-  {#if !expenseFilterCategory && expensesByCategory.length > 0}
+  {#if loading}
+    <div class="card flex flex-col items-center gap-4 p-6" aria-busy="true" aria-label="Cargando gastos">
+      <div class="skeleton skeleton-circle h-56 w-56"></div>
+      <div class="skeleton h-5 w-40"></div>
+    </div>
+  {:else if !expenseFilterCategory && expensesByCategory.length > 0}
     <div class="card expenses-chart-card">
       <PieChart
         data={expensesByCategory}
@@ -398,7 +403,19 @@
     </div>
   {/if}
 
-  {#if expensesByMonth.length === 0}
+  {#if loading}
+    <div class="expenses-groups" aria-busy="true" aria-label="Cargando gastos">
+      {#each [1, 2, 3] as _}
+        <div class="expense-item card">
+          <div class="flex flex-1 flex-col gap-2">
+            <div class="skeleton h-4 w-1/3"></div>
+            <div class="skeleton h-3 w-1/5"></div>
+          </div>
+          <div class="skeleton h-4 w-20"></div>
+        </div>
+      {/each}
+    </div>
+  {:else if expensesByMonth.length === 0}
     <div class="empty-state card">Agrega tus primeros gastos</div>
   {:else}
     <div class="expenses-groups">
