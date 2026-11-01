@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
   import { browser } from "$app/environment";
+  import { getSupabaseClient } from "$lib/supabase";
 
   let status = $state("Verificando...");
 
@@ -16,11 +17,7 @@
     const hashToken = hashParams.get("access_token");
     const refreshToken = hashParams.get("refresh_token");
 
-    const { createClient } = await import("@supabase/supabase-js");
-    const supabase = createClient(
-      import.meta.env.PUBLIC_SUPABASE_URL,
-      import.meta.env.PUBLIC_SUPABASE_ANON_KEY,
-    );
+    const supabase = getSupabaseClient();
 
     if (queryToken || queryParams.get("code")) {
       const code = queryToken || queryParams.get("code");
