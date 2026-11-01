@@ -66,7 +66,7 @@
 </div>
 
 <style>
-  .partner-page { max-width: 1100px; }
+  .partner-page { width: 100%; }
 
   .tabs-bar {
     display: flex;

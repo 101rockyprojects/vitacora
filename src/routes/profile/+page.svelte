@@ -430,7 +430,7 @@
 
 <style>
   .profile-page {
-    max-width: 1000px;
+    width: 100%;
   }
 
   .loading-state {

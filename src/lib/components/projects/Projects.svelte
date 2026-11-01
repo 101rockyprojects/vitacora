@@ -116,7 +116,7 @@
 <Toast visible={copyToast} message="Copiado al portapapeles" />
 
 <style>
-  .work-page { max-width: 1200px; }
+  .work-page { width: 100%; }
   
   .tabs-bar {
     display: flex;
