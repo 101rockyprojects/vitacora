@@ -81,7 +81,7 @@ export function createRepository(
         client.from('projects').select('*').eq('user_id', uid()).order('created_at', { ascending: false }),
       listIds: () => client.from('projects').select('id').eq('user_id', uid()),
       insert: (project: Omit<Project, 'id' | 'user_id'>) =>
-        client.from('projects').insert({ ...project, user_id: uid() }),
+        client.from('projects').insert({ ...project, user_id: uid() }).select().single(),
       update: (id: string, values: Partial<Project>) =>
         client.from('projects').update(values).eq('id', id),
       remove: (id: string) => client.from('projects').delete().eq('id', id)
@@ -186,7 +186,7 @@ export function createRepository(
         client.from('learning').select('*').eq('user_id', uid()).order('created_at', { ascending: false }),
       listIds: () => client.from('learning').select('id').eq('user_id', uid()),
       insert: (item: Omit<LearningItem, 'id' | 'user_id'>) =>
-        client.from('learning').insert({ ...item, user_id: uid() }),
+        client.from('learning').insert({ ...item, user_id: uid() }).select().single(),
       update: (id: string, values: Partial<LearningItem>) =>
         client.from('learning').update(values).eq('id', id),
       remove: (id: string) => client.from('learning').delete().eq('id', id)

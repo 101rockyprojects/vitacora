@@ -2,6 +2,7 @@
   import type { SuccessExperience } from '$lib/types';
   import { createRepository } from '$lib/services/repository';
   import { awardXP, XP_VALUES } from '$lib/utils/xp';
+  import CardPreviewModal from '$lib/components/CardPreviewModal.svelte';
 
   interface Props {
     userId: string;
@@ -13,12 +14,15 @@
 
   const repo = $derived(createRepository(userId));
 
-  let showSuccessForm = $state(false);
+  let showSuccessModal = $state(false);
+  let successModalMode = $state<'view' | 'edit'>('view');
+  let previewSuccessId = $state<string | null>(null);
   let successForm = $state<SuccessExperience>({ goal_description: '', done: false });
   let editingSuccessId = $state<string | null>(null);
   let saving = $state(false);
 
   const editingSuccess = $derived(editingSuccessId ? successes.find(s => s.id === editingSuccessId) ?? null : null);
+  const previewSuccess = $derived(successes.find(s => s.id === previewSuccessId) ?? null);
 
   $effect(() => {
     if (editingSuccess?.done) {
@@ -28,6 +32,7 @@
 
   async function saveSuccess() {
     saving = true;
+    let savedId = editingSuccessId;
     const wasDone = editingSuccess?.done ?? false;
     const wantsDone = !!successForm.done;
 
@@ -50,14 +55,18 @@
         done: wantsDone,
         completed_date: wantsDone ? new Date().toISOString() : null
       });
+      savedId = data?.id ?? null;
       if (wantsDone && data) await awardXP(userId, 'selfcare', 'success_experience', XP_VALUES.success_experience, data.id, successForm.goal_description);
     }
-    successForm = { goal_description: '', done: false };
-    editingSuccessId = null;
-    showSuccessForm = false;
     const { data } = await repo.successes.list();
     successes = data || [];
     saving = false;
+    if (savedId) {
+      previewSuccessId = savedId;
+      successModalMode = 'view';
+      successForm = { goal_description: '', done: false };
+      editingSuccessId = null;
+    }
   }
 
   async function toggleSuccess(s: SuccessExperience) {
@@ -71,19 +80,35 @@
   }
 
   function openNewSuccess() {
+    previewSuccessId = null;
     editingSuccessId = null;
     successForm = { goal_description: '', done: false };
-    showSuccessForm = true;
+    successModalMode = 'edit';
+    showSuccessModal = true;
   }
 
   function openEditSuccess(s: SuccessExperience) {
+    previewSuccessId = s.id || null;
     editingSuccessId = s.id || null;
     successForm = { ...s, done: !!s.done };
-    showSuccessForm = true;
+    successModalMode = 'edit';
+    showSuccessModal = true;
   }
 
-  function closeSuccessForm() {
-    showSuccessForm = false;
+  function openSuccessPreview(s: SuccessExperience) {
+    previewSuccessId = s.id || null;
+    successModalMode = 'view';
+    showSuccessModal = true;
+  }
+
+  function cancelSuccessEdit() {
+    editingSuccessId = null;
+    successForm = { goal_description: '', done: false };
+  }
+
+  function closeSuccessModal() {
+    showSuccessModal = false;
+    previewSuccessId = null;
     editingSuccessId = null;
     successForm = { goal_description: '', done: false };
   }
@@ -102,28 +127,54 @@
   </div>
   <div class="success-list">
     {#each successes as s}
-      <div class="success-card card responsive-success" class:done={s.done}>
-        <div class="rc-icon">
-          <button class="success-check" class:checked={s.done} onclick={() => toggleSuccess(s)} disabled={s.done} aria-label="Marcar como completado">
+      <article class="success-card item-card card" class:done={s.done}>
+        <div class="success-main">
+          <button
+            class="success-check"
+            class:checked={s.done}
+            type="button"
+            onclick={() => toggleSuccess(s)}
+            disabled={s.done}
+            aria-label={s.done ? "Completado" : "Marcar como completado"}
+          >
             {s.done ? '✓' : ''}
           </button>
-        </div>
-        <div class="rc-content">
-          <div class="success-info">
-            <div class="success-goal">{s.goal_description}</div>
+          <button
+            class="success-preview-trigger"
+            type="button"
+            aria-label="Ver detalles de {s.goal_description}"
+            onclick={() => openSuccessPreview(s)}
+          >
+            <h3 class="success-goal">{s.goal_description}</h3>
             {#if s.reflection}
-              <div class="success-reflection">"{s.reflection}"</div>
+              <p class="success-reflection">“{s.reflection}”</p>
             {/if}
-            {#if s.completed_date}
-              <div class="success-date">Completado: {new Date(s.completed_date).toLocaleDateString('es-ES')}</div>
-            {/if}
-          </div>
-          <div class="rc-actions">
-            <button class="small-btn btn-ghost" onclick={() => openEditSuccess(s)}>🖋</button>
-            <button class="small-btn btn-ghost" onclick={() => deleteSuccess(s.id!)}>✕</button>
+          </button>
+        </div>
+        <div class="item-card-footer">
+          {#if s.completed_date}
+            <time class="success-date" datetime={s.completed_date}>
+              Completado: {new Date(s.completed_date).toLocaleDateString('es-ES')}
+            </time>
+          {:else}
+            <span></span>
+          {/if}
+          <div class="item-card-actions">
+            <button
+              class="icon-action"
+              type="button"
+              aria-label="Editar meta o logro"
+              onclick={() => openEditSuccess(s)}>🖋</button
+            >
+            <button
+              class="icon-action danger"
+              type="button"
+              aria-label="Eliminar meta o logro"
+              onclick={() => deleteSuccess(s.id!)}>✕</button
+            >
           </div>
         </div>
-      </div>
+      </article>
     {/each}
     {#if successes.length === 0}
       <div class="empty-state card">Registra tus experiencias de éxito 🏆</div>
@@ -131,37 +182,112 @@
   </div>
 </div>
 
-{#if showSuccessForm}
-  <div class="modal-backdrop" role="presentation" onclick={(e) => {
-        if (e.target === e.currentTarget) {
-          closeSuccessForm()
-        }
-      }} onkeydown={(e) => e.key === 'Escape' && closeSuccessForm()}>
-    <div class="modal" role="document">
-      <h3>{editingSuccessId ? 'Editar meta / logro' : 'Nueva meta / logro'}</h3>
-      <div class="form-group"><label for="success-goal">Descripción de la meta</label><textarea id="success-goal" bind:value={successForm.goal_description} rows="2" placeholder="¿Qué quieres lograr?"></textarea></div>
-      <div class="form-group"><label for="success-reflection">Reflexión</label><textarea id="success-reflection" bind:value={successForm.reflection} rows="8" placeholder="¿Qué aprendiste?"></textarea></div>
-      <div class="form-group" style="display:flex;align-items:center;gap:8px;">
-        <input type="checkbox" bind:checked={successForm.done} id="done-check" style="width:auto;" disabled={!!editingSuccess?.done} />
-        <label for="done-check" style="text-transform:none;font-size:14px;color:var(--text);">Marcar como completada</label>
-      </div>
-      {#if editingSuccess?.done}
-        <div style="color:var(--text3);font-size:12px;font-family:var(--font-mono);margin-top:-15px;">
-          Ya esta completada y no se puede desmarcar.
+{#if showSuccessModal}
+  <CardPreviewModal
+    title={successModalMode === 'view'
+      ? previewSuccess?.goal_description ?? 'Meta o logro'
+      : editingSuccessId
+        ? 'Editar meta / logro'
+        : 'Nueva meta / logro'}
+    bind:mode={successModalMode}
+    viewAvailable={!!previewSuccess}
+    saving={saving}
+    onclose={closeSuccessModal}
+    onedit={() => previewSuccess && openEditSuccess(previewSuccess)}
+    oncancel={cancelSuccessEdit}
+    onsave={saveSuccess}
+  >
+    {#snippet view()}
+      {#if previewSuccess}
+        <div class="success-preview">
+          {#if previewSuccess.reflection}
+            <section>
+              <h3>Reflexión</h3>
+              <p class="success-preview-reflection">“{previewSuccess.reflection}”</p>
+            </section>
+          {/if}
+          {#if previewSuccess.completed_date}
+            <time class="success-date" datetime={previewSuccess.completed_date}>
+              Completado: {new Date(previewSuccess.completed_date).toLocaleDateString('es-ES')}
+            </time>
+          {/if}
+          {#if previewSuccess.done}
+            <span class="success-completed-badge">✓ Completado</span>
+          {/if}
         </div>
       {/if}
-      <div class="form-actions">
-        <button class="btn btn-secondary" onclick={closeSuccessForm}>Cancelar</button>
-        <button class="btn btn-primary" onclick={saveSuccess} disabled={saving}>{saving ? '...' : 'Guardar'}</button>
+    {/snippet}
+
+    {#snippet form()}
+      <div class="form-group">
+        <label for="success-goal">Descripción de la meta</label>
+        <textarea
+          id="success-goal"
+          bind:value={successForm.goal_description}
+          rows="2"
+          placeholder="¿Qué quieres lograr?"
+        ></textarea>
       </div>
-    </div>
-  </div>
+      <div class="form-group">
+        <label for="success-reflection">Reflexión</label>
+        <textarea
+          id="success-reflection"
+          bind:value={successForm.reflection}
+          rows="8"
+          placeholder="¿Qué aprendiste?"
+        ></textarea>
+      </div>
+      <div class="success-done-field">
+        <input
+          type="checkbox"
+          bind:checked={successForm.done}
+          id="done-check"
+          disabled={!!editingSuccess?.done}
+        />
+        <label for="done-check">Marcar como completada</label>
+      </div>
+      {#if editingSuccess?.done}
+        <p class="success-done-help">
+          Ya está completada y no se puede desmarcar.
+        </p>
+      {/if}
+    {/snippet}
+  </CardPreviewModal>
 {/if}
 
 <style>
   .success-list { display: flex; flex-direction: column; gap: 12px; }
 
-  .responsive-success.done { border-color: var(--accent-yellow); }
+  .success-card {
+    gap: 12px;
+  }
+
+  .success-card.done {
+    border-color: var(--accent-yellow);
+  }
+
+  .success-main {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .success-preview-trigger {
+    flex: 1;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .success-preview-trigger:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 4px;
+    border-radius: var(--radius-sm);
+  }
 
   .success-check {
     width: 24px;
@@ -192,15 +318,19 @@
     color: var(--accent-yellow);
   }
 
-  .success-info { flex: 1; min-width: 0; }
-
   .success-goal {
+    margin: 0;
     font-size: 14px;
     font-weight: 600;
     color: var(--text);
   }
 
   .success-reflection {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
     font-size: 12px;
     color: var(--text2);
     font-style: italic;
@@ -211,24 +341,57 @@
     font-size: 11px;
     color: var(--accent-yellow);
     font-family: var(--font-mono);
-    margin-top: 6px;
   }
 
-  @media (min-width: 769px) {
-    .responsive-success { display: flex; gap: 12px; align-items: flex-start; }
-    .responsive-success .rc-content { flex: 1; display: flex; gap: 12px; align-items: flex-start; }
-    .responsive-success .rc-actions { display: flex; gap: 4px; margin-left: auto; }
+  .success-preview {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
   }
 
-  @media (max-width: 768px) {
-    .responsive-success { display: flex; gap: 12px; align-items: flex-start; }
-    .responsive-success .rc-content { flex: 1; display: flex; gap: 12px; align-items: flex-start; }
-    .responsive-success .rc-actions { display: flex; gap: 4px; margin-left: auto; }
+  .success-preview h3 {
+    font-size: 14px;
+  }
+
+  .success-preview-reflection {
+    white-space: pre-wrap;
+  }
+
+  .success-completed-badge {
+    align-self: flex-start;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: var(--accent-yellow);
+    color: var(--bg);
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  .success-done-field {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .success-done-field input {
+    width: auto;
+  }
+
+  .success-done-field label {
+    color: var(--text);
+    font-size: 14px;
+  }
+
+  .success-done-help {
+    margin-top: -10px;
+    color: var(--text3);
+    font-family: var(--font-mono);
+    font-size: 12px;
   }
 
   @media (max-width: 480px) {
-    .responsive-success { display: flex; flex-direction: column; gap: 10px; }
-    .responsive-success .rc-content { flex-direction: column; gap: 8px; padding: 0 4px; }
-    .responsive-success .rc-actions { justify-content: flex-end; }
+    .success-main {
+      gap: 8px;
+    }
   }
 </style>

@@ -54,18 +54,34 @@
   </div>
   <div class="rewards-grid">
     {#each rewards as r}
-      <div class="reward-card card">
-        <div class="reward-icon">🎁</div>
+      <article class="reward-card item-card card">
         <div class="reward-info">
-          <div class="reward-name">{r.achievement_name}</div>
-          <div class="reward-given">{r.reward_given}</div>
-          <div class="reward-date">{new Date(r.date_awarded).toLocaleDateString('es-ES')}</div>
+          <div class="reward-heading item-card-header">
+          <span class="reward-icon" aria-hidden="true">🎁</span>
+          <h3 class="reward-name">{r.achievement_name}</h3>
+          </div>
+          <p class="reward-given">{r.reward_given}</p>
         </div>
-        <div class="card-actions-inline">
-          <button class="small-btn btn-secondary" onclick={() => editReward(r)}>🖋</button>
-          <button class="small-btn btn-ghost" onclick={() => deleteReward(r.id!)}>✕</button>
+        <div class="item-card-footer">
+          <time class="reward-date" datetime={r.date_awarded}>
+            {new Date(r.date_awarded).toLocaleDateString('es-ES')}
+          </time>
+          <div class="item-card-actions">
+            <button
+              class="icon-action"
+              type="button"
+              aria-label="Editar recompensa"
+              onclick={() => editReward(r)}>🖋</button
+            >
+            <button
+              class="icon-action danger"
+              type="button"
+              aria-label="Eliminar recompensa"
+              onclick={() => deleteReward(r.id!)}>✕</button
+            >
+          </div>
         </div>
-      </div>
+      </article>
     {/each}
     {#if rewards.length === 0}
       <div class="empty-state card" style="grid-column:1/-1">Celebra tus logros con recompensas 🎁</div>
@@ -100,31 +116,43 @@
   }
 
   .reward-card {
-    display: flex;
     gap: 12px;
-    align-items: flex-start;
   }
 
-  .reward-icon { font-size: 24px; }
+  .reward-heading {
+    justify-content: flex-start;
+    gap: 10px;
+  }
+
+  .reward-icon {
+    font-size: 22px;
+    line-height: 1.2;
+  }
 
   .reward-info { flex: 1; min-width: 0; }
 
   .reward-name {
-    font-size: 13px;
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    font-size: 15px;
     font-weight: 600;
     color: var(--text);
+    line-height: 1.35;
+    overflow-wrap: anywhere;
   }
 
   .reward-given {
-    font-size: 12px;
+    font-size: 13px;
     color: var(--text2);
-    margin-top: 2px;
+    margin: 8px 0 0 32px;
+    overflow-wrap: anywhere;
   }
 
   .reward-date {
     font-size: 11px;
     color: var(--text3);
     font-family: var(--font-mono);
-    margin-top: 6px;
   }
+
 </style>

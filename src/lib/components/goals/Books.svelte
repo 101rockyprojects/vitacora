@@ -7,6 +7,7 @@
   import { createRepository } from "$lib/services/repository";
   import { awardXP, XP_VALUES } from "$lib/utils/xp";
   import { renderMd, formatLinks } from "$lib/utils/markdown";
+  import CardPreviewModal from "$lib/components/CardPreviewModal.svelte";
 
   interface Props {
     userId: string;
@@ -18,7 +19,9 @@
 
   const repo = $derived(createRepository(userId));
 
-  let showBookForm = $state(false);
+  let showBookModal = $state(false);
+  let bookModalMode = $state<"view" | "edit">("view");
+  let previewBookId = $state<string | null>(null);
   let editingBook = $state<Book | null>(null);
   let bookForm = $state<Book>({
     title: "",
@@ -26,7 +29,6 @@
     total_pages: 0,
     rating_mode: "default",
   });
-  let expandedBookNotes = $state<string[]>([]);
   let saving = $state(false);
 
   let ratingCategories = $state<BookRatingCategory[]>([]);
@@ -37,7 +39,9 @@
   let detailedModeApplied = $state(false);
   let bookCategoryRatingsMap = $state<Record<string, BookCategoryRating[]>>({});
 
-  const expandedBookNotesSet = $derived(new Set(expandedBookNotes));
+  const previewBook = $derived(
+    books.find((book) => book.id === previewBookId) ?? null,
+  );
 
   function calculateRating(ratings: BookCategoryRating[]): number {
     const validRatings = ratings.filter((r) => r.rating > 0);
@@ -50,22 +54,6 @@
     if (!detailedModeEnabled) return 0;
     return calculateRating(categoryRatings);
   });
-
-  let editingBookDisplayRating = $derived.by(() => {
-    if (!editingBook) return 0;
-    if (editingBook.rating_mode === "default") {
-      return editingBook.rating || 0;
-    }
-    return calculatedRating;
-  });
-
-  function toggleBookNotes(bookId: string) {
-    if (expandedBookNotesSet.has(bookId)) {
-      expandedBookNotes = expandedBookNotes.filter((id) => id !== bookId);
-    } else {
-      expandedBookNotes = [...expandedBookNotes, bookId];
-    }
-  }
 
   function resetBookForm() {
     bookForm = {
@@ -157,6 +145,7 @@
 
   async function saveBook() {
     saving = true;
+    let savedBookId = editingBook?.id;
     const isFinished =
       bookForm.current_page >= bookForm.total_pages && bookForm.total_pages > 0;
 
@@ -212,6 +201,7 @@
     } else {
       const { data } = await repo.books.insert(bookData);
       if (data) {
+        savedBookId = data.id;
         if (bookForm.rating_mode === "calculated") {
           const ratingsToSave = categoryRatings.map((r) => ({
             category_id: r.category_id,
@@ -233,18 +223,53 @@
 
     const { data } = await repo.books.list();
     books = data || [];
-    showBookForm = false;
-    resetBookForm();
+    if (savedBookId) {
+      const ratings = { ...bookCategoryRatingsMap };
+      if (bookForm.rating_mode === "calculated") {
+        ratings[savedBookId] = categoryRatings;
+      } else {
+        delete ratings[savedBookId];
+      }
+      bookCategoryRatingsMap = ratings;
+      previewBookId = savedBookId;
+      bookModalMode = "view";
+      resetBookForm();
+    }
     saving = false;
   }
 
   async function editBook(b: Book) {
     editingBook = b;
+    categoryRatings = [];
     bookForm = { ...b, rating_mode: b.rating_mode || "default" };
     detailedModeEnabled = b.rating_mode === "calculated";
     detailedModeApplied = b.rating_mode === "calculated";
+    bookModalMode = "edit";
+    showBookModal = true;
     await loadCategoryRatings(b.id || "");
-    showBookForm = true;
+  }
+
+  function openBookPreview(book: Book) {
+    previewBookId = book.id ?? null;
+    bookModalMode = "view";
+    showBookModal = true;
+  }
+
+  function openNewBook() {
+    previewBookId = null;
+    resetBookForm();
+    bookModalMode = "edit";
+    showBookModal = true;
+  }
+
+  function cancelBookEdit() {
+    resetBookForm();
+  }
+
+  function closeBookModal() {
+    showBookModal = false;
+    previewBookId = null;
+    resetBookForm();
   }
 
   async function deleteBook(id: string) {
@@ -285,7 +310,7 @@
   }
 
   $effect(() => {
-    if (showBookForm) {
+    if (showBookModal) {
       loadRatingCategories();
     }
   });
@@ -299,12 +324,8 @@
 
 <div class="fade-in">
   <div class="tab-actions">
-    <button
-      class="btn btn-primary"
-      onclick={() => {
-        resetBookForm();
-        showBookForm = true;
-      }}>+ Agregar libro</button
+    <button class="btn btn-primary" onclick={openNewBook}
+      >+ Agregar libro</button
     >
     <button
       class="btn btn-secondary"
@@ -345,7 +366,11 @@
             if (e.key === "Enter") addCategory();
           }}
         />
-        <button class="btn btn-primary btn-sm" onclick={addCategory}>+</button>
+        <button
+          type="button"
+          class="btn btn-primary btn-sm"
+          onclick={addCategory}>+</button
+        >
       </div>
     </div>
   {/if}
@@ -353,70 +378,75 @@
   <div class="books-grid">
     {#each books as book}
       {@const pct = bookProgress(book)}
-      {@const showNotes = expandedBookNotesSet.has(book.id || "")}
       {@const displayRating = getBookDisplayRating(book)}
-      <div class="book-card card" class:finished={pct >= 100}>
-        {#if pct >= 100}
-          <span class="book-finished-badge">✓ Terminado</span>
-        {/if}
-        <div class="book-cover-info">
-          <div class="book-cover-rating">
-            <div class="book-cover">
-              {#if book.cover_url}
-                <img src={book.cover_url} alt={book.title} />
-              {:else}
-                <span>{book.title[0]}</span>
-              {/if}
+      <article class="book-card item-card card" class:finished={pct >= 100}>
+        <button
+          class="book-preview-trigger"
+          type="button"
+          aria-label="Ver detalles de {book.title}"
+          onclick={() => openBookPreview(book)}
+        >
+          <div class="book-cover-info">
+            <div class="book-cover-rating">
+              <div class="book-cover">
+                {#if book.cover_url}
+                  <img src={book.cover_url} alt="" />
+                {:else}
+                  <span aria-hidden="true">{book.title[0]}</span>
+                {/if}
+              </div>
             </div>
-            {#if displayRating > 0}
-              <div class="book-rating">
-                <span class="star-icon">★</span>
-                <span class="rating-value">{displayRating.toFixed(1)}</span>
+            <div class="book-info">
+              <div class="book-header item-card-header">
+                <h3 class="book-title">{book.title}</h3>
               </div>
-            {/if}
-          </div>
-          <div class="book-info">
-            <div class="book-title">{book.title}</div>
-            <div class="book-progress">
-              <div class="book-progress-label">
-                {book.current_page} / {book.total_pages} págs
+              <div class="book-progress">
+                <div class="book-progress-label">
+                  {book.current_page} / {book.total_pages} págs
+                </div>
+                <div class="progress-track" style="margin:6px 0;">
+                  <div
+                    class="progress-fill"
+                    style="width:{pct}%;background:{pct >= 100
+                      ? 'var(--accent-yellow)'
+                      : 'var(--accent-green)'};"
+                  ></div>
+                </div>
+                <div class="book-pct">
+                  {pct >= 100 ? "100%" : `${pct}%`}
+                  {#if pct >= 100}
+                    <span class="book-finished-badge">✓ Terminado</span>
+                  {/if}
+                </div>
               </div>
-              <div class="progress-track" style="margin:6px 0;">
-                <div
-                  class="progress-fill"
-                  style="width:{pct}%;background:{pct >= 100
-                    ? 'var(--accent-yellow)'
-                    : 'var(--accent-green)'};"
-                ></div>
-              </div>
-              <div class="book-pct">{pct >= 100 ? "100%" : `${pct}%`}</div>
             </div>
           </div>
-        </div>
-        {#if book.notes}
-          <button
-            class="book-notes-toggle"
-            type="button"
-            onclick={() => toggleBookNotes(book.id || "")}
-            aria-expanded={showNotes}
-          >
-            <span>Notas</span>
-            <span class="toggle-icon" class:open={showNotes}>▾</span>
-          </button>
-          {#if showNotes}
-            <div class="book-notes">{@html renderMd(book.notes)}</div>
+        </button>
+        <div class="item-card-footer">
+          {#if displayRating > 0}
+            <div class="book-rating">
+              <span class="star-icon" aria-hidden="true">★</span>
+              <span class="rating-value">{displayRating.toFixed(1)}</span>
+            </div>
+          {:else}
+            <span></span>
           {/if}
-        {/if}
-        <div class="card-actions book-card-actions">
-          <button class="small-btn btn-ghost" onclick={() => editBook(book)}
-            >🖋</button
-          >
-          <button
-            class="small-btn btn-ghost"
-            onclick={() => deleteBook(book.id!)}>✕</button
-          >
+          <div class="item-card-actions">
+            <button
+              class="icon-action"
+              type="button"
+              aria-label="Editar libro"
+              onclick={() => editBook(book)}>🖋</button
+            >
+            <button
+              class="icon-action danger"
+              type="button"
+              aria-label="Eliminar libro"
+              onclick={() => deleteBook(book.id!)}>✕</button
+            >
+          </div>
         </div>
-      </div>
+      </article>
     {/each}
     {#if books.length === 0}
       <div class="empty-state card">Agrega tu primer libro 📖</div>
@@ -424,254 +454,291 @@
   </div>
 </div>
 
-{#if showBookForm}
-  <div
-    class="modal-backdrop"
-    onclick={(e) => {
-      if (e.target === e.currentTarget) {
-        showBookForm = false;
-        resetBookForm();
-      }
-    }}
-    onkeydown={(e) => {
-      if (e.key === "Escape") {
-        showBookForm = false;
-        resetBookForm();
-      }
-    }}
-    role="presentation"
+{#if showBookModal}
+  <CardPreviewModal
+    title={bookModalMode === "view"
+      ? (previewBook?.title ?? "Libro")
+      : editingBook
+        ? "Editar libro"
+        : "Nuevo libro"}
+    bind:mode={bookModalMode}
+    viewAvailable={!!previewBook}
+    {saving}
+    onclose={closeBookModal}
+    onedit={() => previewBook && editBook(previewBook)}
+    oncancel={cancelBookEdit}
+    onsave={saveBook}
   >
-    <div
-      class="modal modal-lg"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="book-form-title"
-    >
-      <h3 id="book-form-title">
-        {editingBook ? "Editar libro" : "Nuevo libro"}
-      </h3>
-      <form
-        onsubmit={(e) => {
-          e.preventDefault();
-          saveBook();
-        }}
-      >
-        <div class="form-group">
-          <label for="book-title">Título</label>
-          <input
-            id="book-title"
-            bind:value={bookForm.title}
-            placeholder="Nombre del libro"
-          />
-        </div>
-        <div class="grid-2">
-          <div class="form-group">
-            <label for="book-current">Página actual</label>
-            <input
-              id="book-current"
-              type="number"
-              bind:value={bookForm.current_page}
-              min="0"
-            />
-          </div>
-          <div class="form-group">
-            <label for="book-total">Total páginas</label>
-            <input
-              id="book-total"
-              type="number"
-              bind:value={bookForm.total_pages}
-              min="0"
-            />
-          </div>
-        </div>
-        <div class="form-group">
-          <label for="book-cover">URL portada (opcional)</label>
-          <input
-            id="book-cover"
-            type="url"
-            bind:value={bookForm.cover_url}
-            placeholder="https://..."
-          />
-        </div>
-        <div class="form-group">
-          <label for="book-notes">Notas</label>
-          <textarea
-            id="book-notes"
-            bind:value={bookForm.notes}
-            rows="8"
-            placeholder="Reflexiones..."></textarea>
-        </div>
-
-        <div class="rating-section">
-          <div class="rating-header">
-            <span class="rating-title">Calificación</span>
-            <span class="rating-badge badge-simple"
-              >Modo {detailedModeEnabled ? "detallado" : "simple"}</span
-            >
-          </div>
-
-          <div
-            class="rating-stars-container"
-            class:disabled={detailedModeEnabled}
-          >
-            <div class="star-picker">
-              {#each [1, 2, 3, 4, 5] as s}
-                <button
-                  type="button"
-                  class="star-btn"
-                  class:filled={s <= (bookForm.rating || 0)}
-                  onclick={() => {
-                    if (!detailedModeEnabled)
-                      bookForm.rating = bookForm.rating === s ? 0 : s;
-                  }}
-                  disabled={detailedModeEnabled}
-                  aria-label={`${s} estrellas`}
-                >
-                  ★
-                </button>
-              {/each}
-              <span class="star-label"
-                >{bookForm.rating
-                  ? `${bookForm.rating}/5`
-                  : "Sin calificar"}</span
-              >
-            </div>
-            {#if detailedModeEnabled}
-              <div class="disabled-overlay">
-                <span>↓ Califica por categorías ↓</span>
-              </div>
+    {#snippet view()}
+      {#if previewBook}
+        {@const pct = bookProgress(previewBook)}
+        {@const ratings = bookCategoryRatingsMap[previewBook.id || ""] || []}
+        <div class="book-preview">
+          <div class="book-preview-main">
+            {#if previewBook.cover_url}
+              <img
+                class="book-preview-cover"
+                src={previewBook.cover_url}
+                alt=""
+              />
             {/if}
+            <div class="book-preview-summary">
+              <h3>{previewBook.title}</h3>
+              <div>
+                {previewBook.current_page} / {previewBook.total_pages} páginas
+              </div>
+              <div class="progress-track">
+                <div
+                  class="progress-fill"
+                  style="width:{pct}%;background:{pct >= 100
+                    ? 'var(--accent-yellow)'
+                    : 'var(--accent-green)'};"
+                ></div>
+              </div>
+              <div class="book-pct">{pct}% completado</div>
+            </div>
           </div>
+          {#if previewBook.rating_mode === "calculated"}
+            <section
+              class="book-preview-ratings"
+              aria-label="Calificación por categorías"
+            >
+              <h3>Calificación por categorías</h3>
+              {#each ratingCategories as category}
+                {@const rating =
+                  ratings.find((item) => item.category_id === category.id)
+                    ?.rating ?? 0}
+                <div class="book-preview-rating-row">
+                  <span>{category.name}</span>
+                  <span>{rating > 0 ? `${rating}/5` : "Sin calificar"}</span>
+                </div>
+              {/each}
+              <div class="book-preview-rating-row average">
+                <strong>Promedio</strong>
+                <strong
+                  >{getBookDisplayRating(previewBook).toFixed(1)} / 5</strong
+                >
+              </div>
+            </section>
+          {:else if previewBook.rating}
+            <div class="book-preview-ratings">
+              Calificación: {previewBook.rating} / 5
+            </div>
+          {/if}
+          <section class="book-preview-notes">
+            <h3>Notas</h3>
+            {#if previewBook.notes}
+              <div class="book-notes">{@html renderMd(previewBook.notes)}</div>
+            {:else}
+              <p class="book-preview-empty">Sin notas</p>
+            {/if}
+          </section>
+        </div>
+      {/if}
+    {/snippet}
 
-          <div class="toggle-section">
-            <label class="toggle-label">
-              <span class="toggle-text"
-                >Calificación detallada por categorías</span
-              >
+    {#snippet form()}
+      <div class="form-group">
+        <label for="book-title">Título</label>
+        <input
+          id="book-title"
+          bind:value={bookForm.title}
+          placeholder="Nombre del libro"
+        />
+      </div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label for="book-current">Página actual</label>
+          <input
+            id="book-current"
+            type="number"
+            bind:value={bookForm.current_page}
+            min="0"
+          />
+        </div>
+        <div class="form-group">
+          <label for="book-total">Total páginas</label>
+          <input
+            id="book-total"
+            type="number"
+            bind:value={bookForm.total_pages}
+            min="0"
+          />
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="book-cover">URL portada (opcional)</label>
+        <input
+          id="book-cover"
+          type="url"
+          bind:value={bookForm.cover_url}
+          placeholder="https://..."
+        />
+      </div>
+      <div class="form-group">
+        <label for="book-notes">Notas</label>
+        <textarea
+          id="book-notes"
+          bind:value={bookForm.notes}
+          rows="8"
+          placeholder="Reflexiones..."></textarea>
+      </div>
+
+      <div class="rating-section">
+        <div class="rating-header">
+          <span class="rating-title">Calificación</span>
+          <span class="rating-badge badge-simple"
+            >Modo {detailedModeEnabled ? "detallado" : "simple"}</span
+          >
+        </div>
+
+        <div
+          class="rating-stars-container"
+          class:disabled={detailedModeEnabled}
+        >
+          <div class="star-picker">
+            {#each [1, 2, 3, 4, 5] as s}
               <button
                 type="button"
-                class="toggle-switch"
-                class:active={detailedModeEnabled}
+                class="star-btn"
+                class:filled={s <= (bookForm.rating || 0)}
                 onclick={() => {
-                  if (detailedModeEnabled) {
-                    disableDetailedMode();
-                  } else {
-                    detailedModeEnabled = true;
-                  }
+                  if (!detailedModeEnabled)
+                    bookForm.rating = bookForm.rating === s ? 0 : s;
                 }}
-                role="switch"
-                aria-checked={detailedModeEnabled}
-                aria-label="Activar calificación detallada"
+                disabled={detailedModeEnabled}
+                aria-label={`${s} estrellas`}
               >
-                <span class="toggle-knob"></span>
+                ★
               </button>
-            </label>
+            {/each}
+            <span class="star-label"
+              >{bookForm.rating
+                ? `${bookForm.rating}/5`
+                : "Sin calificar"}</span
+            >
           </div>
-
           {#if detailedModeEnabled}
-            <div class="category-ratings-section">
-              {#if ratingCategories.length === 0}
-                <div class="no-categories-msg">
-                  <span class="no-categories-icon">📋</span>
-                  <span
-                    >No hay categorías definidas. Crea categorías primero con el
-                    botón "⚙ Categorías".</span
-                  >
-                </div>
-              {:else}
-                <div class="category-ratings-list">
-                  {#each ratingCategories as cat}
-                    <div class="category-row">
-                      <span class="cat-name">{cat.name}</span>
-                      <div class="star-picker small">
-                        {#each [1, 2, 3, 4, 5] as s}
-                          <button
-                            type="button"
-                            class="star-btn"
-                            class:filled={s <= getCategoryRating(cat.id || "")}
-                            onclick={() =>
-                              setCategoryRating(
-                                cat.id || "",
-                                getCategoryRating(cat.id || "") === s ? 0 : s,
-                              )}
-                            aria-label={`${s} estrellas para ${cat.name}`}
-                          >
-                            ★
-                          </button>
-                        {/each}
-                        {#if getCategoryRating(cat.id || "") > 0}
-                          <button
-                            type="button"
-                            class="clear-rating-btn"
-                            onclick={() => setCategoryRating(cat.id || "", 0)}
-                            aria-label="Limpiar calificación de {cat.name}"
-                          >
-                            ✕
-                          </button>
-                        {/if}
-                      </div>
-                    </div>
-                  {/each}
-                </div>
-
-                <div class="calculated-result">
-                  <div class="result-row">
-                    <span class="result-label">Promedio calculado:</span>
-                    <span
-                      class="result-value"
-                      class:has-value={calculatedRating > 0}
-                    >
-                      {calculatedRating > 0
-                        ? `${calculatedRating.toFixed(1)} / 5`
-                        : "—"}
-                    </span>
-                  </div>
-
-                  {#if !detailedModeApplied}
-                    <button
-                      type="button"
-                      class="btn btn-apply"
-                      onclick={applyDetailedMode}
-                      disabled={calculatedRating === 0}
-                    >
-                      Aplicar calificación
-                    </button>
-                    <p class="apply-warning">
-                      {#if bookForm.rating && bookForm.rating > 0}
-                        ⚠ Esto reemplazará tu calificación simple de {bookForm.rating}
-                        estrellas
-                      {:else}
-                        Se guardará como la calificación del libro
-                      {/if}
-                    </p>
-                  {:else}
-                    <div class="applied-confirmation">
-                      <span class="confirmation-icon">✓</span>
-                      <span>Calificación detallada aplicada</span>
-                    </div>
-                  {/if}
-                </div>
-              {/if}
+            <div class="disabled-overlay">
+              <span>↓ Califica por categorías ↓</span>
             </div>
           {/if}
         </div>
 
-        <div class="form-actions">
-          <button
-            type="button"
-            class="btn btn-secondary"
-            onclick={() => {
-              showBookForm = false;
-              resetBookForm();
-            }}>Cancelar</button
-          >
-          <button type="submit" class="btn btn-primary" disabled={saving}
-            >{saving ? "..." : "Guardar"}</button
-          >
+        <div class="toggle-section">
+          <label class="toggle-label">
+            <span class="toggle-text"
+              >Calificación detallada por categorías</span
+            >
+            <button
+              type="button"
+              class="toggle-switch"
+              class:active={detailedModeEnabled}
+              onclick={() => {
+                if (detailedModeEnabled) {
+                  disableDetailedMode();
+                } else {
+                  detailedModeEnabled = true;
+                }
+              }}
+              role="switch"
+              aria-checked={detailedModeEnabled}
+              aria-label="Activar calificación detallada"
+            >
+              <span class="toggle-knob"></span>
+            </button>
+          </label>
         </div>
-      </form>
-    </div>
-  </div>
+
+        {#if detailedModeEnabled}
+          <div class="category-ratings-section">
+            {#if ratingCategories.length === 0}
+              <div class="no-categories-msg">
+                <span class="no-categories-icon">📋</span>
+                <span
+                  >No hay categorías definidas. Crea categorías primero con el
+                  botón "⚙ Categorías".</span
+                >
+              </div>
+            {:else}
+              <div class="category-ratings-list">
+                {#each ratingCategories as cat}
+                  <div class="category-row">
+                    <span class="cat-name">{cat.name}</span>
+                    <div class="star-picker small">
+                      {#each [1, 2, 3, 4, 5] as s}
+                        <button
+                          type="button"
+                          class="star-btn"
+                          class:filled={s <= getCategoryRating(cat.id || "")}
+                          onclick={() =>
+                            setCategoryRating(
+                              cat.id || "",
+                              getCategoryRating(cat.id || "") === s ? 0 : s,
+                            )}
+                          aria-label={`${s} estrellas para ${cat.name}`}
+                        >
+                          ★
+                        </button>
+                      {/each}
+                      {#if getCategoryRating(cat.id || "") > 0}
+                        <button
+                          type="button"
+                          class="clear-rating-btn"
+                          onclick={() => setCategoryRating(cat.id || "", 0)}
+                          aria-label="Limpiar calificación de {cat.name}"
+                        >
+                          ✕
+                        </button>
+                      {/if}
+                    </div>
+                  </div>
+                {/each}
+              </div>
+
+              <div class="calculated-result">
+                <div class="result-row">
+                  <span class="result-label">Promedio calculado:</span>
+                  <span
+                    class="result-value"
+                    class:has-value={calculatedRating > 0}
+                  >
+                    {calculatedRating > 0
+                      ? `${calculatedRating.toFixed(1)} / 5`
+                      : "—"}
+                  </span>
+                </div>
+
+                {#if !detailedModeApplied}
+                  <button
+                    type="button"
+                    class="btn btn-apply"
+                    onclick={applyDetailedMode}
+                    disabled={calculatedRating === 0}
+                  >
+                    Aplicar calificación
+                  </button>
+                  <p class="apply-warning">
+                    {#if bookForm.rating && bookForm.rating > 0}
+                      ⚠ Esto reemplazará tu calificación simple de {bookForm.rating}
+                      estrellas
+                    {:else}
+                      Se guardará como la calificación del libro
+                    {/if}
+                  </p>
+                {:else}
+                  <div class="applied-confirmation">
+                    <span class="confirmation-icon">✓</span>
+                    <span>Calificación detallada aplicada</span>
+                  </div>
+                {/if}
+              </div>
+            {/if}
+          </div>
+        {/if}
+      </div>
+    {/snippet}
+  </CardPreviewModal>
 {/if}
 
 <style>
@@ -683,7 +750,6 @@
   }
 
   .book-card {
-    position: relative;
     display: flex;
     flex-direction: column;
     transition: transform var(--transition);
@@ -694,13 +760,10 @@
   }
 
   .book-card.finished {
-    border-color: var(--accent-yellow);
+    border: 3px solid var(--accent-yellow);
   }
 
   .book-finished-badge {
-    position: absolute;
-    top: 10px;
-    right: 10px;
     background: var(--accent-yellow);
     color: var(--bg);
     font-family: var(--font-mono);
@@ -709,13 +772,32 @@
     letter-spacing: 0.04em;
     padding: 3px 8px;
     border-radius: 999px;
+    white-space: nowrap;
   }
 
-  .book-card-actions {
-    margin-top: 10px;
-    padding-top: 8px;
-    border-top: 1px solid var(--border);
-    justify-content: flex-end;
+  .book-header {
+    min-width: 0;
+  }
+
+  .book-preview-trigger {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .book-preview-trigger:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 4px;
+    border-radius: var(--radius-sm);
   }
 
   .book-cover-info {
@@ -723,6 +805,7 @@
     gap: 14px;
     flex: 1;
     min-height: 0;
+    margin-bottom: 4px;
   }
 
   .book-cover-rating {
@@ -758,10 +841,12 @@
   }
 
   .book-title {
+    flex: 1;
+    min-width: 0;
     font-weight: 700;
-    font-size: 14px;
+    font-size: 15px;
     line-height: 1.3;
-    margin-bottom: 6px;
+    margin: 0;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     line-clamp: 2;
@@ -770,7 +855,7 @@
   }
 
   .book-progress {
-    margin-top: auto;
+    margin-top: 8px;
   }
 
   .book-progress-label {
@@ -780,9 +865,13 @@
   }
 
   .book-pct {
-    font-size: 11px;
-    color: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--accent-green);
     font-family: var(--font-mono);
+    margin-bottom: 4px;
   }
 
   .book-rating {
@@ -791,8 +880,9 @@
     gap: 4px;
     padding: 0px 6px;
     border-radius: 4px;
-    font-size: 12px;
+    font-size: 14px;
     font-family: var(--font-mono);
+    margin-bottom: 2px;
   }
 
   .star-icon {
@@ -805,90 +895,16 @@
     font-weight: 500;
   }
 
-  .book-rating.detailed {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 2px;
-    margin-top: 6px;
-    padding: 4px 8px;
-    background: var(--bg3);
-    border-radius: 4px;
-    font-size: 11px;
-  }
-
-  .category-rating-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    width: 100%;
-  }
-
-  .category-rating-row.average {
-    margin-top: 2px;
-    padding-top: 2px;
-    border-top: 1px solid var(--border);
-  }
-
-  .category-name-label {
-    color: var(--text3);
-    font-family: var(--font-mono);
-    font-size: 10px;
-  }
-
-  .category-stars {
-    display: flex;
-    align-items: center;
-    gap: 1px;
-  }
-
-  .mini-star {
-    font-size: 10px;
-    color: var(--border);
-    line-height: 1;
-  }
-
-  .mini-star.filled {
-    color: var(--accent-yellow);
-  }
-
-  .book-rating.detailed .star-icon {
-    font-size: 11px;
-  }
-
-  .book-rating.detailed .rating-value {
-    font-size: 11px;
-  }
-
-  .book-notes-toggle {
-    display: inline-flex;
-    width: 100%;
-    align-items: center;
-    justify-content: space-between;
-    gap: 6px;
-    font-size: 11px;
-    font-family: var(--font-mono);
+  .book-notes-preview {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
     color: var(--text2);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 4px 8px;
-    margin-top: 10px;
-    cursor: pointer;
-    transition: all var(--transition);
-  }
-
-  .book-notes-toggle:hover {
-    border-color: var(--text3);
-    color: var(--text2);
-  }
-
-  .toggle-icon {
-    display: inline-block;
-    transition: transform var(--transition);
-  }
-
-  .toggle-icon.open {
-    transform: rotate(180deg);
+    font-size: 12px;
+    line-height: 1.45;
+    white-space: pre-wrap;
   }
 
   .book-notes {
@@ -897,6 +913,72 @@
     margin-top: 8px;
     border-top: 1px solid var(--border);
     padding-top: 8px;
+  }
+
+  .book-preview {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .book-preview-main {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .book-preview-cover {
+    width: 96px;
+    max-height: 144px;
+    border-radius: 6px;
+    object-fit: cover;
+  }
+
+  .book-preview-summary {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .book-preview-ratings,
+  .book-preview-notes {
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+  }
+
+  .book-preview-ratings h3,
+  .book-preview-notes h3 {
+    margin-bottom: 10px;
+    font-size: 14px;
+  }
+
+  .book-preview-rating-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 6px 0;
+    color: var(--text2);
+    font-size: 13px;
+  }
+
+  .book-preview-rating-row.average {
+    margin-top: 4px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+    color: var(--text);
+  }
+
+  .book-preview-empty {
+    color: var(--text3);
+    font-style: italic;
+  }
+
+  @media (max-width: 480px) {
+    .book-preview-main {
+      flex-direction: column;
+    }
   }
 
   .category-manager {
@@ -962,10 +1044,6 @@
   .btn-sm {
     padding: 6px 12px;
     font-size: 12px;
-  }
-
-  .modal-lg {
-    max-width: 520px;
   }
 
   .rating-section {
