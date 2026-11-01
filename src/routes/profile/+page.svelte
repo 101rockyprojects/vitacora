@@ -605,7 +605,6 @@
   .badge-icon {
     font-size: 32px;
     margin-bottom: 8px;
-    display: block;
   }
 
   .badge-name {

@@ -572,9 +572,9 @@
   }
 
   .palette-option.active {
-    border-color: var(--accent-green);
+    border-color: var(--accent);
     color: var(--text);
-    box-shadow: inset 0 0 0 1px var(--accent-green);
+    box-shadow: inset 0 0 0 1px var(--accent);
   }
 
   .palette-option:focus-within {
