@@ -5,6 +5,7 @@
   import { renderMd } from "$lib/utils/markdown";
   import { page } from "$app/state";
   import { workFilterTag } from "$lib/stores/workFilter.svelte";
+  import CardPreviewModal from "$lib/components/CardPreviewModal.svelte";
 
   interface Props {
     userId: string;
@@ -53,6 +54,11 @@
     high: "🔴",
     medium: "🟡",
     low: "🟢",
+  };
+  const PRIORITY_LABELS: Record<string, string> = {
+    high: "alta",
+    medium: "media",
+    low: "baja",
   };
   const ARCHIVE_DAYS = 90;
 
@@ -188,6 +194,7 @@
 
   async function saveTask() {
     saving = true;
+    let savedTaskId = editingTask?.id;
     if (editingTask?.id) {
       await repo.tasks.update(editingTask.id, {
         ...taskForm,
@@ -206,13 +213,18 @@
       }
     } else {
       const { data } = await repo.tasks.insert(taskForm);
+      savedTaskId = data?.id;
       if (data?.id) savePriority(data.id, taskFormPriority);
     }
     const { data } = await repo.tasks.list();
     tasks = data || [];
-    showTaskForm = false;
-    resetTaskForm();
     saving = false;
+    const savedTask = tasks.find((task) => task.id === savedTaskId);
+    if (savedTask) {
+      editingTask = savedTask;
+      taskForm = { ...savedTask };
+      taskModalMode = "view";
+    }
   }
 
   async function moveTask(task: Task, sta: Task["status"]) {
@@ -249,6 +261,32 @@
     taskFormPriority = (stored as "low" | "medium" | "high") ?? "medium";
     taskModalMode = "edit";
     showTaskForm = true;
+  }
+
+  function prepareTaskEdit() {
+    if (!editingTask) return;
+    taskForm = { ...editingTask };
+    taskFormPriority = (hasPriority(editingTask.id || "") as
+      | "low"
+      | "medium"
+      | "high") ?? "medium";
+  }
+
+  function cancelTaskEdit() {
+    if (editingTask) {
+      taskForm = { ...editingTask };
+      taskFormPriority = (hasPriority(editingTask.id || "") as
+        | "low"
+        | "medium"
+        | "high") ?? "medium";
+      return;
+    }
+    resetTaskForm();
+  }
+
+  function closeTaskModal() {
+    showTaskForm = false;
+    resetTaskForm();
   }
 
   function onDragStart(task: Task) {
@@ -326,7 +364,6 @@
             >
           {/if}
         </div>
-        <p>|</p>
       {/if}
       <button
         class="kanban-archive-toggle"
@@ -386,9 +423,10 @@
                       {/if}
                     </div>
                   </div>
-                  <div class="kcard-actions">
+                  <div class="kanban-archive-footer item-card-footer">
                     <select
                       class="kcard-move"
+                      style="--status-color: {statuses.find((s) => s.id === task.status)?.color}"
                       onchange={(e) =>
                         moveTask(
                           task,
@@ -398,19 +436,25 @@
                       value={task.status}
                     >
                       {#each statuses as s}
-                        <option value={s.id}>{s.label}</option>
+                        <option value={s.id} style="color:{s.color}">
+                          {s.label}
+                        </option>
                       {/each}
                     </select>
-                    <button
-                      class="btn btn-secondary"
-                      style="font-size:11px;padding:3px 6px;"
-                      onclick={() => editTask(task)}>Editar</button
-                    >
-                    <button
-                      class="btn btn-ghost"
-                      style="font-size:11px;color:var(--accent-red);padding:3px 6px;"
-                      onclick={() => deleteTask(task.id!)}>✕</button
-                    >
+                    <div class="item-card-actions">
+                      <button
+                        class="icon-action"
+                        type="button"
+                        aria-label="Editar tarea"
+                        onclick={() => editTask(task)}>🖋</button
+                      >
+                      <button
+                        class="icon-action danger"
+                        type="button"
+                        aria-label="Eliminar tarea"
+                        onclick={() => deleteTask(task.id!)}>✕</button
+                      >
+                    </div>
                   </div>
                 </div>
               {/each}
@@ -462,63 +506,61 @@
                 {@const taskPriority = task.id
                   ? hasPriority(task.id)
                   : undefined}
-                <div
+                <article
                   id={`card-${task.id ?? key}`}
-                  class="kanban-card"
+                  class="kanban-card item-card"
                   class:wide={sta.id === "to_review"}
                   class:priority-high={taskPriority === "high"}
                   class:priority-medium={taskPriority === "medium"}
                   class:priority-low={taskPriority === "low"}
                   draggable="true"
-                  role="application"
                   ondragstart={() => onDragStart(task)}
                 >
-                  <div class="kcard-header">
-                    {#if taskPriority}
-                      <span
-                        class="kcard-priority"
-                        title={`Prioridad: ${taskPriority}`}
-                      >
-                        {PRIORITY_ICONS[taskPriority]}
-                      </span>
-                    {/if}
-                    <div class="kcard-title">{task.title}</div>
-                  </div>
-                  <div class="kcard-tags">
-                    {#if task.due_date}
-                      <div class="kcard-due">
-                        📅 {new Date(task.due_date).toLocaleDateString("es-ES")}
+                  <button
+                    type="button"
+                    class="kcard-open"
+                    aria-label={`Ver detalles: ${task.title}${
+                      taskPriority
+                        ? `, prioridad ${PRIORITY_LABELS[taskPriority]}`
+                        : ""
+                    }`}
+                    onclick={() => openTaskDetail(task)}
+                  >
+                    <div class="kcard-header">
+                      {#if taskPriority}
+                        <span
+                          class="kcard-priority"
+                          title={`Prioridad: ${taskPriority}`}
+                          aria-hidden="true"
+                        >
+                          {PRIORITY_ICONS[taskPriority]}
+                        </span>
+                      {/if}
+                      <div class="kcard-title">{task.title}</div>
+                    </div>
+                    <div class="kcard-tags">
+                      {#if task.due_date}
+                        <div class="kcard-due">
+                          📅 {new Date(task.due_date).toLocaleDateString("es-ES")}
+                        </div>
+                        {#if task.tags?.length}
+                          <span class="text-gray-500" aria-hidden="true">|</span>
+                        {/if}
+                      {/if}
+                      {#each task.tags ?? [] as tag}
+                        <span class="tag">{tag}</span>
+                      {/each}
+                    </div>
+                    {#if task.description && task.description.trim() !== ""}
+                      <div class="kcard-desc kcard-desc-preview">
+                        {task.description}
                       </div>
                     {/if}
-                    <span>|</span>
-                    {#each task.tags ?? [] as tag}
-                      <span class="tag">{tag}</span>
-                    {/each}
-                  </div>
-                  {#if task.description && task.description.trim() !== ""}
-                    <div class="kcard-desc kcard-desc-preview">
-                      {task.description}
-                    </div>
-                  {/if}
-                  {#if task.description && task.description.trim() !== ""}
-                    <button
-                      class="kcard-desc-toggle"
-                      type="button"
-                      draggable="false"
-                      onpointerdown={(e) => e.stopPropagation()}
-                      onclick={(e) => {
-                        e.stopPropagation();
-                        openTaskDetail(task);
-                      }}
-                      ondragstart={(e) => e.preventDefault()}
-                    >
-                      <span class="kcard-desc-toggle-label">Ver más</span>
-                      <span class="kcard-desc-toggle-icon">↗</span>
-                    </button>
-                  {/if}
-                  <div class="kcard-actions">
+                  </button>
+                  <div class="kcard-actions item-card-footer">
                     <select
                       class="kcard-move"
+                      style="--status-color: {sta.color}"
                       onchange={(e) =>
                         moveTask(
                           task,
@@ -528,21 +570,27 @@
                       value={task.status}
                     >
                       {#each statuses as s}
-                        <option value={s.id}>{s.label}</option>
+                        <option value={s.id} style="color:{s.color}">
+                          {s.label}
+                        </option>
                       {/each}
                     </select>
-                    <button
-                      class="btn btn-secondary"
-                      style="font-size:11px;padding:3px 6px;"
-                      onclick={() => editTask(task)}>Editar</button
-                    >
-                    <button
-                      class="btn btn-ghost"
-                      style="font-size:11px;color:var(--accent-red);padding:3px 6px;"
-                      onclick={() => deleteTask(task.id!)}>✕</button
-                    >
+                    <div class="item-card-actions">
+                      <button
+                        class="icon-action"
+                        type="button"
+                        aria-label="Editar tarea"
+                        onclick={() => editTask(task)}>🖋</button
+                      >
+                      <button
+                        class="icon-action danger"
+                        type="button"
+                        aria-label="Eliminar tarea"
+                        onclick={() => deleteTask(task.id!)}>✕</button
+                      >
+                    </div>
                   </div>
-                </div>
+                </article>
               {/each}
             </div>
           {/if}
@@ -553,120 +601,69 @@
 </div>
 
 {#if showTaskForm}
-  <div
-    class="modal-backdrop"
-    onclick={(e) => {
-      if (e.target === e.currentTarget) {
-        showTaskForm = false;
-        resetTaskForm();
-      }
-    }}
-    onkeydown={(e) => {
-      if (e.key === "Escape") {
-        showTaskForm = false;
-        resetTaskForm();
-      }
-    }}
-    role="presentation"
+  <CardPreviewModal
+    title={taskModalMode === "view"
+      ? editingTask?.title ?? "Tarea"
+      : editingTask
+        ? "Editar tarea"
+        : "Nueva tarea"}
+    bind:mode={taskModalMode}
+    viewAvailable={!!editingTask}
+    saving={saving}
+    onclose={closeTaskModal}
+    onedit={prepareTaskEdit}
+    oncancel={cancelTaskEdit}
+    onsave={saveTask}
   >
-    <div
-      class="modal"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="task-form-title"
-    >
-      <div class="task-modal-header">
-        <h3 id="task-form-title">
-          {taskModalMode === "view"
-            ? "Detalles de la tarea"
-            : editingTask
-              ? "Editar tarea"
-              : "Nueva tarea"}
-        </h3>
-        <div class="task-modal-header-actions">
-          {#if taskModalMode === "view"}
-            <button
-              class="btn btn-secondary"
-              style="font-size:12px;padding:5px 10px;"
-              type="button"
-              onclick={() => (taskModalMode = "edit")}>Editar</button
-            >
-          {/if}
-          <button
-            class="task-modal-close"
-            type="button"
-            aria-label="Cerrar"
-            onclick={() => {
-              showTaskForm = false;
-              resetTaskForm();
-            }}>✕</button
-          >
+    {#snippet view()}
+      <div class="task-detail">
+        <div class="task-detail-row">
+          <span class="task-detail-label">Status</span>
+          <span class="task-detail-value">
+            {statuses.find((sta) => sta.id === taskForm.status)?.label ?? taskForm.status}
+          </span>
         </div>
-      </div>
-      {#if taskModalMode === "view"}
-        <div class="task-detail">
+        <div class="task-detail-row">
+          <span class="task-detail-label">Prioridad</span>
+          <span class="task-detail-value">
+            {#if editingTask?.id && hasPriority(editingTask.id)}
+              {PRIORITY_ICONS[hasPriority(editingTask.id)!]}
+              {PRIORITY_LABELS[hasPriority(editingTask.id)!]}
+            {:else}
+              —
+            {/if}
+          </span>
+        </div>
+        {#if taskForm.due_date}
           <div class="task-detail-row">
-            <span class="task-detail-label">Título</span>
-            <span class="task-detail-value">{taskForm.title}</span>
-          </div>
-          <div class="task-detail-row">
-            <span class="task-detail-label">Status</span>
-            <span class="task-detail-value"
-              >{statuses.find((sta) => sta.id === taskForm.status)?.label ??
-                taskForm.status}</span
-            >
-          </div>
-          <div class="task-detail-row">
-            <span class="task-detail-label">Prioridad</span>
+            <span class="task-detail-label">Fecha límite</span>
             <span class="task-detail-value">
-              {#if editingTask?.id && hasPriority(editingTask.id)}
-                {PRIORITY_ICONS[
-                  hasPriority(editingTask.id) as "high" | "medium" | "low"
-                ]}
-                {hasPriority(editingTask.id) === "high"
-                  ? "Alta"
-                  : hasPriority(editingTask.id) === "medium"
-                    ? "Media"
-                    : "Baja"}
-              {:else}
-                —
-              {/if}
+              {new Date(taskForm.due_date).toLocaleDateString("es-ES")}
             </span>
           </div>
-          {#if taskForm.due_date}
-            <div class="task-detail-row">
-              <span class="task-detail-label">Fecha límite</span>
-              <span class="task-detail-value"
-                >{new Date(taskForm.due_date).toLocaleDateString("es-ES")}</span
-              >
-            </div>
-          {/if}
-          {#if taskForm.tags && taskForm.tags.length > 0}
-            <div class="task-detail-row">
-              <span class="task-detail-label">Tags</span>
-              <span class="task-detail-tags">
-                {#each taskForm.tags as tag}
-                  <span class="tag">{tag}</span>
-                {/each}
-              </span>
-            </div>
-          {/if}
-          <div class="task-detail-desc">
-            <span class="task-detail-label">Descripción</span>
-            {#if taskForm.description && taskForm.description.trim() !== ""}
-              {@html renderMd(taskForm.description)}
-            {:else}
-              <p class="task-detail-empty">Sin descripción</p>
-            {/if}
+        {/if}
+        {#if taskForm.tags?.length}
+          <div class="task-detail-row">
+            <span class="task-detail-label">Tags</span>
+            <span class="task-detail-tags">
+              {#each taskForm.tags as tag}
+                <span class="tag">{tag}</span>
+              {/each}
+            </span>
           </div>
+        {/if}
+        <div class="task-detail-desc">
+          <span class="task-detail-label">Descripción</span>
+          {#if taskForm.description?.trim()}
+            {@html renderMd(taskForm.description)}
+          {:else}
+            <p class="task-detail-empty">Sin descripción</p>
+          {/if}
         </div>
-      {:else}
-        <form
-          onsubmit={(e) => {
-            e.preventDefault();
-            saveTask();
-          }}
-        >
+      </div>
+    {/snippet}
+
+    {#snippet form()}
           <div class="form-group">
             <label for="task-title">Título</label>
             <input
@@ -714,23 +711,8 @@
               <option value="low">🟢 Baja</option>
             </select>
           </div>
-          <div class="form-actions">
-            <button
-              type="button"
-              class="btn btn-secondary"
-              onclick={() => {
-                showTaskForm = false;
-                resetTaskForm();
-              }}>Cancelar</button
-            >
-            <button type="submit" class="btn btn-primary" disabled={saving}
-              >{saving ? "..." : "Guardar"}</button
-            >
-          </div>
-        </form>
-      {/if}
-    </div>
-  </div>
+    {/snippet}
+  </CardPreviewModal>
 {/if}
 
 <style>
@@ -817,10 +799,14 @@
     background: var(--bg2);
   }
 
-  .kanban-archive-item .kcard-actions {
+  .kanban-archive-item .item-card-footer {
     border-top: none;
     padding-top: 0;
     margin-top: 0;
+  }
+
+  .kanban-archive-footer {
+    flex: 1;
   }
 
   .ka-main {
@@ -888,7 +874,7 @@
   }
 
   .tag-filter:hover {
-    border-color: var(--accent-green);
+    border-color: var(--accent);
     color: var(--text2);
   }
 
@@ -1048,6 +1034,8 @@
 
   .kanban-card {
     width: 100%;
+    display: flex;
+    flex-direction: column;
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius);
@@ -1057,7 +1045,7 @@
   }
 
   .kanban-card:hover {
-    border-color: var(--accent-green);
+    border-color: var(--accent);
     transform: translateY(-1px);
   }
   .kanban-card:active {
@@ -1066,6 +1054,24 @@
 
   .kanban-card.wide {
     width: 33.33%;
+  }
+
+  .kcard-open {
+    display: block;
+    width: 100%;
+    flex: 1;
+    border: 0;
+    padding: 0;
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .kcard-open:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 4px;
+    border-radius: var(--radius-sm);
   }
 
   .kcard-header {
@@ -1162,33 +1168,6 @@
     padding: 2px 8px;
   }
 
-  .kcard-desc-toggle {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 11px;
-    font-family: var(--font-mono);
-    padding: 3px 8px;
-    border-radius: var(--radius-sm);
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    color: var(--text);
-    transition: all var(--transition);
-    cursor: pointer;
-    flex-shrink: 0;
-  }
-
-  .kcard-desc-toggle:hover {
-    border-color: var(--text3);
-    color: var(--text2);
-  }
-
-  .kcard-desc-toggle-icon {
-    display: inline-block;
-    transition: transform var(--transition);
-    transform-origin: center;
-  }
-
   .tag {
     font-size: 11px;
     padding: 2px 7px;
@@ -1201,19 +1180,18 @@
   }
 
   .kcard-actions {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    border-top: 1px solid var(--border);
-    padding-top: 8px;
-    margin-top: 4px;
+    margin-top: 10px;
   }
 
   .kcard-move {
     font-size: 11px;
-    padding: 3px 6px;
+    padding: 6px 8px;
     flex: 1;
-    background: var(--bg3);
+    width: auto;
+    min-width: 0;
+    color: var(--status-color);
+    background: color-mix(in srgb, var(--status-color) 12%, var(--bg3));
+    border: 1px solid var(--status-color);
     border-radius: 6px;
     cursor: pointer;
   }
@@ -1251,41 +1229,6 @@
     .kanban-board {
       grid-template-columns: 1fr;
     }
-  }
-
-  .task-modal-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 16px;
-  }
-
-  .task-modal-header h3 {
-    margin: 0;
-  }
-
-  .task-modal-header-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-shrink: 0;
-  }
-
-  .task-modal-close {
-    background: none;
-    border: none;
-    color: var(--text3);
-    font-size: 18px;
-    line-height: 1;
-    padding: 4px 8px;
-    cursor: pointer;
-    border-radius: 6px;
-    transition: color var(--transition);
-  }
-
-  .task-modal-close:hover {
-    color: var(--text);
   }
 
   #task-desc {

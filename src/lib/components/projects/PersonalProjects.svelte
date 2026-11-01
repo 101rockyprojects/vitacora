@@ -2,6 +2,7 @@
   import type { Project } from "$lib/types";
   import { createRepository } from "$lib/services/repository";
   import { awardXP, XP_VALUES } from "$lib/utils/xp";
+  import CardPreviewModal from "$lib/components/CardPreviewModal.svelte";
 
   interface Props {
     userId: string;
@@ -12,17 +13,24 @@
 
   const repo = $derived(createRepository(userId));
 
-  let showProjectForm = $state(false);
+  let showProjectModal = $state(false);
+  let projectModalMode = $state<"view" | "edit">("view");
+  let previewProjectId = $state<string | null>(null);
   let editingProjectId = $state<string | null>(null);
   let projectForm = $state<Project>({ name: "" });
   let saving = $state(false);
+  const previewProject = $derived(
+    projects.find((project) => project.id === previewProjectId) ?? null,
+  );
 
   async function saveProject() {
     saving = true;
+    let savedId = editingProjectId;
     if (editingProjectId) {
       await repo.projects.update(editingProjectId, projectForm);
     } else {
-      await repo.projects.insert(projectForm);
+      const { data } = await repo.projects.insert(projectForm);
+      savedId = data?.id ?? null;
       await awardXP(
         userId,
         "work",
@@ -32,12 +40,15 @@
         projectForm.name,
       );
     }
-    projectForm = { name: "" };
-    editingProjectId = null;
-    showProjectForm = false;
     const { data } = await repo.projects.list();
     projects = data || [];
     saving = false;
+    if (savedId) {
+      previewProjectId = savedId;
+      projectModalMode = "view";
+      projectForm = { name: "" };
+      editingProjectId = null;
+    }
   }
 
   async function deleteProject(id: string) {
@@ -48,15 +59,37 @@
   }
 
   function editProject(project: Project) {
+    previewProjectId = project.id ?? null;
     editingProjectId = project.id || null;
     projectForm = { ...project };
-    showProjectForm = true;
+    projectModalMode = "edit";
+    showProjectModal = true;
   }
 
   export function openNewProject() {
+    previewProjectId = null;
     editingProjectId = null;
     projectForm = { name: "" };
-    showProjectForm = true;
+    projectModalMode = "edit";
+    showProjectModal = true;
+  }
+
+  function openProjectPreview(project: Project) {
+    previewProjectId = project.id ?? null;
+    projectModalMode = "view";
+    showProjectModal = true;
+  }
+
+  function cancelProjectEdit() {
+    editingProjectId = null;
+    projectForm = { name: "" };
+  }
+
+  function closeProjectModal() {
+    showProjectModal = false;
+    previewProjectId = null;
+    editingProjectId = null;
+    projectForm = { name: "" };
   }
 </script>
 
@@ -64,53 +97,52 @@
   <div class="tab-actions">
     <button
       class="btn btn-primary"
-      onclick={() => {
-        editingProjectId = null;
-        projectForm = { name: "" };
-        showProjectForm = true;
-      }}>+ Nuevo proyecto</button
+      onclick={openNewProject}>+ Nuevo proyecto</button
     >
   </div>
   <div class="projects-grid">
     {#each projects as p}
-      <div class="project-card card responsive-project">
-        <div class="rc-image"></div>
-        <div class="rc-content">
-          <div class="project-header">
-            <div class="project-name">{p.name}</div>
-          </div>
+      <article class="project-card item-card card">
+        <button
+          class="project-preview-trigger"
+          type="button"
+          aria-label="Ver detalles de {p.name}"
+          onclick={() => openProjectPreview(p)}
+        >
+          <h3 class="project-name">{p.name}</h3>
           {#if p.description}
-            <div class="project-desc">{p.description}</div>
+            <p class="project-desc project-desc-preview">{p.description}</p>
           {/if}
-          <div class="project-links">
-            {#if p.github_link}
-              <a href={p.github_link} target="_blank" class="plink">GitHub →</a>
-            {/if}
-            {#if p.deploy_link}
-              <a href={p.deploy_link} target="_blank" class="plink plink-deploy"
-                >Deploy →</a
-              >
-            {/if}
-            {#if p.inspiration_link}
-              <a href={p.inspiration_link} target="_blank" class="plink"
-                >Inspiración →</a
-              >
-            {/if}
+        </button>
+        <div class="project-links">
+          {#if p.github_link}
+            <a href={p.github_link} target="_blank" rel="noopener noreferrer" class="plink">GitHub →</a>
+          {/if}
+          {#if p.deploy_link}
+            <a href={p.deploy_link} target="_blank" rel="noopener noreferrer" class="plink plink-deploy">Deploy →</a>
+          {/if}
+          {#if p.inspiration_link}
+            <a href={p.inspiration_link} target="_blank" rel="noopener noreferrer" class="plink">Inspiración →</a>
+          {/if}
+        </div>
+        <div class="item-card-footer">
+          <span></span>
+          <div class="item-card-actions">
+            <button
+              class="icon-action"
+              type="button"
+              aria-label="Editar proyecto"
+              onclick={() => editProject(p)}>🖋</button
+            >
+            <button
+              class="icon-action danger"
+              type="button"
+              aria-label="Eliminar proyecto"
+              onclick={() => deleteProject(p.id!)}>✕</button
+            >
           </div>
         </div>
-        <div class="rc-actions">
-          <button
-            class="small-btn btn-secondary"
-            style="font-size:11px;"
-            onclick={() => editProject(p)}>🖋</button
-          >
-          <button
-            class="small-btn btn-ghost"
-            style="font-size:11px;"
-            onclick={() => deleteProject(p.id!)}>✕</button
-          >
-        </div>
-      </div>
+      </article>
     {/each}
     {#if projects.length === 0}
       <div class="empty-state card" style="grid-column:1/-1">
@@ -120,32 +152,45 @@
   </div>
 </div>
 
-{#if showProjectForm}
-  <div
-    class="modal-backdrop"
-    onclick={(e) => {
-      if (e.target === e.currentTarget) showProjectForm = false;
-    }}
-    onkeydown={(e) => {
-      if (e.key === "Escape") showProjectForm = false;
-    }}
-    role="presentation"
+{#if showProjectModal}
+  <CardPreviewModal
+    title={projectModalMode === "view"
+      ? previewProject?.name ?? "Proyecto"
+      : editingProjectId
+        ? "Editar proyecto"
+        : "Nuevo proyecto"}
+    bind:mode={projectModalMode}
+    viewAvailable={!!previewProject}
+    saving={saving}
+    onclose={closeProjectModal}
+    onedit={() => previewProject && editProject(previewProject)}
+    oncancel={cancelProjectEdit}
+    onsave={saveProject}
   >
-    <div
-      class="modal"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="project-form-title"
-    >
-      <h3 id="project-form-title">
-        {editingProjectId ? "Editar proyecto" : "Nuevo proyecto"}
-      </h3>
-      <form
-        onsubmit={(e) => {
-          e.preventDefault();
-          saveProject();
-        }}
-      >
+    {#snippet view()}
+      {#if previewProject}
+        <div class="project-preview">
+          {#if previewProject.description}
+            <p>{previewProject.description}</p>
+          {:else}
+            <p class="project-preview-empty">Sin descripción</p>
+          {/if}
+          <div class="project-preview-links">
+            {#if previewProject.github_link}
+              <a href={previewProject.github_link} target="_blank" rel="noopener noreferrer">GitHub →</a>
+            {/if}
+            {#if previewProject.deploy_link}
+              <a href={previewProject.deploy_link} target="_blank" rel="noopener noreferrer">Deploy →</a>
+            {/if}
+            {#if previewProject.inspiration_link}
+              <a href={previewProject.inspiration_link} target="_blank" rel="noopener noreferrer">Inspiración →</a>
+            {/if}
+          </div>
+        </div>
+      {/if}
+    {/snippet}
+
+    {#snippet form()}
         <div class="form-group">
           <label for="project-name">Nombre</label>
           <input
@@ -185,19 +230,8 @@
             placeholder="https://..."
           />
         </div>
-        <div class="form-actions">
-          <button
-            type="button"
-            class="btn btn-secondary"
-            onclick={() => (showProjectForm = false)}>Cancelar</button
-          >
-          <button type="submit" class="btn btn-primary" disabled={saving}
-            >{saving ? "..." : "Guardar"}</button
-          >
-        </div>
-      </form>
-    </div>
-  </div>
+    {/snippet}
+  </CardPreviewModal>
 {/if}
 
 <style>
@@ -208,28 +242,47 @@
   }
 
   .project-card {
+    gap: 12px;
     transition: transform var(--transition);
   }
   .project-card:hover {
     transform: translateY(-2px);
   }
 
-  .project-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 8px;
+  .project-preview-trigger {
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .project-preview-trigger:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 4px;
+    border-radius: var(--radius-sm);
   }
 
   .project-name {
+    margin: 0;
     font-weight: 700;
     font-size: 16px;
   }
   .project-desc {
     font-size: 13px;
     color: var(--text2);
-    margin-bottom: 12px;
+    margin: 8px 0 0;
     line-height: 1.5;
+  }
+
+  .project-desc-preview {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
   }
 
   .project-links {
@@ -261,52 +314,30 @@
     background: rgba(255, 217, 61, 0.15);
   }
 
-  @media (min-width: 769px) {
-    .responsive-project {
-      display: flex;
-      gap: 14px;
-      align-items: flex-start;
-    }
-    .responsive-project .rc-image {
-      width: 0;
-      flex-shrink: 0;
-    }
-    .responsive-project .rc-content {
-      flex: 1;
-      min-width: 0;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-    .responsive-project .rc-actions {
-      display: flex;
-      gap: 6px;
-      flex-shrink: 0;
-    }
+  .project-preview {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .project-preview-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .project-preview-links a {
+    color: var(--accent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .project-preview-empty {
+    color: var(--text3);
+    font-style: italic;
   }
 
   @media (max-width: 768px) {
-    .responsive-project {
-      display: flex;
-      gap: 12px;
-      align-items: flex-start;
-    }
-    .responsive-project .rc-image {
-      width: 0;
-      flex-shrink: 0;
-    }
-    .responsive-project .rc-content {
-      flex: 1;
-      min-width: 0;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-    .responsive-project .rc-actions {
-      display: flex;
-      gap: 6px;
-      flex-shrink: 0;
-    }
     .projects-grid {
       grid-template-columns: 1fr;
       gap: 12px;
@@ -315,29 +346,6 @@
       font-size: 14px;
       line-height: 1.3;
       word-break: break-word;
-    }
-    .project-desc {
-      font-size: 12px;
-      line-height: 1.45;
-      word-break: break-word;
-    }
-  }
-
-  @media (max-width: 480px) {
-    .responsive-project {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-    .responsive-project .rc-image {
-      width: 100%;
-      height: 0;
-    }
-    .responsive-project .rc-content {
-      gap: 10px;
-    }
-    .responsive-project .rc-actions {
-      justify-content: flex-end;
     }
   }
 </style>

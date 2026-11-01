@@ -70,7 +70,7 @@ VitaCora is a personal life-management app with gamification. Track goals, books
 - Access user via `page.data.user?.id`
 - Use repository pattern for data access
 
-**Modals:** follow existing modal patterns in `work/+page.svelte` or `goals/+page.svelte`; `Modal.svelte` provides the shared backdrop.
+**Modals:** use `src/lib/components/CardPreviewModal.svelte` for card previews and edits; use the shared `.modal-backdrop` and `.modal` styles for other dialogs.
 
 ## Style Guide
 
