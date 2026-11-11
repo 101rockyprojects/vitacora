@@ -72,7 +72,8 @@ export const PALETTES = [
   { id: 'ocean', label: 'Abisal' },
   { id: 'forest', label: 'Soto' },
   { id: 'sunset', label: 'Ocaso' },
-  { id: 'mono', label: 'Domino' }
+  { id: 'mono', label: 'Domino' },
+  { id: 'blush', label: 'Rubor' }
 ];
 
 export function tabKey(group: TabGroup, id: string): string {

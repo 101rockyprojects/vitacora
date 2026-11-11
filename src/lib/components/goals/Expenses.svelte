@@ -557,6 +557,7 @@
           id="expense-cost"
           type="number"
           bind:value={expenseForm.cost}
+          onfocus={(e) => e.currentTarget.select()}
           min="0"
           step="0.01"
           placeholder="0.00"
@@ -645,6 +646,7 @@
           id="sub-cost"
           type="number"
           bind:value={subForm.cost}
+          onfocus={(e) => e.currentTarget.select()}
           min="0"
           step="0.01"
         />

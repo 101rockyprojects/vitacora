@@ -5,6 +5,7 @@
   import Sidebar from "$lib/components/Sidebar.svelte";
   import NotificationContainer from "$lib/components/NotificationContainer.svelte";
   import XpToasts from "$lib/components/XpToasts.svelte";
+  import { readSettings } from "$lib/settings";
 
   let { data, children } = $props();
 
@@ -14,6 +15,10 @@
   );
 
   const routeMeta = $derived(getRouteMeta(page.url.pathname));
+
+  $effect(() => {
+    document.documentElement.dataset.palette = readSettings(data.user).palette;
+  });
   let isTabHidden = $state(false);
 
   onMount(() => {

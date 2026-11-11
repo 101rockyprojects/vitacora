@@ -51,6 +51,9 @@
   --surface: #1d1b3f;
   --surface2: #24304f;
   --border: #2c3662;
+  --text: #e4e6f5;
+  --text2: #a4a9cc;
+  --text3: #5f6690;
   --accent-green: #2ca864;
   --accent-yellow: #d4ca3f;
   --accent-orange: #d16037;
@@ -67,6 +70,9 @@
   --surface: #121d06;
   --surface2: #051a10;
   --border: #335035;
+  --text: #e2efe6;
+  --text2: #9fb8a7;
+  --text3: #5d7564;
   --accent-green: #58af7e;
   --accent-yellow: #adaa4c;
   --accent-orange: #a57248;
@@ -83,6 +89,9 @@
   --surface: #27201a;
   --surface2: #45362f;
   --border: #493828;
+  --text: #f1e6df;
+  --text2: #b9a396;
+  --text3: #7a6557;
   --accent-green: #41a82c;
   --accent-yellow: #aa800e;
   --accent-orange: #ad562a;
@@ -100,6 +109,9 @@
   --surface: #262629;
   --surface2: #34343a;
   --border: #46464e;
+  --text: #ececf0;
+  --text2: #a8a8b2;
+  --text3: #6c6c76;
   --accent-green: #71a75c;
   --accent-yellow: #aca46b;
   --accent-orange: #aa835e;
@@ -107,6 +119,28 @@
   --accent-purple: #7f6baf;
   --accent-red: #a7454d;
   --accent: #d7d7dd;
+}
+
+[data-palette="blush"] {
+  color-scheme: light;
+  --bg: #f2dff2;
+  --bg2: #e8bfe5;
+  --bg3: #fecff6;
+  --surface: #c266b2;
+  --surface2: #911d55;
+  --border: #ec7ff4;
+  --text: #41112b;
+  --text2: #541852;
+  --text3: #724b58;
+  --text-dark: #fae8fa;
+  --accent-green: #7fc457;
+  --accent-yellow: #d7b118;
+  --accent-orange: #d17a4e;
+  --accent-blue: #5f7fc4;
+  --accent-purple: #a674d1;
+  --accent-red: #d00722;
+  --accent: var(--surface2);
+  /* Keep accent-red for caution/errors */
 }
 
 *,
